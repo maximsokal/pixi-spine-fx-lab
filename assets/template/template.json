@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "baseline": "Spine Burn Lab after PNG baking and camera/sidebar updates",
+  "capturedDate": "2026-10-26",
+  "runtime": {
+    "pixi": "8.22.0",
+    "spinePixiV8": "4.2.120",
+    "spineExport": "4.2.x"
+  },
+  "optionalFilters": {
+    "compatibleMajor": 6,
+    "bundled": false,
+    "policy": "Verify and pin an exact version before adding pixi-filters; never fetch latest at runtime."
+  },
+  "protectedFiles": {
+    "vendor/pixi-8.22.0.min.js": "06d9ef9823e743518793083c296d801e752db128cb1f519fbabe37e1259567ea",
+    "vendor/spine-pixi-v8-4.2.120.min.js": "aeb275a086c468b0df4f90276d08716e38ecb39e10a48a21ee5ae1f17b016111",
+    "licenses/pixi.txt": "5ce7447bc57f7349ffc48338782fbcabe613696e00712b20d66bc58e780f9473",
+    "licenses/spine.txt": "3d4021ad461b0d7c6c2dad7778239122cb118daa820cc91a4927548e42bd2c26",
+    "sample/Doctor_head.json": "2a60bf723e4f0910e87163c0a98055530f99bcad0ce173acde1d2389a9504aad",
+    "sample/Doctor_head.atlas": "8444581307edec3922f02b19e9520fef5d0cc1613b97c5d043fecbe5c8ae5089",
+    "sample/Doctor_head.png": "1a873fd8bc82e888e57d77f22885eb621d6962d50b04d8606eb21321091d4217",
+    "sample/Doctor_head_2.png": "9bc87ca5ccd1e9d1d16c5ece04b5df69c891474d2980d4fe2ebf8f5d9b046cd9"
+  },
+  "sample": {
+    "label": "Doctor head",
+    "skeleton": "sample/Doctor_head.json",
+    "atlas": "sample/Doctor_head.atlas",
+    "images": [
+      "sample/Doctor_head.png",
+      "sample/Doctor_head_2.png"
+    ]
+  },
+  "sourceFiles": [
+    "src/ui.html",
+    "src/effect-core.js",
+    "src/export-ui.js"
+  ],
+  "baselineHtmlSha256": "2582b3916763770c8f7959e8cffea74e49ecd3e5c85b3a47ced741e0dda8413b",
+  "exampleEffect": "Burn to grayscale with flame and sparks",
+  "exports": [
+    "WebGL developer ZIP",
+    "WebGPU developer ZIP with WebGL fallback",
+    "Transparent RGBA PNG sequence ZIP"
+  ],
+  "notIncluded": [
+    "MP4/WebM export",
+    "Spine editor .spine import",
+    "Spine 4.3 runtime",
+    "All pixi-filters implementations"
+  ],
+  "browserScripts": [
+    "vendor/pixi-8.22.0.min.js",
+    "vendor/spine-pixi-v8-4.2.120.min.js"
+  ],
+  "baselineValidation": {
+    "date": "2026-10-26",
+    "portableBuildMatchesBundledHtml": true,
+    "browserChecks": [
+      {
+        "backend": "webgl",
+        "offline": true,
+        "frames": 6,
+        "alpha": {
+          "maximum": 255,
+          "minimum": 0
+        },
+        "cameraInvariant": true,
+        "exports": 2
+      },
+      {
+        "backend": "webgpu",
+        "offline": true,
+        "frames": 6,
+        "alpha": {
+          "maximum": 255,
+          "minimum": 0
+        },
+        "cameraInvariant": true,
+        "exports": 2
+      }
+    ],
+    "environment": "Chromium with software GPU; not a physical-device performance certificate",
+    "sampleRevalidation": {
+      "date": "2026-11-16",
+      "sample": "Doctor head (Spine 4.2.43, 2 atlas pages, sequence attachments, 9 animations)",
+      "replaced": "Spineboy sample",
+      "checks": "smoke_editor.cjs on Windows Chromium: WebGL (software GPU flags) and WebGPU (hardware GPU), 6 frames each, camera-invariant PNGs, both developer ZIPs contain every sample file"
+    },
+    "claudeInstallationTested": false,
+    "forwardUse": "Independent agent prepared a new icy-dissolve plan from this skill without implementing it"
+  }
+}

@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spine Burn Lab — Offline</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181b20'/%3E%3Cpath d='M17 3C20 14 28 16 24 25C21 32 9 31 7 24C5 17 14 13 17 3Z' fill='%23ff9b43'/%3E%3C/svg%3E">
+<style>
+:root{color-scheme:dark;--bg:#101216;--panel:#1b1e24;--line:#343841;--muted:#aab0bb;--text:#f1f2f5;--orange:#ffab57}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit}button,select{color:var(--text);background:#262b33;border:1px solid #414752;border-radius:6px;padding:8px 12px}button{cursor:pointer}button:hover{border-color:var(--orange)}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--orange);outline-offset:3px}button.primary{color:#211708;background:var(--orange);border-color:var(--orange);font-weight:650}button:disabled{opacity:.5;cursor:default}header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}h1{font-size:22px;letter-spacing:-.6px;margin:0}.badge{font-size:12px;font-weight:600;letter-spacing:.8px;color:var(--orange);border:1px solid #735334;padding:4px 8px;border-radius:4px;margin-left:12px;vertical-align:middle}.version{font-size:13px;color:var(--muted)}main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;padding:18px;max-width:1700px;margin:auto}.workspace{min-width:0}.loadbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px}.note{color:var(--muted);font-size:14px;flex-basis:100%}.viewport{height:min(65vh,720px);min-height:390px;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#14171d}.viewport.checker{background-color:#171a20;background-image:linear-gradient(45deg,#242831 25%,transparent 25%),linear-gradient(-45deg,#242831 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#242831 75%),linear-gradient(-45deg,transparent 75%,#242831 75%);background-size:32px 32px;background-position:0 0,0 16px,16px -16px,-16px 0}.viewport canvas{display:block;width:100%;height:100%}.scene-meta{position:absolute;top:12px;left:14px;right:14px;display:flex;justify-content:space-between;pointer-events:none;font-size:13px;color:#ddd;background:#11151ab8;padding:7px 10px;border-radius:5px}.droptarget{position:absolute;inset:0;border:3px dashed var(--orange);background:#15171dea;display:none;align-items:center;justify-content:center;text-align:center;font-size:24px;pointer-events:none}.viewport.dragging .droptarget{display:flex}.transport{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:12px}.transport-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.progress-row{display:grid;grid-template-columns:75px minmax(50px,1fr) 56px;gap:10px;align-items:center;margin-top:14px;font-size:14px}.transport-options{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-top:14px;font-size:14px}.scene-settings{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:16px}.scene-settings label{display:grid;gap:5px;font-size:14px;color:var(--muted)}.scene-settings select{width:100%}.status{padding:12px 0;font-size:14px;color:var(--muted);min-height:42px;overflow-wrap:anywhere}.status.error{color:#ff9b94}.controls{border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden;align-self:start}.controls-title{padding:15px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);font-size:16px;font-weight:650}.controls-title button{font-size:13px;padding:5px 9px}details{border-bottom:1px solid var(--line)}details:last-child{border-bottom:0}summary{cursor:pointer;padding:14px 18px;font-size:15px;font-weight:600}.section{padding:0 18px 15px}.control{display:grid;grid-template-columns:1fr 58px;gap:4px 10px;margin:11px 0;font-size:14px}.control output{font-variant-numeric:tabular-nums;color:var(--orange);text-align:right;white-space:nowrap}.control input[type=range]{grid-column:1/-1;width:100%;margin:4px 0}.control select{grid-column:1/-1;width:100%;font-size:14px}.colors{display:grid;grid-template-columns:1fr 1fr;gap:10px}.color{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;margin-top:10px}.color input{width:48px;height:30px;padding:2px;border:1px solid var(--line);border-radius:4px;background:#242831}.check{display:flex;gap:8px;align-items:center}.check input{accent-color:var(--orange)}input[type=range]{accent-color:var(--orange);cursor:pointer;height:18px}footer{margin-top:14px;color:var(--muted);font-size:13px}footer a{color:#b6bdcc}#fatal{display:none;padding:20px;background:#3a2223;border:1px solid #944947;margin:18px;border-radius:8px}#loading{position:absolute;inset:0;display:grid;place-content:center;background:#14171ddd;color:var(--orange);pointer-events:none}.mini{font-size:13px;color:var(--muted)}.span2{grid-column:span 2}@media(max-width:1050px){main{grid-template-columns:minmax(0,1fr) 320px;padding:12px;gap:12px}.scene-settings{grid-template-columns:1fr 1fr}}@media(max-width:760px){header{padding:14px}.version{display:none}main{display:block}.controls{margin-top:12px}.viewport{min-height:350px;height:52vh}.scene-settings{grid-template-columns:1fr 1fr}.badge{font-size:11px;margin-left:5px}h1{font-size:20px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+
+/* Independent desktop settings scroll; preview never follows the sidebar. */
+html,body{height:100%;overflow:hidden}body{display:flex;flex-direction:column}header{flex:0 0 auto;padding:12px 20px}main{flex:1 1 auto;min-height:0;width:100%;margin:0 auto;overflow:hidden;grid-template-rows:minmax(0,1fr);padding:12px;gap:12px}.workspace{min-height:0;display:grid;grid-template-rows:auto minmax(120px,1fr) auto auto auto auto;gap:8px;overflow:hidden}.viewport{height:100%;min-height:0}.loadbar{margin:0}.transport{margin:0;padding:10px 12px}.transport-options{margin-top:8px}.progress-row{margin-top:8px}.scene-settings{margin:0;gap:8px}.status{min-height:0;padding:2px 0;font-size:13px}footer{margin:0;font-size:12px}.controls{min-height:0;height:100%;align-self:stretch;display:flex;flex-direction:column}.controls-title{flex:0 0 auto;padding:12px 16px}.settings-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable}.exports{flex:0 0 auto;border-top:1px solid var(--line);padding:12px 14px;background:#20242b}.exports label{display:grid;gap:4px;font-size:13px;color:var(--muted)}.exports select{font-size:14px;padding:6px 8px}.export-buttons{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0 6px}.export-buttons button{font-size:13px;padding:8px 4px;border-color:#8d653c;color:var(--orange)}#centerHandle{position:absolute;z-index:3;transform:translate(-50%,-50%);width:28px;height:28px;padding:0;border:2px solid #ffe7a0;border-radius:50%;background:#16191ecc;cursor:move;touch-action:none;box-shadow:0 0 0 2px #111a}#centerHandle::before,#centerHandle::after{content:'';position:absolute;background:#ffe7a0}#centerHandle::before{width:18px;height:2px;top:11px;left:3px}#centerHandle::after{width:2px;height:18px;left:11px;top:3px}#centerHandle[hidden]{display:none}@media(max-height:740px) and (min-width:761px){footer{display:none}.note{font-size:12px}.transport-options{gap:12px}.scene-settings label{font-size:12px}.loadbar button{padding:6px 10px}}@media(max-width:760px){main{display:grid;grid-template-columns:1fr;grid-template-rows:minmax(210px,1fr) minmax(160px,.8fr);gap:8px;padding:8px}.workspace{grid-template-rows:auto minmax(80px,1fr) auto auto;gap:5px}.viewport{height:100%;min-height:0}.controls{margin:0}.scene-settings,.status,footer{display:none}.loadbar{flex-wrap:nowrap}.loadbar .note{display:none}.loadbar button{padding:5px 8px;font-size:13px}.transport{padding:7px}.transport button{padding:5px 8px;font-size:13px}.transport-top{gap:5px}.transport-top label{font-size:12px}.transport-options{font-size:12px;gap:10px;margin-top:4px}.progress-row{margin-top:4px}.exports{padding:7px 10px}.exports .mini{display:none}.exports label{grid-template-columns:100px 1fr;align-items:center}.export-buttons{margin:6px 0 0}.controls-title{padding:7px 12px}}
+
+/* File selection stays in the scrolling sidebar; duration stays beside Progress. */
+.asset-field{display:grid;gap:5px;margin:12px 0;color:var(--muted);font-size:13px}.asset-field input{width:100%;min-width:0;font-size:12px;color:var(--text)}input::file-selector-button{color:var(--text);background:#303640;border:1px solid #515967;border-radius:5px;padding:7px;cursor:pointer}.asset-files{font-size:12px;color:var(--muted);overflow-wrap:anywhere;max-height:90px;overflow:auto;padding-left:18px}.asset-actions{display:flex;flex-wrap:wrap;gap:7px}.asset-actions button{font-size:12px;padding:7px 9px}.asset-message{font-size:12px;overflow-wrap:anywhere;margin:9px 0 0;color:var(--muted)}.asset-message.error,#timingMessage.error{color:#ff9b94}.duration-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:9px}.duration-fields label{display:grid;gap:4px;font-size:12px;color:var(--muted)}.duration-fields input{width:100%;min-width:0;background:#10151c;color:var(--text);border:1px solid #454c58;border-radius:5px;padding:6px 8px;font-variant-numeric:tabular-nums}.timing-line{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 14px;margin-top:7px;font-size:12px;color:var(--orange);font-variant-numeric:tabular-nums}.time-scale{grid-column:2;position:relative;height:26px;margin-top:-4px;pointer-events:none}.time-tick{position:absolute;top:0;padding-top:6px;white-space:nowrap;font-size:10px;color:var(--muted);transform:translateX(-50%)}.time-tick::before{position:absolute;content:'';top:0;left:50%;height:4px;border-left:1px solid #707887}.time-tick:first-child{transform:none}.time-tick:first-child::before{left:0}.time-tick:last-child{transform:translateX(-100%)}.time-tick:last-child::before{left:100%}#timingMessage{font-size:11px;color:var(--muted);margin-top:4px;min-height:16px}@media(max-width:760px){.duration-fields{gap:7px;margin-top:5px}.duration-fields input{padding:4px 6px}.timing-line{margin-top:4px;font-size:11px}.time-scale{height:23px}.progress-row{gap:5px}.progress-row input{min-width:0}}
+@media(max-width:760px){.time-tick:not(:first-child):not(:last-child){color:transparent}.transport-top .check{font-size:11px;gap:4px}.transport-top .check input{margin:0;width:12px;height:12px}.scene-meta{font-size:10px;top:5px;left:7px;right:7px;padding:4px 5px;gap:7px}.scene-meta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.scene-meta #assetName{max-width:38%}.scene-meta #stats{max-width:60%}}
+@media(max-width:760px) and (max-height:740px){.transport{max-height:calc(55.5556vh - 180px);overflow-y:auto;overscroll-behavior:contain}.exports label{font-size:11px;grid-template-columns:100px minmax(0,1fr)}.exports select{min-width:0;font-size:12px;padding:5px 4px}.export-buttons button{font-size:12px;padding:6px 4px}}
+
+/* Capture guides stay in the DOM and never enter the exported render target. */
+#bakeOverlay{position:absolute;z-index:2;border:1px solid #61e8ed;pointer-events:none}.bake-shade{position:absolute;z-index:2;pointer-events:none;background:#05080d77}.bake-shade[hidden]{display:none}#bakeOverlay[hidden]{display:none}#bakeAreaHandle{pointer-events:auto;position:absolute;top:6px;left:6px;white-space:nowrap;font-size:11px;line-height:1.2;padding:5px 7px;color:#9af7fb;background:#14292f;border-color:#3b929a;cursor:move;touch-action:none}#bakeOverlay::after{content:'';position:absolute;inset:3px;border:1px dashed #8ceef23b;pointer-events:none}.scene-meta{z-index:4}#bakePanel .section{padding:0 14px 14px}.bake-fields{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0}.bake-fields label{display:grid;gap:4px;font-size:12px;color:var(--muted)}.bake-fields input{width:100%;min-width:0;background:#10151c;color:var(--text);border:1px solid #454c58;border-radius:5px;padding:6px 8px;font-variant-numeric:tabular-nums}.bake-actions{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}.bake-actions button{font-size:12px;padding:7px 9px}#bakeMessage{font-size:12px;color:var(--muted);overflow-wrap:anywhere;margin:8px 0}#bakeMessage.error{color:#ff9b94}#bakeProgress{width:100%;height:9px;accent-color:#61e8ed}#bakeDimensions,#bakeTiming{display:block;font-size:12px;color:#95e9ed;font-variant-numeric:tabular-nums}.bake-note{font-size:11px;color:var(--muted);margin:6px 0}#bakePanel .check{font-size:12px}#bakePanel summary{color:#95e9ed}
+
+/* A single, full-height preview; all authoring controls live in the sidebar. */
+main{grid-template-columns:minmax(0,1fr) 400px}.workspace{grid-template-rows:minmax(0,1fr);gap:0}.workspace>.viewport{height:100%;min-height:0}.controls .transport{border:0;background:none;border-radius:0;padding:0 14px 14px;max-height:none;overflow:visible}.controls .transport-top{gap:6px}.controls .transport-top button{font-size:12px;padding:6px 8px}.controls .transport-top .check{flex-basis:100%;font-size:12px;margin-top:5px}.controls .progress-row{grid-template-columns:52px minmax(0,1fr) 51px;gap:5px;font-size:12px}.controls .duration-fields{gap:8px}.controls .duration-fields label{font-size:11px}.controls .transport-options{gap:8px;font-size:12px}.controls .scene-settings{display:grid;grid-template-columns:1fr;gap:9px}.controls .scene-settings label{font-size:12px}.controls .scene-settings select{font-size:13px}.controls .loadbar{margin:10px 0;display:flex;flex-wrap:wrap;gap:7px}.controls .loadbar button{font-size:12px;padding:7px 9px}.controls .loadbar .note{display:block;font-size:12px}.controls .status{display:block;font-size:12px;padding:0 0 8px}.controls footer{display:block;font-size:11px}.controls .exports{border-bottom:1px solid var(--line)}.controls .exports .mini{display:block;font-size:11px}.controls .time-tick:not(:first-child):not(:last-child){color:var(--muted)}
+#cameraPlane{position:absolute;inset:0;transform-origin:0 0;pointer-events:none}#cameraPlane canvas{pointer-events:auto}#bakeAreaHandle{transform-origin:0 0}#centerHandle{pointer-events:auto}.scene-meta{z-index:4}.camera-tools{position:absolute;z-index:6;bottom:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:5px;border:1px solid #46505e;border-radius:9px;padding:6px;background:#151b24ed;box-shadow:0 3px 16px #0005;white-space:nowrap}.camera-tools button{font-size:13px;line-height:1.1;padding:7px 10px;min-width:32px}.camera-tools output{min-width:58px;text-align:center;font-size:12px;color:#dce9f8;font-variant-numeric:tabular-nums}.camera-divider{height:20px;border-left:1px solid #46505e;margin:0 3px}
+@media(max-width:1050px){main{grid-template-columns:minmax(0,1fr) 350px}}@media(max-width:760px){main{grid-template-columns:1fr;grid-template-rows:minmax(180px,1.1fr) minmax(160px,1fr)}.workspace{grid-template-rows:minmax(0,1fr)}.camera-tools{bottom:8px;padding:4px;gap:3px}.camera-tools button{font-size:12px;padding:6px 8px}.camera-tools output{min-width:48px}.controls .transport-options{font-size:12px}.controls .exports label{grid-template-columns:1fr}.controls .controls-title{font-size:14px}}
+#cameraPlane{z-index:2}.bake-shade{z-index:3}.droptarget,#loading{z-index:7}
+</style></head><body>
+<header><h1>Spine Burn Lab <span class="badge">OFFLINE</span></h1><span class="version">Spine 4.2 · PixiJS 8 · WebGL</span></header>
+<div id="fatal" role="alert"></div>
+<main><section class="workspace" aria-label="Spine preview">
+
+<div class="viewport checker" id="viewport" aria-label="Spine preview. Use the mouse wheel or zoom controls to inspect the scene."><div id="cameraPlane"><button id="centerHandle" aria-label="Drag transition center" title="Drag to move the circular transition center" hidden=""><span></span></button><div id="bakeOverlay" hidden="" aria-label="PNG capture area"><button id="bakeAreaHandle" aria-label="Drag PNG capture area">512 × 512 px · Drag area</button></div></div><div class="scene-meta"><span id="assetName">Loading sample…</span><span id="stats">—</span></div><div id="bakeShadeTop" class="bake-shade" hidden=""></div><div id="bakeShadeBottom" class="bake-shade" hidden=""></div><div id="bakeShadeLeft" class="bake-shade" hidden=""></div><div id="bakeShadeRight" class="bake-shade" hidden=""></div><div class="droptarget">Drop Spine 4.2 export files</div><div id="loading">Preparing preview…</div><div class="camera-tools" role="toolbar" aria-label="Preview camera zoom"><button id="cameraZoomOut" aria-label="Zoom out" title="Zoom out">−</button><output id="cameraPercent" aria-label="Camera zoom">100%</output><button id="cameraZoomIn" aria-label="Zoom in" title="Zoom in">+</button><span class="camera-divider"></span><button id="cameraFit" title="Fit the capture area in the preview">Fit</button><button id="cameraActual" title="One authoring pixel per CSS pixel">100%</button></div></div>
+
+
+
+
+</section><aside class="controls" aria-label="Scrollable editor settings"><div class="controls-title">Editor settings<button id="defaults">Reset settings</button></div><div class="settings-scroll" id="settings" tabindex="0" aria-label="Scrollable editor settings"><details id="playbackPanel" open=""><summary>Playback</summary><div class="transport"><div class="transport-top"><button class="primary" id="play">Play transition</button><button id="reset">Reset</button><button id="finish">Finish</button><label class="check"><input type="checkbox" id="effect" checked="">Effect enabled</label></div><div class="progress-row"><label for="progress">Progress</label><input id="progress" type="range" min="0" max="1" step="0.001" value="0.46"><output id="progressValue">46.0%</output><div class="time-scale" id="timeScale" aria-label="Time and frame scale at 60 FPS"></div></div><div class="duration-fields"><label for="duration">Duration (seconds)<input id="duration" type="number" min="0.016666666666666666" step="any" value="3" inputmode="decimal"></label><label for="durationFrames">Duration (frames @ 60 FPS)<input id="durationFrames" type="number" min="1" step="1" value="180" inputmode="numeric"></label></div><div class="timing-line"><output id="elapsedValue">Elapsed: 0.00 / 3.00 s</output><output id="frameValue">Frame: 0 / 180</output></div><div id="timingMessage">Seconds snap to the nearest frame. 60 frames = 1 second.</div><div class="transport-options"><label class="check"><input id="loop" type="checkbox">Loop transition</label><label class="check"><input id="reverse" type="checkbox">Reverse direction</label><label class="check"><input id="animPlay" type="checkbox" checked="">Animate skeleton</label></div></div></details><details id="scenePanel" open=""><summary>Scene</summary><div class="section"><div class="scene-settings"><label>Animation<select id="animation" aria-label="Animation"></select></label><label>Skin<select id="skin" aria-label="Skin"></select></label><label>Background<select id="background"><option value="checker">Transparency grid</option><option value="#111318">Dark</option><option value="#000000">Black</option><option value="#ffffff">White</option><option value="#666666">Gray</option></select></label></div></div></details><details id="bakePanel" open=""><summary>Bake PNG Sequence</summary><div class="section"><label class="check"><input type="checkbox" id="showBakeArea" checked="">Show capture area</label><output id="bakeDimensions">512 × 512 px · Transparent PNG · 60 FPS</output><div class="bake-fields"><label>Width (px)<input id="bakeWidth" type="number" min="1" max="4096" step="1" value="512"></label><label>Height (px)<input id="bakeHeight" type="number" min="1" max="4096" step="1" value="512"></label><label>Center X (px)<input id="bakeX" type="number" min="-16384" max="16384" step="1" value="0"></label><label>Center Y (px)<input id="bakeY" type="number" min="-16384" max="16384" step="1" value="0"></label></div><p class="bake-note">Center offsets are relative to the preview center: +X right, +Y down. Drag the cyan label to reposition the crop. Large frames are scaled down for preview only.</p><div class="bake-actions"><button id="bakeCenter">Center area</button></div><div class="bake-fields"><label>Bake duration (seconds)<input id="bakeSeconds" type="number" min="0.016666666666666666" max="60" step="any" value="3"></label><label>Frame count @ 60 FPS<input id="bakeFrames" type="number" min="1" max="3600" step="1" value="180"></label></div><output id="bakeTiming">180 frames · 3.000 s · 60 FPS</output><div class="bake-actions"><button id="bakeMatchDuration">Use transition duration</button></div><p class="bake-note">Bakes the selected animation from frame 0 at the current animation speed, even while preview playback is paused. Every frame keeps the same size, crop and scale. Background is always transparent.</p><div class="bake-actions"><button class="primary" id="bakeStart">Bake PNG Sequence</button><button id="bakeCancel" disabled="">Cancel</button></div><progress id="bakeProgress" max="180" value="0" hidden="" aria-label="PNG sequence export progress"></progress><p id="bakeMessage" role="status" aria-live="polite">The cyan frame is the exact PNG boundary. Anything outside it is cropped.</p></div></details><details id="assetPanel" open=""><summary>Spine assets</summary><div class="section"><div class="loadbar"><button class="primary" id="load">Load your Spine</button><button id="sample">Load sample</button><input type="file" id="files" multiple="" accept=".json,.skel,.atlas,.png,.webp,.jpg,.jpeg" hidden=""><span class="note">Choose JSON / SKEL, atlas, and textures in the Spine assets panel. Or drop the complete export here.</span></div><span class="mini">Spine 4.2 export. Choose the files separately, then load the preview.</span><label class="asset-field" for="skeletonFile">Skeleton JSON / SKEL<input id="skeletonFile" type="file" accept=".json,.skel"></label><label class="asset-field" for="atlasFile">Atlas<input id="atlasFile" type="file" accept=".atlas"></label><label class="asset-field" for="textureFiles">Textures (all atlas pages)<input id="textureFiles" type="file" accept=".png,.webp,.jpg,.jpeg" multiple=""></label><ul class="asset-files" id="selectedAssets"><li>No files selected.</li></ul><div class="asset-actions"><button class="primary" id="loadPreview" disabled="">Load preview</button><button id="selectAll">Select all files</button><button id="clearAssets">Clear selection</button></div><p class="asset-message" id="assetMessage" role="status">The current preview stays visible while you select files.</p></div></details><div class="exports"><label>Preview renderer<select id="renderer"><option value="webgl">WebGL (compatibility)</option><option value="webgpu">WebGPU (WebGL fallback)</option></select></label><div class="export-buttons"><button id="exportWebGL">Export WebGL ZIP</button><button id="exportWebGPU">Export WebGPU ZIP</button></div><span class="mini">Preset, source code, Spine assets, example, and English developer guide.</span></div><details id="infoPanel"><summary>Status &amp; information</summary><div class="section"><div class="status" id="status" role="status" aria-live="polite">Starting offline renderer…</div><footer>All files stay in this browser. Exported Spine 4.2 data only; .spine editor projects need to be exported first. Libraries and the sample are included in this HTML.<br><span class="mini">PixiJS 8.22.0 · spine-pixi-v8 4.2.120 · Doctor head sample skeleton</span></footer></div></details></div></aside></main>
+<!-- OFFLINE_LIBRARIES -->
+<!-- SHARED_EFFECT_CORE -->
+<script id="sampleData" type="application/json">__SAMPLE_DATA__</script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const defaults={quality:'auto',shape:0,angle:0,centerX:0.5,centerY:0.5,roughness:0.10,noiseScale:6,seed:8,softness:0.006,duration:3,easing:1,flameHeight:38,edgeWidth:5,flameBrightness:1.8,glow:0.8,turbulence:0.7,fireSpeed:1,flicker:0.35,fireColor:'#ff6b19',hotColor:'#ffe7a0',sparks:65,sparkSize:1.8,sparkSpeed:65,sparkSpread:65,sparkLife:1.1,gravity:-18,sparkColor:'#ffc278',desaturation:1,brightness:0.86,contrast:1.12,charWidth:0.035,charStrength:0.6,animationSpeed:1,zoom:1};
+const cfg={...defaults};
+const groups=[
+['Transition',true,[['shape','Shape','select',[[0,'Linear'],[1,'Circular'],[2,'Organic patches']]],['angle','Direction angle',0,360,1,'°'],['centerX','Center X',0,1,0.01,'%'],['centerY','Center Y',0,1,0.01,'%'],['roughness','Edge irregularity',0,0.35,0.005,'%'],['noiseScale','Noise scale',1,30,0.5,''],['seed','Noise seed',0,99,1,''],['softness','Edge softness',0.001,0.08,0.001,'%'],['easing','Timing curve','select',[[0,'Linear'],[1,'Smooth'],[2,'Ease in'],[3,'Ease out']]]]],
+['Flame & glow',true,[['flameHeight','Flame height',0,100,1,'px'],['edgeWidth','Ember width',0.5,20,0.5,'px'],['flameBrightness','Flame intensity',0,4,0.05,''],['glow','Glow strength',0,2,0.05,''],['turbulence','Flame turbulence',0,1.5,0.05,''],['fireSpeed','Flame motion speed',0,4,0.05,'×'],['flicker','Flicker',0,1,0.05,''],['fireColor','Flame color','color'],['hotColor','Ember color','color']]],
+['Sparks',false,[['sparks','Emission rate',0,400,1,'/s'],['sparkSize','Spark size',0.5,6,0.1,'px'],['sparkSpeed','Launch speed',0,250,1,'px/s'],['sparkSpread','Launch spread',0,180,1,'°'],['sparkLife','Lifetime',0.1,4,0.1,'s'],['gravity','Gravity',-150,300,1,'px/s²'],['sparkColor','Spark color','color']]],
+['Burned appearance',false,[['desaturation','Desaturation',0,1,0.01,'%'],['brightness','Brightness',0,1.5,0.01,''],['contrast','Contrast',0.5,2,0.01,''],['charWidth','Charred band width',0,0.15,0.005,'%'],['charStrength','Charring strength',0,1,0.01,'%']]],
+['Performance',true,[['quality','Quality profile','select',[['auto','Auto (mobile-aware)'],['low','Low — older phones'],['balanced','Balanced'],['high','High']]]]],
+['Skeleton',false,[['animationSpeed','Animation speed',0,3,0.05,'×'],['zoom','Skeleton scale',0.25,2,0.05,'×']]]];
+function displayValue(v,unit){if(unit==='%')return Number((v*100).toFixed(1))+'%';return Number(v).toFixed(unit==='°'||unit==='/s'||unit==='px/s'||unit==='px/s²'?0:((Number.isInteger(v))?0:2))+unit;}
+for(const [title,open,fields] of groups){const details=document.createElement('details');details.open=open;const summary=document.createElement('summary');summary.textContent=title;details.append(summary);const section=document.createElement('div');section.className='section';for(const row of fields){const [key,label,a,b,step,unit]=row;const wrap=document.createElement('label');wrap.className=a==='color'?'color':'control';wrap.htmlFor=key;const text=document.createElement('span');text.textContent=label;wrap.append(text);let input;if(a==='select'){input=document.createElement('select');for(const [value,name] of b){const opt=document.createElement('option');opt.value=value;opt.textContent=name;input.append(opt);}}else{input=document.createElement('input');input.type=a==='color'?'color':'range';if(a!=='color'){input.min=a;input.max=b;input.step=step;const out=document.createElement('output');out.id=key+'Value';out.textContent=displayValue(cfg[key],unit);wrap.append(out);}}input.id=key;input.value=cfg[key];input.addEventListener('input',()=>{cfg[key]=a==='color'||key==='quality'?input.value:Number(input.value);if($(key+'Value'))$(key+'Value').textContent=displayValue(cfg[key],unit);if(key==='zoom')fit();if(key==='easing'){phase=inverseEase(progress);updateTimeline();}syncUniforms();updateCenterHandle();if(['shape','angle','centerX','centerY','roughness','noiseScale','seed'].includes(key)){particles=[];maskAge=1;}});wrap.append(input);section.append(wrap);}details.append(section);$('settings').append(details);}
+let fx,loadedAsset=null,backend='webgl',rendererBusy=false;
+let app,subject,model,filter,atlas,textureSources=[],maskRT,maskData=null,maskAge=1,emitterPoints=[],particles=[],progress=0.46,phase=0.46,playing=false,fxTime=0,frameBox={x:0,y:0,w:1,h:1},poseBox,spawnBudget=0,loading=false,loadSerial=0,elapsed=0,fps=60;
+const TIMELINE_FPS=60;
+let selectedSkeleton=null,selectedAtlas=null,selectedImages=new Map();
+function assetMessage(text,error=false){$('assetMessage').textContent=text;$('assetMessage').classList.toggle('error',error);if(error)setStatus(text,true);}
+function renderAssetSelection(){for(const id of ['skeletonFile','atlasFile','textureFiles','selectAll','clearAssets'])$(id).disabled=loading||rendererBusy;const list=$('selectedAssets');list.replaceChildren();const names=[selectedSkeleton?'Skeleton: '+selectedSkeleton.name:'Skeleton: not selected',selectedAtlas?'Atlas: '+selectedAtlas.name:'Atlas: not selected',...([...selectedImages.keys()].map(name=>'Texture: '+name))];if(!selectedImages.size)names.push('Textures: not selected');for(const name of names){const li=document.createElement('li');li.textContent=name;list.append(li);}$('loadPreview').disabled=!(selectedSkeleton&&selectedAtlas&&selectedImages.size)||loading||rendererBusy;}
+$('skeletonFile').onchange=()=>{selectedSkeleton=$('skeletonFile').files[0]||null;renderAssetSelection();assetMessage('File selection updated. Click Load preview when all files are selected.');};
+$('atlasFile').onchange=()=>{selectedAtlas=$('atlasFile').files[0]||null;renderAssetSelection();assetMessage('File selection updated. Click Load preview when all files are selected.');};
+$('textureFiles').onchange=()=>{for(const file of $('textureFiles').files)selectedImages.set(file.name,file);$('textureFiles').value='';renderAssetSelection();assetMessage(selectedImages.size+' texture file(s) selected. Additional selections add or replace files by name.');};
+$('clearAssets').onclick=()=>{selectedSkeleton=selectedAtlas=null;selectedImages=new Map();for(const id of ['skeletonFile','atlasFile','textureFiles'])$(id).value='';renderAssetSelection();assetMessage('Selection cleared. The current preview is retained.');};
+$('loadPreview').onclick=async()=>{if(!(selectedSkeleton&&selectedAtlas&&selectedImages.size)){assetMessage('Choose a skeleton, atlas, and all texture pages.',true);return;}$('loadPreview').disabled=true;assetMessage('Loading your Spine export…');try{await loadFiles([selectedSkeleton,selectedAtlas,...selectedImages.values()]);}finally{renderAssetSelection();}};
+function durationFrames(){return Math.round(cfg.duration*TIMELINE_FPS);}
+function formatSeconds(value){return value.toFixed(cfg.duration<.1?3:2);}
+function updateDurationInputs(){const frames=durationFrames();$('duration').value=Number((frames/TIMELINE_FPS).toFixed(9));$('durationFrames').value=frames;$('timingMessage').textContent='Seconds snap to the nearest frame. 60 frames = 1 second.';$('timingMessage').classList.remove('error');}
+function updateTimeline(){const timePhase=inverseEase(progress),frames=durationFrames();$('elapsedValue').textContent='Elapsed: '+formatSeconds(timePhase*cfg.duration)+' / '+formatSeconds(cfg.duration)+' s';$('frameValue').textContent='Frame: '+Math.round(timePhase*frames)+' / '+frames;const scale=$('timeScale'),key=frames+':'+cfg.easing;if(scale.dataset.key!==key){scale.dataset.key=key;scale.replaceChildren();for(const t of (frames<2?[0,1]:[0,.5,1])){const tick=document.createElement('span');tick.className='time-tick';tick.style.left=(ease(t)*100)+'%';tick.textContent=formatSeconds(t*cfg.duration)+'s · '+Math.round(t*frames)+'f';scale.append(tick);}}}
+function applyDuration(value,unit,commit=true){const number=Number(value),frames=unit==='frames'?number:Math.round(number*TIMELINE_FPS);if(value.trim()===''||!Number.isFinite(number)||number<=0||!Number.isSafeInteger(frames)||frames<1){$('timingMessage').textContent=unit==='frames'?'Enter a positive whole number of frames.':'Enter a duration of at least one frame (1/60 second).';$('timingMessage').classList.add('error');return;}cfg.duration=frames/TIMELINE_FPS;phase=inverseEase(progress);if(commit)updateDurationInputs();else{if(unit==='seconds')$('durationFrames').value=frames;else $('duration').value=Number(cfg.duration.toFixed(9));$('timingMessage').textContent='Seconds snap to the nearest frame. 60 frames = 1 second.';$('timingMessage').classList.remove('error');}updateTimeline();syncUniforms();updateBakeDuration();}
+$('duration').oninput=()=>applyDuration($('duration').value,'seconds',false);$('durationFrames').oninput=()=>applyDuration($('durationFrames').value,'frames',false);
+$('duration').onchange=()=>applyDuration($('duration').value,'seconds');$('durationFrames').onchange=()=>applyDuration($('durationFrames').value,'frames');
+// Commit on Enter without requiring a mouse click.
+for(const id of ['duration','durationFrames'])$(id).onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$(id).blur();}};
+renderAssetSelection();updateDurationInputs();updateTimeline();
+function rgb(hex){return [(parseInt(hex.slice(1,3),16))/255,(parseInt(hex.slice(3,5),16))/255,(parseInt(hex.slice(5,7),16))/255];}
+function setStatus(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error);}
+function showFatal(error){$('fatal').style.display='block';$('fatal').textContent='Preview could not start: '+error.message+'. Enable hardware acceleration and open this file in desktop Chrome or Edge.';$('loading').style.display='none';setStatus(error.message,true);}
+function field(x,y){return SpineBurnFx.field({...cfg,reverse:$('reverse').checked},frameBox,x,y);}
+function syncUniforms(){if(!fx)return;fx.configure({...cfg,reverse:$('reverse').checked});fx.setEnabled($('effect').checked);filter=fx.filter;filter.resolution=SpineBurnFx.PROFILES[fx.profile].resolution*previewScale;}
+function ease(t){return cfg.easing===1?t*t*(3-2*t):cfg.easing===2?t*t:cfg.easing===3?1-(1-t)*(1-t):t;}
+function inverseEase(v){if(v<=0)return 0;if(v>=1)return 1;let lo=0,hi=1;for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(ease(mid)<v)lo=mid;else hi=mid;}return (lo+hi)/2;}
+function setProgress(value){progress=Math.max(0,Math.min(1,value));$('progress').value=progress;$('progressValue').textContent=(progress*100).toFixed(1)+'%';maskAge=1;if(progress===0||progress===1){particles=[];spawnBudget=0;}if(fx)fx.setProgress(progress);updateTimeline();syncUniforms();updateCenterHandle();}
+function setPlaying(value){playing=value;$('play').textContent=playing?'Pause transition':'Play transition';}
+function fit(){if(!app||!model||!poseBox)return;const w=app.screen.width,h=app.screen.height,viewW=bakeArea.width,viewH=bakeArea.height;const margin=Math.min(75,viewW*.12,viewH*.12);const scale=Math.max(.01,Math.min((viewW-margin*2)/poseBox.w,(viewH-margin*2)/poseBox.h)*cfg.zoom);model.scale.set(Math.max(.01,scale));model.position.set(w/2-(poseBox.x+poseBox.w/2)*scale,h/2-(poseBox.y+poseBox.h/2)*scale+15);frameBox={x:model.x+poseBox.x*scale,y:model.y+poseBox.y*scale,w:poseBox.w*scale,h:poseBox.h*scale};if(fx)fx.setBounds(frameBox);particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();}
+function measurePose(){model.scale.set(1);model.position.set(0);model.update(0);const b=model.getLocalBounds();if(!(b.width>0&&b.height>0))throw new Error('The skeleton has no visible attachments in this skin.');poseBox={x:b.x,y:b.y,w:b.width,h:b.height};fit();}
+function updateAlphaMask(){if(fx){fx.refreshEmitter();emitterPoints=fx.emitterPoints;}}
+function updateParticles(dt){if(fx){fx.update(dt);particles=fx.particles;emitterPoints=fx.emitterPoints;}}
+function setAnimation(){if(!model)return;const name=$('animation').value;if(name){model.state.setAnimation(0,name,true);}else{model.state.clearTracks();model.skeleton.setToSetupPose();}model.update(0);measurePose();maskAge=1;}
+function setSkin(){if(!model)return;model.skeleton.setSkinByName($('skin').value);model.skeleton.setSlotsToSetupPose();model.state.apply(model.skeleton);model.update(0);measurePose();}
+async function imageFromBlob(blob){const url=URL.createObjectURL(blob);try{const img=new Image();img.src=url;await img.decode();return img;}finally{URL.revokeObjectURL(url);}}
+function readVersion(bytes){if(!bytes.length)throw new Error('The skeleton file is empty.');const input=new spine.BinaryInput(bytes);input.readInt32();input.readInt32();return input.readString();}
+async function installAsset(skeleton,atlasText,imageMap,name,binary=false,exportInfo=null){const serial=++loadSerial;loading=true;renderAssetSelection();$('loading').style.display='grid';$('loading').textContent='Loading Spine export…';setPlaying(false);let newAtlas,newModel,newSources=[];try{const data=binary?skeleton:JSON.parse(skeleton);const version=binary?readVersion(skeleton):data.skeleton?.spine;if(typeof version!=='string'||!version.startsWith('4.2.'))throw new Error('This preview requires Spine 4.2 exports. File version: '+(version||'unknown')+'.');newAtlas=new spine.TextureAtlas(atlasText);if(!newAtlas.pages.length)throw new Error('The atlas contains no texture pages.');for(const page of newAtlas.pages){const key=page.name.replace(/\\/g,'/');let blob=imageMap.get(key);if(!blob){const matches=[...imageMap.entries()].filter(([n])=>n.split('/').pop()===key.split('/').pop());if(matches.length===1)blob=matches[0][1];else if(matches.length>1)throw new Error('Ambiguous texture filename: '+page.name+'. Select the export folder files with unique page names.');}if(!blob)throw new Error('Missing atlas image: '+page.name+'. Select every image listed in the atlas.');const img=await imageFromBlob(blob);const source=new PIXI.ImageSource({resource:img,alphaMode:page.pma?'premultiplied-alpha':'premultiply-alpha-on-upload',autoGenerateMipmaps:false});newSources.push(source);page.setTexture(spine.SpineTexture.from(source));}
+const parser=binary?new spine.SkeletonBinary(new spine.AtlasAttachmentLoader(newAtlas)):new spine.SkeletonJson(new spine.AtlasAttachmentLoader(newAtlas));const skeletonData=parser.readSkeletonData(data);newModel=new spine.Spine({skeletonData,autoUpdate:false});if(skeletonData.skins.length&&!skeletonData.defaultSkin){newModel.skeleton.setSkin(skeletonData.skins[0]);newModel.skeleton.setSlotsToSetupPose();}newModel.update(0);const b=newModel.getLocalBounds();if(!(b.width>0&&b.height>0))throw new Error('The setup pose has no visible attachments. Export a skeleton with a visible default skin.');if(serial!==loadSerial){newModel.destroy();newAtlas.dispose();newSources.forEach(x=>x.destroy());return;}
+if(fx){fx.destroy();fx=null;}if(model){subject.removeChild(model);model.destroy();}if(atlas)atlas.dispose();textureSources.forEach(x=>x.destroy());atlas=newAtlas;textureSources=newSources;model=newModel;subject.addChild(model);$('animation').replaceChildren();const setup=document.createElement('option');setup.value='';setup.textContent='Setup pose';$('animation').append(setup);for(const anim of skeletonData.animations){const o=document.createElement('option');o.value=anim.name;o.textContent=anim.name;$('animation').append(o);}if(skeletonData.animations.length)$('animation').value=skeletonData.animations.some(x=>x.name==='idle')?'idle':skeletonData.animations[0].name;$('skin').replaceChildren();for(const skin of skeletonData.skins){const o=document.createElement('option');o.value=skin.name;o.textContent=skin.name;$('skin').append(o);}if(skeletonData.skins.length){$('skin').value=skeletonData.skins.some(x=>x.name==='default')?'default':skeletonData.skins[0].name;model.skeleton.setSkinByName($('skin').value);model.skeleton.setSlotsToSetupPose();}$('skin').disabled=!skeletonData.skins.length;setAnimation();loadedAsset=exportInfo||{skeletonName:binary?'skeleton.skel':'skeleton.json',atlasName:'skeleton.atlas',skeleton:new Blob([binary?skeleton:skeleton],{type:binary?'application/octet-stream':'application/json'}),atlas:new Blob([atlasText],{type:'application/octet-stream'}),images:new Map(imageMap)};loadedAsset.version=version;fx=SpineBurnFx.createBurnTransition({PIXI,spine,app,host:subject,model,settings:{...cfg,reverse:$('reverse').checked},bounds:frameBox});fx.setProgress(progress);filter=fx.filter;syncUniforms();updateCenterHandle();$('assetName').textContent=name;setStatus('Loaded '+name+' · Spine '+version+' · '+newAtlas.pages.length+' atlas page'+(newAtlas.pages.length===1?'':'s')+' · '+skeletonData.animations.length+' animations');particles=[];maskAge=1;}catch(e){if(newModel&&newModel!==model)newModel.destroy();if(newAtlas&&newAtlas!==atlas)newAtlas.dispose();newSources.filter(x=>!textureSources.includes(x)).forEach(x=>x.destroy());setStatus(e.message,true);throw e;}finally{if(serial===loadSerial){loading=false;renderAssetSelection();$('loading').style.display='none';}}}
+async function loadFiles(files){if(loading||rendererBusy||bakeBusy){assetMessage('The preview is busy. Try again when it finishes.',true);return false;}const list=Array.from(files);const skeletons=list.filter(f=>/\.(json|skel)$/i.test(f.name)),atlases=list.filter(f=>/\.atlas$/i.test(f.name));if(skeletons.length!==1||atlases.length!==1){assetMessage('Select exactly one .json or .skel, one .atlas, and all atlas images. .spine editor projects must be exported first.',true);return false;}const images=new Map();for(const f of list.filter(f=>/\.(png|webp|jpe?g)$/i.test(f.name))){if(images.has(f.name)){assetMessage('Duplicate texture filename: '+f.name+'.',true);return false;}images.set(f.name,f);}selectedSkeleton=skeletons[0];selectedAtlas=atlases[0];selectedImages=new Map(images);renderAssetSelection();try{const skel=skeletons[0];await installAsset(/\.skel$/i.test(skel.name)?new Uint8Array(await skel.arrayBuffer()):await skel.text(),await atlases[0].text(),images,skel.name,/\.skel$/i.test(skel.name),{skeletonName:skel.name,atlasName:atlases[0].name,skeleton:skel,atlas:atlases[0],images:new Map(images)});assetMessage('Loaded '+skel.name+' into the preview.');return true;}catch(e){assetMessage(e.message,true);return false;}}
+async function loadSample(){if(loading||rendererBusy||bakeBusy)return;const data=JSON.parse($('sampleData').textContent);const images=new Map(Object.entries(data.images).map(([name,b64])=>[name,new Blob([Uint8Array.from(atob(b64),c=>c.charCodeAt(0))],{type:'image/png'})]));const skeletonText=JSON.stringify(data.skeleton);await installAsset(skeletonText,data.atlas,images,data.label+' · built-in sample',false,{skeletonName:data.skeletonName,atlasName:data.atlasName,skeleton:new Blob([skeletonText],{type:'application/json'}),atlas:new Blob([data.atlas],{type:'text/plain'}),images:new Map(images)});}
+$('load').onclick=()=>{$('assetPanel').open=true;$('assetPanel').scrollIntoView({block:'nearest'});$('skeletonFile').focus({preventScroll:true});};$('selectAll').onclick=()=>$('files').click();$('files').onchange=()=>{loadFiles($('files').files);$('files').value='';};$('sample').onclick=()=>loadSample().catch(()=>{});$('animation').onchange=setAnimation;$('skin').onchange=setSkin;$('background').onchange=()=>{$('viewport').classList.toggle('checker',$('background').value==='checker');$('viewport').style.backgroundColor=$('background').value==='checker'?'':$('background').value;};$('play').onclick=()=>{if(progress>=1){phase=0;setProgress(0);}else phase=inverseEase(progress);setPlaying(!playing);};$('reset').onclick=()=>{setPlaying(false);phase=0;setProgress(0);};$('finish').onclick=()=>{setPlaying(false);phase=1;setProgress(1);};$('progress').oninput=()=>{setPlaying(false);setProgress(Number($('progress').value));phase=inverseEase(progress);particles=[];};$('reverse').onchange=()=>{particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();};$('effect').onchange=()=>{particles=[];syncUniforms();};$('defaults').onclick=()=>{Object.assign(cfg,defaults);for(const [, ,fields]of groups)for(const [key,,a,,,unit]of fields){$(key).value=cfg[key];if($(key+'Value'))$(key+'Value').textContent=displayValue(cfg[key],unit);}$('reverse').checked=false;$('effect').checked=true;updateDurationInputs();fit();phase=inverseEase(progress);updateTimeline();};
+let dragDepth=0;const viewport=$('viewport');viewport.addEventListener('dragenter',e=>{e.preventDefault();dragDepth++;viewport.classList.add('dragging');});viewport.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});viewport.addEventListener('dragleave',()=>{if(--dragDepth<=0){dragDepth=0;viewport.classList.remove('dragging');}});viewport.addEventListener('drop',e=>{e.preventDefault();dragDepth=0;viewport.classList.remove('dragging');loadFiles(e.dataTransfer.files);});window.addEventListener('dragover',e=>e.preventDefault());window.addEventListener('drop',e=>e.preventDefault());
+async function initRenderer(preferred='webgl'){
+ const result=await SpineBurnFx.createApplication(PIXI,{backgroundAlpha:0,resolution:1,autoDensity:true,width:viewport.clientWidth,height:viewport.clientHeight},preferred,cfg.quality);app=result.app;backend=result.backend;$('cameraPlane').prepend(app.canvas);subject=new PIXI.Container();app.stage.addChild(subject);
+ app.ticker.add(ticker=>{const realDt=Math.max(0,ticker.elapsedMS/1000),dt=Math.min(realDt,.05);fxTime+=realDt;if(model&&!loading)model.update($('animPlay').checked?dt*cfg.animationSpeed:0);if(playing){phase=Math.min(1,phase+realDt/cfg.duration);setProgress(ease(phase));if(phase>=1){if($('loop').checked){phase=0;setProgress(0);}else setPlaying(false);}}syncUniforms();updateParticles(realDt);elapsed+=dt;fps=fps*.95+(realDt>0?1/realDt:60)*.05;if(elapsed>.5){elapsed=0;$('stats').textContent=backend.toUpperCase()+' · '+(fx?.profile||SpineBurnFx.qualityName(cfg.quality))+' · '+Math.round(fps)+' FPS · '+particles.length+' sparks';}});return result;
+}
+async function switchRenderer(){if(loading||rendererBusy||bakeBusy)return;rendererBusy=true;setPlaying(false);const asset=loadedAsset,animation=$('animation').value,skin=$('skin').value,assetName=$('assetName').textContent;$('loading').style.display='grid';$('loading').textContent='Switching renderer…';try{app.stop();if(fx){fx.destroy();fx=null;}if(model){model.destroy();model=null;}app.destroy(true);if(atlas){atlas.dispose();atlas=null;}textureSources.forEach(x=>x.destroy());textureSources=[];const result=await initRenderer($('renderer').value);if(asset){await installAsset(/\.skel$/i.test(asset.skeletonName)?new Uint8Array(await asset.skeleton.arrayBuffer()):await asset.skeleton.text(),await asset.atlas.text(),asset.images,assetName,/\.skel$/i.test(asset.skeletonName),asset);if([...$('skin').options].some(x=>x.value===skin)){$('skin').value=skin;setSkin();}if([...$('animation').options].some(x=>x.value===animation)){$('animation').value=animation;setAnimation();}}if(result.fallbackReason)setStatus(result.fallbackReason+'. Your preset and asset are retained.');}catch(e){showFatal(e);}finally{rendererBusy=false;renderAssetSelection();layoutPreview();$('loading').style.display='none';}}
+$('renderer').onchange=switchRenderer;
+function updateCenterHandle(){const h=$('centerHandle');h.hidden=cfg.shape!==1||!model;if(!h.hidden){h.style.left=((frameBox.x+cfg.centerX*frameBox.w)*previewScale)+'px';h.style.top=((frameBox.y+cfg.centerY*frameBox.h)*previewScale)+'px';}}
+function moveCenter(e){const bounds=viewport.getBoundingClientRect(),point=previewToScene(e.clientX-bounds.left-viewport.clientLeft,e.clientY-bounds.top-viewport.clientTop);cfg.centerX=Math.max(0,Math.min(1,(point.x-frameBox.x)/frameBox.w));cfg.centerY=Math.max(0,Math.min(1,(point.y-frameBox.y)/frameBox.h));for(const k of ['centerX','centerY']){$(k).value=cfg[k];$(k+'Value').textContent=displayValue(cfg[k],'%');}syncUniforms();updateCenterHandle();}
+$('centerHandle').onpointerdown=e=>{e.preventDefault();$('centerHandle').setPointerCapture(e.pointerId);moveCenter(e);};$('centerHandle').onpointermove=e=>{if($('centerHandle').hasPointerCapture(e.pointerId))moveCenter(e);};$('centerHandle').onpointerup=e=>$('centerHandle').releasePointerCapture(e.pointerId);
+// Fixed-size, transparent PNG sequence authoring. Preview and bake use the same
+// effect core; an isolated skeleton keeps export from altering the live pose.
+let bakeBusy = false, bakeCancelled = false, previewScale = 1, bakeDurationEdited = false;
+let sequenceZip;
+const bakeArea = { width: 512, height: 512, centerX: 0, centerY: 0 };
+const BAKE_FPS = 60;
+const bakeYield = () => new Promise(resolve => setTimeout(resolve, 0));
+
+function bakeMessage(text, error = false) {
+  $('bakeMessage').textContent = text;
+  $('bakeMessage').classList.toggle('error', error);
+}
+function bakeCrop() {
+  return { x: Math.round(app.screen.width / 2 + bakeArea.centerX - bakeArea.width / 2),
+    y: Math.round(app.screen.height / 2 + bakeArea.centerY - bakeArea.height / 2),
+    width: bakeArea.width, height: bakeArea.height };
+}
+function updateBakeOverlay() {
+  const overlay = $('bakeOverlay');
+  overlay.hidden = !$('showBakeArea').checked || !app;
+  for (const edge of ['Top', 'Bottom', 'Left', 'Right']) $('bakeShade' + edge).hidden = overlay.hidden;
+  if (!app) return;
+  const crop = bakeCrop();
+  const vw = viewport.clientWidth, vh = viewport.clientHeight;
+  const left = Math.max(0, Math.min(vw, crop.x * previewScale)), right = Math.max(left, Math.min(vw, (crop.x + crop.width) * previewScale));
+  const top = Math.max(0, Math.min(vh, crop.y * previewScale)), bottom = Math.max(top, Math.min(vh, (crop.y + crop.height) * previewScale));
+  const shades = { Top: [0, 0, vw, top], Bottom: [0, bottom, vw, vh - bottom], Left: [0, top, left, bottom - top], Right: [right, top, vw - right, bottom - top] };
+  for (const [edge, rect] of Object.entries(shades)) Object.assign($('bakeShade' + edge).style, { left: rect[0] + 'px', top: rect[1] + 'px', width: rect[2] + 'px', height: rect[3] + 'px' });
+  Object.assign(overlay.style, { left: crop.x * previewScale + 'px', top: crop.y * previewScale + 'px',
+    width: crop.width * previewScale + 'px', height: crop.height * previewScale + 'px' });
+  $('bakeAreaHandle').textContent = crop.width + ' × ' + crop.height + ' px · Drag area';
+  $('bakeDimensions').textContent = crop.width + ' × ' + crop.height + ' px · Transparent PNG · 60 FPS';
+  updateCameraShades();
+}
+function layoutPreview() {
+  if (!app || bakeBusy || rendererBusy) return;
+  const width = Math.max(1, viewport.clientWidth), height = Math.max(1, viewport.clientHeight);
+  previewScale = Math.min(1, Math.max(1, width - 32) / bakeArea.width,
+    Math.max(1, height - Math.min(74, height * .18)) / bakeArea.height);
+  app.renderer.resize(width / previewScale, height / previewScale, previewScale);
+  // Pixi 8.22 skips the resize event when only logical size / resolution change
+  // while the physical canvas dimensions stay equal. Refresh its view frame.
+  app.renderer.view.texture.update();
+  app.screen.width = app.renderer.view.texture.frame.width;
+  app.screen.height = app.renderer.view.texture.frame.height;
+  // autoDensity writes inline logical dimensions; keep the whole virtual scene
+  // uniformly fitted into the CSS viewport.
+  app.canvas.style.width = app.canvas.style.height = '100%';
+  fit();
+  updateBakeOverlay();
+  syncCameraLayout();
+}
+function applyBakeArea() {
+  const values = ['bakeWidth', 'bakeHeight', 'bakeX', 'bakeY'].map(id => Number($(id).value));
+  if (values.some((n, i) => !Number.isSafeInteger(n) || $(['bakeWidth', 'bakeHeight', 'bakeX', 'bakeY'][i]).value.trim() === '') ||
+    values[0] < 1 || values[1] < 1 || values[0] > 4096 || values[1] > 4096 ||
+    Math.abs(values[2]) > 16384 || Math.abs(values[3]) > 16384) {
+    bakeMessage('Use whole-pixel dimensions from 1 to 4096 and center offsets from −16384 to 16384.', true);
+    return false;
+  }
+  const resized = bakeArea.width !== values[0] || bakeArea.height !== values[1];
+  Object.assign(bakeArea, { width: values[0], height: values[1], centerX: values[2], centerY: values[3] });
+  if (resized) layoutPreview(); else updateBakeOverlay();
+  bakeMessage('The cyan frame is the exact PNG boundary. Anything outside it is cropped.');
+  return true;
+}
+function updateBakeDuration(source = 'default') {
+  if (source === 'default' && bakeDurationEdited) return true;
+  const raw = source === 'seconds' ? $('bakeSeconds').value : source === 'frames' ? $('bakeFrames').value : String(durationFrames());
+  const frames = source === 'seconds' ? Math.round(Number(raw) * BAKE_FPS) : Number(raw);
+  if (raw.trim() === '' || !Number.isSafeInteger(frames) || frames < 1 || frames > 3600) {
+    bakeMessage('Bake duration must be between 1 and 3600 frames (up to 60 seconds).', true);
+    return false;
+  }
+  if (source !== 'default') bakeDurationEdited = true;
+  $('bakeFrames').value = frames;
+  $('bakeSeconds').value = Number((frames / BAKE_FPS).toFixed(9));
+  $('bakeTiming').textContent = frames + ' frames · ' + (frames / BAKE_FPS).toFixed(3) + ' s · 60 FPS';
+  bakeMessage('Samples start at 0 s. The end time is exclusive; add one frame to capture the transition endpoint.');
+  return true;
+}
+function seededBakeRandom(seed) {
+  let state = ((Number(seed) || 0) * 1009 + 0x6d2b79f5) >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let n = Math.imul(state ^ state >>> 15, 1 | state);
+    n ^= n + Math.imul(n ^ n >>> 7, 61 | n);
+    return ((n ^ n >>> 14) >>> 0) / 4294967296;
+  };
+}
+function assertBakeActive() {
+  if (bakeCancelled) throw new DOMException('Bake cancelled.', 'AbortError');
+}
+function canvasPng(canvas) {
+  return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) :
+    reject(new Error('PNG encoding failed. Reduce the frame dimensions and try again.')), 'image/png'));
+}
+function createGpuBakeReadback(target) {
+  // Pixi's WebGPU canvas extraction uses a transient presentation texture;
+  // asynchronous toBlob can see that canvas after it has been cleared. Read the
+  // render texture into a mapped buffer instead, then encode straight RGBA.
+  const device = app.renderer.gpu.device, width = target.source.pixelWidth, height = target.source.pixelHeight;
+  const bytesPerRow = Math.ceil(width * 4 / 256) * 256;
+  const buffer = device.createBuffer({ size: bytesPerRow * height, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+  const canvas = document.createElement('canvas');
+  canvas.width = width; canvas.height = height;
+  const context = canvas.getContext('2d'), image = context.createImageData(width, height);
+  return {
+    async read() {
+      const texture = app.renderer.texture.getGpuSource(target.source), encoder = device.createCommandEncoder();
+      encoder.copyTextureToBuffer({ texture }, { buffer, bytesPerRow, rowsPerImage: height }, { width, height });
+      device.queue.submit([encoder.finish()]);
+      await buffer.mapAsync(GPUMapMode.READ);
+      try {
+        const bytes = new Uint8Array(buffer.getMappedRange()), out = image.data;
+        const bgra = texture.format.startsWith('bgra');
+        for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+          const input = y * bytesPerRow + x * 4, output = (y * width + x) * 4, alpha = bytes[input + 3];
+          out[output] = alpha ? Math.min(255, Math.round(bytes[input + (bgra ? 2 : 0)] * 255 / alpha)) : 0;
+          out[output + 1] = alpha ? Math.min(255, Math.round(bytes[input + 1] * 255 / alpha)) : 0;
+          out[output + 2] = alpha ? Math.min(255, Math.round(bytes[input + (bgra ? 0 : 2)] * 255 / alpha)) : 0;
+          out[output + 3] = alpha;
+        }
+      } finally { buffer.unmap(); }
+      context.putImageData(image, 0, 0);
+      return canvas;
+    },
+    destroy() { buffer.destroy(); canvas.width = canvas.height = 1; }
+  };
+}
+function downloadBake(blob) {
+  const link = document.createElement('a'), url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = 'Spine_PNG_Sequence_' + bakeArea.width + 'x' + bakeArea.height + '.zip';
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+async function bakeSequence() {
+  if (bakeBusy || loading || rendererBusy || !model || !fx || !sequenceZip) {
+    bakeMessage('Wait for a Spine preview to finish loading.', true); return;
+  }
+  if (!applyBakeArea() || !updateBakeDuration('frames')) return;
+  if ($('timingMessage').classList.contains('error')) {
+    bakeMessage('Correct the transition duration before baking.', true); return;
+  }
+  const crop = bakeCrop(), count = Number($('bakeFrames').value), wasRunning = app.ticker.started;
+  const limit = backend === 'webgpu' ? app.renderer.gpu.device.limits.maxTextureDimension2D :
+    app.renderer.gl.getParameter(app.renderer.gl.MAX_TEXTURE_SIZE);
+  if (crop.width > limit || crop.height > limit) {
+    bakeMessage('This GPU supports textures up to ' + limit + ' px. Reduce the frame dimensions.', true); return;
+  }
+  const animation = $('animation').value, skin = $('skin').value, settings = { ...cfg, quality: fx.profile,
+    reverse: $('reverse').checked }, effectEnabled = $('effect').checked;
+  const transform = { x: model.x - crop.x, y: model.y - crop.y, scaleX: model.scale.x, scaleY: model.scale.y };
+  const bounds = { ...frameBox, x: frameBox.x - crop.x, y: frameBox.y - crop.y };
+  const disabled = new Map([...document.querySelectorAll('button,input,select')].map(el => [el, el.disabled]));
+  let root, bakeModel, bakeFx, target, pngCanvas, gpuReadback;
+  bakeBusy = true; bakeCancelled = false;
+  disabled.forEach((_, el) => { el.disabled = true; });
+  $('bakeCancel').disabled = false;
+  $('bakeProgress').value = 0;
+  $('bakeProgress').max = count;
+  $('bakeProgress').hidden = false;
+  app.stop();
+  try {
+    root = new PIXI.Container();
+    const host = new PIXI.Container();
+    root.addChild(host);
+    bakeModel = new spine.Spine({ skeletonData: model.skeleton.data, autoUpdate: false });
+    host.addChild(bakeModel);
+    if (skin) bakeModel.skeleton.setSkinByName(skin);
+    bakeModel.skeleton.setToSetupPose();
+    if (animation) bakeModel.state.setAnimation(0, animation, true);
+    bakeModel.update(0);
+    bakeModel.position.set(transform.x, transform.y);
+    bakeModel.scale.set(transform.scaleX, transform.scaleY);
+    bakeFx = SpineBurnFx.createBurnTransition({ PIXI, spine, app: { stage: root, screen: crop }, host,
+      model: bakeModel, bounds, settings, enabled: effectEnabled, coordinateOffset: { x: crop.x, y: crop.y },
+      random: seededBakeRandom(settings.seed) });
+    target = PIXI.RenderTexture.create({ width: crop.width, height: crop.height, resolution: 1, antialias: false });
+    if (backend === 'webgpu') gpuReadback = createGpuBakeReadback(target);
+    const entries = [];
+    let totalBytes = 0;
+    for (let index = 0; index < count; index++) {
+      assertBakeActive();
+      const seconds = index / BAKE_FPS;
+      if (index > 0) bakeModel.update(settings.animationSpeed / BAKE_FPS);
+      // The authoring clock and physics use fixed steps, independent of encoding time.
+      bakeFx.setProgress(SpineBurnFx.ease(Math.min(1, seconds / settings.duration), settings.easing));
+      bakeFx.update(index === 0 ? 0 : 1 / BAKE_FPS);
+      app.renderer.render({ container: root, target, clear: true, clearColor: [0, 0, 0, 0] });
+      pngCanvas = gpuReadback ? await gpuReadback.read() : app.renderer.extract.canvas(target);
+      const png = await canvasPng(pngCanvas);
+      if (!gpuReadback) pngCanvas.width = pngCanvas.height = 1;
+      pngCanvas = null;
+      assertBakeActive();
+      totalBytes += png.size;
+      if (totalBytes > 192 * 1024 * 1024) throw new Error('Sequence exceeds the 192 MB export limit. Reduce duration or frame size.');
+      entries.push({ name: 'frames/frame_' + String(index).padStart(5, '0') + '.png', data: png });
+      $('bakeProgress').value = index + 1;
+      bakeMessage('Baking frame ' + (index + 1) + ' / ' + count + ' · ' + (totalBytes / 1048576).toFixed(1) + ' MB');
+      await bakeYield();
+    }
+    const metadata = { schemaVersion: 1, format: 'PNG RGBA', width: crop.width, height: crop.height,
+      fps: BAKE_FPS, frameCount: count, durationSeconds: count / BAKE_FPS, firstSampleSeconds: 0,
+      lastSampleSeconds: (count - 1) / BAKE_FPS, sampling: 't = frameIndex / fps; end exclusive',
+      transparent: true, trimmed: false, renderer: backend, animation, skin, animationLoop: true,
+      animationSpeed: settings.animationSpeed, effectEnabled, effectSettings: settings,
+      capture: crop, referenceBounds: { ...frameBox }, modelTransform: transform, sparkRandomSeed: settings.seed };
+    entries.push({ name: 'sequence.json', data: JSON.stringify(metadata, null, 2) },
+      { name: 'README.txt', data: 'SPINE PNG SEQUENCE\n\n' + count + ' transparent RGBA PNG frames, all exactly ' +
+        crop.width + ' x ' + crop.height + ' pixels. Play at 60 FPS. Do not trim individual frames.\n' +
+        'The selected Spine animation loops from its beginning at the authored animation speed. The burn transition starts at 0.\n' +
+        'Frame i samples time i / 60 seconds. The end is exclusive; export one extra frame to include an exact transition endpoint.\n' +
+        'The selected quality profile, flame, glow and sparks are baked into the image. Transparent pixels outside the capture area are omitted.\n' +
+        'No preview checkerboard, guide or editor interface is included. The capture region and model scale stay fixed across the sequence.\n' +
+        'sequence.json records the dimensions, timing, animation, effect settings and crop.\n' +
+        'Spark randomness restarts from the noise seed for repeatable exports with the same backend and settings.\n' +
+        'PNG uses normal RGBA alpha. Composite the sequence with normal alpha blending; using ADD applies addition a second time.\n' });
+    bakeMessage('Packing PNG sequence…');
+    const blob = await sequenceZip(entries, async () => { assertBakeActive(); await bakeYield(); });
+    assertBakeActive();
+    downloadBake(blob);
+    bakeMessage('Exported ' + count + ' transparent PNG frames at ' + crop.width + ' × ' + crop.height + ' px.');
+  } catch (error) {
+    bakeMessage(error.name === 'AbortError' ? 'Bake cancelled. No partial sequence was downloaded.' : 'Bake failed: ' + error.message,
+      error.name !== 'AbortError');
+  } finally {
+    gpuReadback?.destroy();
+    if (pngCanvas) pngCanvas.width = pngCanvas.height = 1;
+    bakeFx?.destroy();
+    root?.destroy({ children: true });
+    target?.destroy(true);
+    disabled.forEach((value, el) => { el.disabled = value; });
+    $('bakeCancel').disabled = true;
+    bakeBusy = false;
+    layoutPreview();
+    app.render();
+    // Prevent time spent encoding from advancing the resumed live animation.
+    if (wasRunning) app.start();
+    renderAssetSelection();
+  }
+}
+for (const id of ['bakeWidth', 'bakeHeight', 'bakeX', 'bakeY']) $(id).onchange = applyBakeArea;
+$('bakeSeconds').onchange = () => updateBakeDuration('seconds');
+$('bakeFrames').onchange = () => updateBakeDuration('frames');
+$('showBakeArea').onchange = updateBakeOverlay;
+$('bakeCenter').onclick = () => { $('bakeX').value = $('bakeY').value = 0; applyBakeArea(); };
+$('bakeMatchDuration').onclick = () => { bakeDurationEdited = false; updateBakeDuration(); };
+$('bakeStart').onclick = bakeSequence;
+$('bakeCancel').onclick = () => { bakeCancelled = true; bakeMessage('Cancelling…'); };
+let bakeDrag = null;
+$('bakeAreaHandle').onpointerdown = event => {
+  if (bakeBusy) return;
+  event.preventDefault();
+  $('bakeAreaHandle').setPointerCapture(event.pointerId);
+  bakeDrag = { x: event.clientX, y: event.clientY, centerX: bakeArea.centerX, centerY: bakeArea.centerY };
+};
+$('bakeAreaHandle').onpointermove = event => {
+  if (!bakeDrag || !$('bakeAreaHandle').hasPointerCapture(event.pointerId)) return;
+  bakeArea.centerX = Math.max(-16384, Math.min(16384, Math.round(bakeDrag.centerX + (event.clientX - bakeDrag.x) / cameraState.zoom)));
+  bakeArea.centerY = Math.max(-16384, Math.min(16384, Math.round(bakeDrag.centerY + (event.clientY - bakeDrag.y) / cameraState.zoom)));
+  $('bakeX').value = bakeArea.centerX;
+  $('bakeY').value = bakeArea.centerY;
+  updateBakeOverlay();
+};
+for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) $('bakeAreaHandle').addEventListener(type, () => { bakeDrag = null; });
+updateBakeDuration();
+
+// Display-only camera. The authoring scene, crop and bake renderer never read
+// these values; one CSS matrix covers the canvas and every authoring guide.
+const cameraState = { zoom: 1, x: 0, y: 0, mode: 'fit', viewWidth: 0, viewHeight: 0, sceneWidth: 0, sceneHeight: 0 };
+function sceneToPreview(x, y) {
+  return { x: x * cameraState.zoom + cameraState.x, y: y * cameraState.zoom + cameraState.y };
+}
+function previewToScene(x, y) {
+  return { x: (x - cameraState.x) / cameraState.zoom, y: (y - cameraState.y) / cameraState.zoom };
+}
+function updateCameraShades() {
+  if (!app) return;
+  const crop = bakeCrop(), a = sceneToPreview(crop.x, crop.y), b = sceneToPreview(crop.x + crop.width, crop.y + crop.height);
+  const width = viewport.clientWidth, height = viewport.clientHeight;
+  const left = Math.max(0, Math.min(width, a.x)), right = Math.max(left, Math.min(width, b.x));
+  const top = Math.max(0, Math.min(height, a.y)), bottom = Math.max(top, Math.min(height, b.y));
+  const shades = { Top: [0, 0, width, top], Bottom: [0, bottom, width, height - bottom],
+    Left: [0, top, left, bottom - top], Right: [right, top, width - right, bottom - top] };
+  for (const [edge, rect] of Object.entries(shades)) Object.assign($('bakeShade' + edge).style,
+    { left: rect[0] + 'px', top: rect[1] + 'px', width: rect[2] + 'px', height: rect[3] + 'px' });
+}
+function applyCameraTransform() {
+  const factor = cameraState.zoom / previewScale;
+  $('cameraPlane').style.transform = 'matrix(' + factor + ',0,0,' + factor + ',' + cameraState.x + ',' + cameraState.y + ')';
+  // Keep draggable handles readable and easy to grab at every camera zoom.
+  $('bakeAreaHandle').style.transform = 'scale(' + (1 / factor) + ')';
+  $('centerHandle').style.transform = 'translate(-50%,-50%) scale(' + (1 / factor) + ')';
+  const percentage = cameraState.zoom * 100;
+  $('cameraPercent').textContent = (percentage < 10 ? percentage.toFixed(1) : percentage.toFixed(0)) + '%';
+  $('cameraZoomOut').disabled = bakeBusy || cameraState.zoom <= .010001;
+  $('cameraZoomIn').disabled = bakeBusy || cameraState.zoom >= 7.99999;
+  updateCameraShades();
+}
+function fitPreviewCamera() {
+  if (!app || bakeBusy) return;
+  const crop = bakeCrop(), width = viewport.clientWidth, height = viewport.clientHeight;
+  cameraState.zoom = Math.max(.01, Math.min(8, Math.max(1, width - 32) / crop.width,
+    Math.max(1, height - Math.min(74, height * .18)) / crop.height));
+  cameraState.x = width / 2 - (crop.x + crop.width / 2) * cameraState.zoom;
+  cameraState.y = height / 2 - (crop.y + crop.height / 2) * cameraState.zoom;
+  cameraState.mode = 'fit';
+  applyCameraTransform();
+}
+function syncCameraLayout() {
+  if (!app) return;
+  const width = viewport.clientWidth, height = viewport.clientHeight;
+  if (cameraState.mode === 'fit' || !cameraState.viewWidth) fitPreviewCamera();
+  else {
+    // A resize recenters the authoring scene. Preserve the camera's focus on
+    // that scene rather than treating the new dimensions as a camera zoom.
+    cameraState.x += (width - cameraState.viewWidth) / 2 - (app.screen.width - cameraState.sceneWidth) / 2 * cameraState.zoom;
+    cameraState.y += (height - cameraState.viewHeight) / 2 - (app.screen.height - cameraState.sceneHeight) / 2 * cameraState.zoom;
+    applyCameraTransform();
+  }
+  Object.assign(cameraState, { viewWidth: width, viewHeight: height, sceneWidth: app.screen.width, sceneHeight: app.screen.height });
+}
+function zoomPreviewCamera(zoom, x = viewport.clientWidth / 2, y = viewport.clientHeight / 2) {
+  if (!app || bakeBusy || loading || rendererBusy) return;
+  const anchor = previewToScene(x, y);
+  cameraState.zoom = Math.max(.01, Math.min(8, zoom));
+  cameraState.x = x - anchor.x * cameraState.zoom;
+  cameraState.y = y - anchor.y * cameraState.zoom;
+  cameraState.mode = 'manual';
+  applyCameraTransform();
+}
+$('cameraZoomIn').onclick = () => zoomPreviewCamera(cameraState.zoom * 1.25);
+$('cameraZoomOut').onclick = () => zoomPreviewCamera(cameraState.zoom / 1.25);
+$('cameraFit').onclick = fitPreviewCamera;
+$('cameraActual').onclick = () => zoomPreviewCamera(1);
+viewport.addEventListener('wheel', event => {
+  if (bakeBusy || loading || rendererBusy || event.target.closest('.camera-tools')) return;
+  event.preventDefault();
+  const bounds = viewport.getBoundingClientRect();
+  const units = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientHeight : 1;
+  const delta = Math.max(-600, Math.min(600, event.deltaY * units));
+  zoomPreviewCamera(cameraState.zoom * Math.exp(-delta * .0015), event.clientX - bounds.left - viewport.clientLeft,
+    event.clientY - bounds.top - viewport.clientTop);
+}, { passive: false });
+
+async function start(){await initRenderer(new URLSearchParams(location.search).get('renderer')==='webgpu'?'webgpu':'webgl');$('renderer').value=new URLSearchParams(location.search).get('renderer')==='webgpu'?'webgpu':'webgl';const ro=new ResizeObserver(()=>layoutPreview());ro.observe(viewport);window.__burnLab={get app(){return app},get model(){return model},get subject(){return subject},get filter(){return fx?.filter},get fx(){return fx},get backend(){return backend},get mask(){return null},get emitterPoints(){return fx?.emitterPoints||[]},get particles(){return fx?.particles||[]},get progress(){return progress},get frameBox(){return frameBox},config:cfg,setProgress,syncUniforms,loadFiles,installAsset,loadSample,field,updateAlphaMask,switchRenderer,get loadedAsset(){return loadedAsset}};await loadSample();layoutPreview();}
+start().catch(showFatal);
+</script><!-- EXPORT_SCRIPT --></body></html>

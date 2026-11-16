@@ -1,0 +1,7 @@
+# Protected files are verified by SHA-256; checkouts must never change their bytes.
+* text=auto eol=lf
+*.png binary
+*.min.js -text
+assets/template/licenses/*.txt -text
+assets/template/sample/* -text
+assets/Spine_Burn_Lab.html -text

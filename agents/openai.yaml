@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pixi Spine FX Lab"
+  short_description: "Build configurable Spine FX labs with portable exports"
+  default_prompt: "Use $pixi-spine-fx-lab to create a configurable PixiJS effect while preserving the offline Spine editor and all exports."
