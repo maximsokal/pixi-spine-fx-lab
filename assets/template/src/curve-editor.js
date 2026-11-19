@@ -15,7 +15,7 @@
     for(const [k,v] of Object.entries(attrs))el.setAttribute(k,String(v));
     return el;
   }
-  function mount(element,{curve,onChange,onScrub,getFrameCount,isLocked}) {
+  function mount(element,{curve,onChange,onScrub,getFrameCount,isLocked,idPrefix='fxCurve'}) {
     if (!document.getElementById('fxCurveStyles')) {
       const style = node('style',{id:'fxCurveStyles'});
       style.textContent = '.fx-curve-editor{display:grid;gap:9px}' +
@@ -27,14 +27,14 @@
         '.fx-curve-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}' +
         '.fx-curve-fields label{display:flex;flex-direction:column;font-size:11px;color:#b5bfcb;min-width:0}' +
         '.fx-curve-fields input,.fx-curve-fields select{width:100%;min-width:0;box-sizing:border-box;font-size:12px;color:#f1f2f5;background:#141b23;border:1px solid #555e6a;border-radius:4px;padding:4px}' +
-        '#fxCurveStatus{font-size:11px;color:#ffbb72;min-height:16px;overflow-wrap:anywhere}';
+        '.fx-curve-editor output[role=status]{font-size:11px;color:#ffbb72;min-height:16px;overflow-wrap:anywhere}';
       document.head.append(style);
     }
     let current=C.normalize(curve), selected=current.keys[0].id, drag=null, counter=0, presetName='easeInOut';
     let frameSnap=true;
     const rootEl=node('div',{class:'fx-curve-editor'});
     const toolbar=node('div',{class:'fx-curve-tools'});
-    const presets=node('select',{id:'fxCurvePreset','aria-label':'Curve preset'});
+    const presets=node('select',{id:idPrefix+'Preset','aria-label':'Curve preset'});
     function populatePresets(){
       const names=[['Linear','linear'],['Ease In','easeIn'],['Ease Out','easeOut'],
         ['Ease In/Out','easeInOut'],['Fast Attack','fastAttack'],['Slow Decay','slowDecay'],
@@ -50,26 +50,26 @@
     populatePresets();toolbar.append(presets);
     const buttons = {};
     for(const [key,label] of [['add','Add key'],['copy','Copy key'],['delete','Delete key'],['reset','Reset']]){
-      buttons[key]=node('button',{type:'button',id:'fxCurve'+key[0].toUpperCase()+key.slice(1)},label);
+      buttons[key]=node('button',{type:'button',id:idPrefix+key[0].toUpperCase()+key.slice(1)},label);
       toolbar.append(buttons[key]);
     }
-    const snapLabel=node('label',{class:'fx-curve-snap'}), snap=node('input',{type:'checkbox',id:'fxCurveSnap'});
+    const snapLabel=node('label',{class:'fx-curve-snap'}), snap=node('input',{type:'checkbox',id:idPrefix+'Snap'});
     snap.checked=true;snapLabel.append(snap,document.createTextNode('Snap to frame'));toolbar.append(snapLabel);
-    const svg=svgNode('svg',{id:'fxCurveGraph',viewBox:'0 0 320 200',
+    const svg=svgNode('svg',{id:idPrefix+'Graph',viewBox:'0 0 320 200',
       role:'img','aria-label':'Editable FX curve. Drag keys and Bezier handles. Click empty space to scrub.'});
     svg.style.touchAction='none';
     const edit=node('div',{class:'fx-curve-fields'}), controls={};
     function field(key,label,step) {
-      const wrapper=node('label',{},label), input=node('input',{type:'number',id:'fxCurve'+key,step,required:'true'});
+      const wrapper=node('label',{},label), input=node('input',{type:'number',id:idPrefix+key,step,required:'true'});
       wrapper.append(input);edit.append(wrapper);controls[key]=input;
     }
     field('Frame',current.domain==='pathPosition'?'Position / distance':'Frame @ 60 FPS',1);field('Value','Value',.001);
     const modeLabel=node('label',{},'Outgoing segment');
-    const mode=node('select',{id:'fxCurveMode','aria-label':'Outgoing segment interpolation'});
+    const mode=node('select',{id:idPrefix+'Mode','aria-label':'Outgoing segment interpolation'});
     for(const item of ['linear','stepped','bezier'])mode.append(node('option',{value:item},item));
     modeLabel.append(mode);edit.append(modeLabel);
     for(const key of ['InX','InY','OutX','OutY'])field(key,key, .001);
-    const status=node('output',{id:'fxCurveStatus',role:'status','aria-live':'polite'},current.inputUnit+' · '+current.domain+' · '+current.valueUnit);
+    const status=node('output',{id:idPrefix+'Status',role:'status','aria-live':'polite'},current.inputUnit+' · '+current.domain+' · '+current.valueUnit);
     rootEl.append(toolbar,svg,edit,status);element.replaceChildren(rootEl);
     const frames=()=>Math.max(1,Number(getFrameCount())||60);
     const xRange=()=>current.inputRange, yRange=()=>current.valueRange;
@@ -153,7 +153,8 @@
       if(kind==='key'){
         const left=at?data.keys[at-1]:null,right=at+1<data.keys.length?data.keys[at+1]:null;
         const nx=(!left||!right)?k.x:clamp(snapX(x),left.x+1e-6,right.x-1e-6);
-        const ny=(!left||!right)?k.y:clamp(y,data.monotonic?left.y:yRange()[0],data.monotonic?right.y:yRange()[1]);
+        const lockEndpoint=current.parameterKey==='transitionProgress'&&(!left||!right);
+        const ny=lockEndpoint?k.y:clamp(y,data.monotonic&&left?left.y:yRange()[0],data.monotonic&&right?right.y:yRange()[1]);
         const dx=nx-k.x,dy=ny-k.y;
         k.x=nx;k.y=ny;
         for(const h of ['in','out'])if(k[h]){k[h][0]+=dx;k[h][1]+=dy;}

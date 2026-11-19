@@ -47,7 +47,7 @@ def verify(root, output=None):
     if parsed.external:
         raise ValueError('External script/style in offline editor: ' + str(parsed.external))
     if output:
-        for marker in ['<!-- OFFLINE_LIBRARIES -->', '<!-- CURVE_ENGINE -->', '<!-- CURVE_EDITOR -->', '<!-- SHARED_EFFECT_CORE -->', '<!-- EXPORT_SCRIPT -->', '__SAMPLE_DATA__']:
+        for marker in ['<!-- OFFLINE_LIBRARIES -->', '<!-- CURVE_ENGINE -->', '<!-- CURVE_EDITOR -->', '<!-- SPACING_ENGINE -->', '<!-- SPACING_UI -->', '<!-- SHARED_EFFECT_CORE -->', '<!-- EXPORT_SCRIPT -->', '__SAMPLE_DATA__']:
             if marker in html:
                 raise ValueError('Unresolved build marker: ' + marker)
     return {'protectedFiles': len(baseline['protectedFiles']), 'preservedControls': len(essential), 'htmlChecked': bool(output)}

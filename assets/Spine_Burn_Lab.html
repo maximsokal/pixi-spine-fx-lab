@@ -2677,7 +2677,7 @@ fn mainFragment(
     for(const [k,v] of Object.entries(attrs))el.setAttribute(k,String(v));
     return el;
   }
-  function mount(element,{curve,onChange,onScrub,getFrameCount,isLocked}) {
+  function mount(element,{curve,onChange,onScrub,getFrameCount,isLocked,idPrefix='fxCurve'}) {
     if (!document.getElementById('fxCurveStyles')) {
       const style = node('style',{id:'fxCurveStyles'});
       style.textContent = '.fx-curve-editor{display:grid;gap:9px}' +
@@ -2689,14 +2689,14 @@ fn mainFragment(
         '.fx-curve-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}' +
         '.fx-curve-fields label{display:flex;flex-direction:column;font-size:11px;color:#b5bfcb;min-width:0}' +
         '.fx-curve-fields input,.fx-curve-fields select{width:100%;min-width:0;box-sizing:border-box;font-size:12px;color:#f1f2f5;background:#141b23;border:1px solid #555e6a;border-radius:4px;padding:4px}' +
-        '#fxCurveStatus{font-size:11px;color:#ffbb72;min-height:16px;overflow-wrap:anywhere}';
+        '.fx-curve-editor output[role=status]{font-size:11px;color:#ffbb72;min-height:16px;overflow-wrap:anywhere}';
       document.head.append(style);
     }
     let current=C.normalize(curve), selected=current.keys[0].id, drag=null, counter=0, presetName='easeInOut';
     let frameSnap=true;
     const rootEl=node('div',{class:'fx-curve-editor'});
     const toolbar=node('div',{class:'fx-curve-tools'});
-    const presets=node('select',{id:'fxCurvePreset','aria-label':'Curve preset'});
+    const presets=node('select',{id:idPrefix+'Preset','aria-label':'Curve preset'});
     function populatePresets(){
       const names=[['Linear','linear'],['Ease In','easeIn'],['Ease Out','easeOut'],
         ['Ease In/Out','easeInOut'],['Fast Attack','fastAttack'],['Slow Decay','slowDecay'],
@@ -2712,26 +2712,26 @@ fn mainFragment(
     populatePresets();toolbar.append(presets);
     const buttons = {};
     for(const [key,label] of [['add','Add key'],['copy','Copy key'],['delete','Delete key'],['reset','Reset']]){
-      buttons[key]=node('button',{type:'button',id:'fxCurve'+key[0].toUpperCase()+key.slice(1)},label);
+      buttons[key]=node('button',{type:'button',id:idPrefix+key[0].toUpperCase()+key.slice(1)},label);
       toolbar.append(buttons[key]);
     }
-    const snapLabel=node('label',{class:'fx-curve-snap'}), snap=node('input',{type:'checkbox',id:'fxCurveSnap'});
+    const snapLabel=node('label',{class:'fx-curve-snap'}), snap=node('input',{type:'checkbox',id:idPrefix+'Snap'});
     snap.checked=true;snapLabel.append(snap,document.createTextNode('Snap to frame'));toolbar.append(snapLabel);
-    const svg=svgNode('svg',{id:'fxCurveGraph',viewBox:'0 0 320 200',
+    const svg=svgNode('svg',{id:idPrefix+'Graph',viewBox:'0 0 320 200',
       role:'img','aria-label':'Editable FX curve. Drag keys and Bezier handles. Click empty space to scrub.'});
     svg.style.touchAction='none';
     const edit=node('div',{class:'fx-curve-fields'}), controls={};
     function field(key,label,step) {
-      const wrapper=node('label',{},label), input=node('input',{type:'number',id:'fxCurve'+key,step,required:'true'});
+      const wrapper=node('label',{},label), input=node('input',{type:'number',id:idPrefix+key,step,required:'true'});
       wrapper.append(input);edit.append(wrapper);controls[key]=input;
     }
     field('Frame',current.domain==='pathPosition'?'Position / distance':'Frame @ 60 FPS',1);field('Value','Value',.001);
     const modeLabel=node('label',{},'Outgoing segment');
-    const mode=node('select',{id:'fxCurveMode','aria-label':'Outgoing segment interpolation'});
+    const mode=node('select',{id:idPrefix+'Mode','aria-label':'Outgoing segment interpolation'});
     for(const item of ['linear','stepped','bezier'])mode.append(node('option',{value:item},item));
     modeLabel.append(mode);edit.append(modeLabel);
     for(const key of ['InX','InY','OutX','OutY'])field(key,key, .001);
-    const status=node('output',{id:'fxCurveStatus',role:'status','aria-live':'polite'},current.inputUnit+' · '+current.domain+' · '+current.valueUnit);
+    const status=node('output',{id:idPrefix+'Status',role:'status','aria-live':'polite'},current.inputUnit+' · '+current.domain+' · '+current.valueUnit);
     rootEl.append(toolbar,svg,edit,status);element.replaceChildren(rootEl);
     const frames=()=>Math.max(1,Number(getFrameCount())||60);
     const xRange=()=>current.inputRange, yRange=()=>current.valueRange;
@@ -2815,7 +2815,8 @@ fn mainFragment(
       if(kind==='key'){
         const left=at?data.keys[at-1]:null,right=at+1<data.keys.length?data.keys[at+1]:null;
         const nx=(!left||!right)?k.x:clamp(snapX(x),left.x+1e-6,right.x-1e-6);
-        const ny=(!left||!right)?k.y:clamp(y,data.monotonic?left.y:yRange()[0],data.monotonic?right.y:yRange()[1]);
+        const lockEndpoint=current.parameterKey==='transitionProgress'&&(!left||!right);
+        const ny=lockEndpoint?k.y:clamp(y,data.monotonic&&left?left.y:yRange()[0],data.monotonic&&right?right.y:yRange()[1]);
         const dx=nx-k.x,dy=ny-k.y;
         k.x=nx;k.y=ny;
         for(const h of ['in','out'])if(k[h]){k[h][0]+=dx;k[h][1]+=dy;}
@@ -2918,6 +2919,562 @@ fn mainFragment(
   root.FxCurveEditor=Object.freeze({mount});
 })(globalThis);
 </script>
+<script id="fxSpacingCore">// FX-CORE-02 — deterministic, renderer-independent emission and spatial spacing.
+(function (root, make) {
+  'use strict';
+  const API = Object.freeze(make(root.FxCurves || (typeof require === 'function' ? require('./curve-core.js') : null)));
+  if (typeof module === 'object' && module.exports) module.exports = API;
+  else root.FxSpacing = API;
+})(globalThis, function (Curves) {
+  'use strict';
+  if (!Curves) throw new Error('FxSpacing requires FxCurves (versioned curve engine).');
+  const MAX_EVENTS=4096, MAX_POINTS=8192, MAX_SEGMENTS=256, INTEGRATION_STEPS=4096;
+  const tModes=['uniform','accelerating','decelerating','burst','clustered','custom'];
+  const sModes=['even','random','stratified','clustered'];
+  const finite=n=>typeof n==='number'&&Number.isFinite(n);
+  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(v,hi));
+  function fail(message){throw new TypeError('Invalid FX spacing: '+message);}
+  function number(v,name,lo,hi){if(!finite(v)||v<lo||v>hi)fail(name+' must be finite in ['+lo+','+hi+']');return v;}
+  function vec(v,name){if(!Array.isArray(v)||v.length!==2||!v.every(x=>finite(x)&&Math.abs(x)<=1000000))fail(name+' must be finite [x,y]');return [v[0],v[1]];}
+  function rng(seed){
+    let state=(seed|0)>>>0;
+    return ()=>{state=(state+0x6d2b79f5)>>>0;let x=Math.imul(state^state>>>15,1|state);x^=x+Math.imul(x^x>>>7,61|x);return ((x^x>>>14)>>>0)/4294967296;};
+  }
+  function validateCurve(curve,parameter,domain){
+    if(curve===null||curve===undefined)return null;
+    const c=Curves.normalize(curve);
+    if(c.parameterKey!==parameter||c.domain!==domain)fail('curve must bind to '+parameter+' / '+domain);
+    if(!['normalized-duration','normalized-path'].includes(c.inputUnit))fail('curve input must be normalized');
+    return c;
+  }
+  function normalizeTemporal(input) {
+    if(!input||typeof input!=='object')fail('temporal config required');
+    const mode=input.mode??'uniform',frequencySource=input.frequencySource??'rate';
+    if(!tModes.includes(mode))fail('unknown temporal mode');
+    if(!['rate','interval'].includes(frequencySource))fail('frequencySource must be rate or interval');
+    const out={
+      schemaVersion:input.schemaVersion??1,mode,frequencySource,
+      baseRate:number(input.baseRate??0,'baseRate',0,10000),
+      interval:number(input.interval??.1,'interval',.0001,3600),
+      duration:number(input.duration??0,'duration',0,3600),
+      minInterval:number(input.minInterval??0,'minInterval',0,3600),
+      jitter:number(input.jitter??0,'jitter',0,.45),
+      burstCount:number(input.burstCount??1,'burstCount',1,128),
+      burstDelay:number(input.burstDelay??0,'burstDelay',0,60),
+      seed:number(input.seed??0,'seed',-2147483648,2147483647),
+      maxEvents:number(input.maxEvents??2048,'maxEvents',1,MAX_EVENTS),
+      rateCurve:validateCurve(input.rateCurve,'emissionRate','emitterTime'),
+      intervalCurve:validateCurve(input.intervalCurve,'emissionInterval','emitterTime')
+    };
+    if(out.schemaVersion!==1)fail('unsupported temporal schemaVersion');
+    if(!Number.isInteger(out.burstCount)||!Number.isInteger(out.seed)||!Number.isInteger(out.maxEvents))fail('count/seed/maxEvents must be integers');
+    return out;
+  }
+  // The timetable is integrated once, not once per render tick. All call sites
+  // (preview, 60 FPS bake, exported modules) consume precisely the same timestamps.
+  function createTemporalSchedule(config) {
+    const c=normalizeTemporal(config);
+    if(c.duration===0||(!c.baseRate&&c.frequencySource==='rate'))return {config:c,events:[],capped:false};
+    const random=rng(c.seed^0x791b371d),events=[];
+    let capped=false;
+    function emit(at,burstIndex=0){
+      if(at>c.duration+1e-9||at<0)return;
+      if(events.length>=c.maxEvents){capped=true;return;}
+      const prev=events.at(-1)?.time??-Infinity;
+      if(at+1e-9<prev+c.minInterval)return;
+      const time=clamp(at,0,c.duration);
+      if(time<=prev+1e-12)return;
+      events.push({time,index:events.length,burstIndex});
+    }
+    const base=c.frequencySource==='rate'?c.baseRate:1/c.interval;
+    if(c.mode==='burst'){
+      for(let i=1;i<=Math.ceil(c.duration*base+1e-9);i++){
+        const at=i/base;
+        if(at>c.duration+1e-9)break;
+        for(let j=0;j<c.burstCount;j++){
+          emit(at+j*c.burstDelay,j);
+          if(capped)break;
+        }
+        if(capped)break;
+      }
+      return {config:c,events,capped};
+    }
+    const normalized=t=>clamp(t/c.duration,0,1);
+    function rateAt(time){
+      const u=normalized(time);
+      let factor=1;
+      if(c.mode==='accelerating')factor=.5+u;
+      if(c.mode==='decelerating')factor=1.5-u;
+      if(c.mode==='clustered')factor=.2+3*Math.pow(Math.max(0,Math.sin(3*Math.PI*u)),8);
+      if(c.mode==='custom'){
+        const curve=c.frequencySource==='rate'?c.rateCurve:c.intervalCurve;
+        if(curve){
+          const evaluated=Curves.evaluate(curve,u);
+          factor=c.frequencySource==='rate'?Math.max(0,evaluated):1/Math.max(.05,evaluated);
+        }
+      }
+      return Math.min(10000,base*factor);
+    }
+    const integral=new Float64Array(INTEGRATION_STEPS+1);
+    const step=c.duration/INTEGRATION_STEPS;
+    for(let i=1;i<=INTEGRATION_STEPS;i++){
+      integral[i]=integral[i-1]+rateAt((i-.5)*step)*step;
+    }
+    const expected=Math.floor(integral[INTEGRATION_STEPS]+1e-9);
+    // Use the crossing of cumulative emission intensity N(t) = 1,2,3,...
+    // Each event has its own seeded time jitter, bounded by neighboring slots.
+    for(let k=1;k<=expected;k++){
+      if(events.length>=c.maxEvents){capped=true;break;}
+      let lo=0,hi=INTEGRATION_STEPS;
+      while(lo+1<hi){const mid=(lo+hi)>>1;if(integral[mid]<k)lo=mid;else hi=mid;}
+      const a=integral[lo],b=integral[hi],fraction=b>a?(k-a)/(b-a):0;
+      let time=(lo+fraction)*step;
+      if(c.jitter){
+        const jitterSpan=c.jitter/(Math.max(base,.000001)*Math.max(.2,rateAt(time)/base));
+        time+=((random()*2)-1)*jitterSpan;
+        time=clamp(time,0,c.duration);
+      }
+      emit(time);
+    }
+    return {config:c,events,capped};
+  }
+  function createCursor(schedule){
+    if(!schedule||!Array.isArray(schedule.events))fail('invalid timetable');
+    let cursor=0,clock=-Infinity;
+    return {
+      consume(time){
+        number(time,'cursor time',0,Infinity);
+        if(time+1e-10<clock)fail('cursor cannot rewind; create a new cursor');
+        clock=time;const result=[];
+        while(cursor<schedule.events.length&&schedule.events[cursor].time<=time+1e-9)result.push(schedule.events[cursor++]);
+        return result;
+      },
+      reset(){cursor=0;clock=-Infinity;},
+      get index(){return cursor;}
+    };
+  }
+  function normalizePath(input){
+    if(!input||input.schemaVersion!==1||typeof input.closed!=='boolean'||!Array.isArray(input.segments)||
+       input.segments.length<1||input.segments.length>MAX_SEGMENTS)fail('path needs schemaVersion=1, closed, and 1–256 cubic segments');
+    const segments=input.segments.map((s,i)=>{
+      if(!s||typeof s!=='object')fail('segment '+i);
+      return {p0:vec(s.p0,'p0'),p1:vec(s.p1,'p1'),p2:vec(s.p2,'p2'),p3:vec(s.p3,'p3')};
+    });
+    for(let i=1;i<segments.length;i++)if(Math.hypot(
+      segments[i-1].p3[0]-segments[i].p0[0],segments[i-1].p3[1]-segments[i].p0[1])>1e-6)
+      fail('path segments must connect without jumps');
+    return {schemaVersion:1,closed:input.closed,segments};
+  }
+  function evaluateCubic(s,t){
+    const q=1-t,a=q*q*q,b=3*q*q*t,c=3*q*t*t,d=t*t*t;
+    return {x:a*s.p0[0]+b*s.p1[0]+c*s.p2[0]+d*s.p3[0],
+      y:a*s.p0[1]+b*s.p1[1]+c*s.p2[1]+d*s.p3[1]};
+  }
+  function derivative(s,t){
+    const q=1-t;
+    const x=3*(q*q*(s.p1[0]-s.p0[0])+2*q*t*(s.p2[0]-s.p1[0])+t*t*(s.p3[0]-s.p2[0]));
+    const y=3*(q*q*(s.p1[1]-s.p0[1])+2*q*t*(s.p2[1]-s.p1[1])+t*t*(s.p3[1]-s.p2[1]));
+    const len=Math.hypot(x,y);
+    if(len>1e-12)return {x:x/len,y:y/len};
+    const vx=s.p3[0]-s.p0[0],vy=s.p3[1]-s.p0[1],d=Math.hypot(vx,vy);
+    return d>0?{x:vx/d,y:vy/d}:{x:1,y:0};
+  }
+  const mix=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
+  function split(s){
+    const a=mix(s.p0,s.p1),b=mix(s.p1,s.p2),c=mix(s.p2,s.p3),
+      d=mix(a,b),e=mix(b,c),m=mix(d,e);
+    return [{p0:s.p0,p1:a,p2:d,p3:m},{p0:m,p1:e,p2:c,p3:s.p3}];
+  }
+  function buildArcTable(input,options={}){
+    const path=normalizePath(input),tolerancePx=number(options.tolerancePx??.25,'tolerancePx',.000001,5);
+    const maxDepth=number(options.maxDepth??16,'maxDepth',1,24);
+    const maxPoints=number(options.maxPoints??MAX_POINTS,'maxPoints',2,MAX_POINTS);
+    if(!Number.isInteger(maxDepth)||!Number.isInteger(maxPoints))fail('maxDepth/maxPoints must be integers');
+    let segments=path.segments;
+    if(path.closed){
+      const last=segments.at(-1).p3,first=segments[0].p0;
+      if(Math.hypot(last[0]-first[0],last[1]-first[1])>1e-9){
+        const a=[last[0]+(first[0]-last[0])/3,last[1]+(first[1]-last[1])/3];
+        const b=[last[0]+2*(first[0]-last[0])/3,last[1]+2*(first[1]-last[1])/3];
+        segments=[...segments,{p0:last,p1:a,p2:b,p3:first}];
+      }
+    }
+    const nodes=[{s:0,x:segments[0].p0[0],y:segments[0].p0[1],segment:0,t:0}],n=segments.length;
+    let length=0,errorBound=0;
+    function visit(s,index,t0,t1,depth,tolerance) {
+      const chord=Math.hypot(s.p3[0]-s.p0[0],s.p3[1]-s.p0[1]);
+      const control=Math.hypot(s.p1[0]-s.p0[0],s.p1[1]-s.p0[1])+
+        Math.hypot(s.p2[0]-s.p1[0],s.p2[1]-s.p1[1])+Math.hypot(s.p3[0]-s.p2[0],s.p3[1]-s.p2[1]);
+      const gap=control-chord;
+      if(gap<=tolerance){
+        if(nodes.length>=maxPoints)fail('arc-length vertex cap exceeded');
+        length+=chord;errorBound+=Math.max(0,gap);
+        nodes.push({s:length,x:s.p3[0],y:s.p3[1],segment:index,t:t1});
+        return;
+      }
+      if(depth>=maxDepth)fail('arc-length tolerance cannot be reached within maxDepth');
+      const [left,right]=split(s),half=(t0+t1)/2;
+      visit(left,index,t0,half,depth+1,tolerance/2);
+      visit(right,index,half,t1,depth+1,tolerance/2);
+    }
+    for(let i=0;i<n;i++)visit(segments[i],i,0,1,0,tolerancePx/n);
+    return {path:{...path,segments},nodes,length,errorBound,tolerancePx};
+  }
+  function pointAtDistance(table,distance,pathFollow='clamp',reverse=false){
+    number(distance,'path distance',-Infinity,Infinity);
+    if(!['clamp','wrap','mirror'].includes(pathFollow))fail('pathFollow must be clamp, wrap or mirror');
+    const length=table.length,first=table.nodes[0];
+    if(!(length>0))return {x:first.x,y:first.y,distance:0,tangent:{x:1,y:0},angle:0,segment:0,t:0};
+    let d=distance;
+    if(pathFollow==='wrap')d=((d%length)+length)%length;
+    else if(pathFollow==='mirror'){let q=((d%(2*length))+(2*length))%(2*length);d=q>length?2*length-q:q;}
+    else d=clamp(d,0,length);
+    if(reverse)d=length-d;
+    let lo=0,hi=table.nodes.length-1;
+    while(hi-lo>1){const m=(lo+hi)>>1;if(table.nodes[m].s<=d)lo=m;else hi=m;}
+    const a=table.nodes[lo],b=table.nodes[hi],f=b.s>a.s?(d-a.s)/(b.s-a.s):0;
+    const segment=table.path.segments[b.segment]||table.path.segments.at(-1);
+    const t=a.segment===b.segment?a.t+(b.t-a.t)*f:b.t*f;
+    const point=evaluateCubic(segment,t),tangent=derivative(segment,t);
+    if(reverse){tangent.x=-tangent.x;tangent.y=-tangent.y;}
+    return {x:point.x,y:point.y,distance:d,tangent,angle:Math.atan2(tangent.y,tangent.x),segment:b.segment,t};
+  }
+  function normalizeSpatial(input){
+    if(!input)fail('spatial settings required');
+    const path=normalizePath(input.path),mode=input.mode??'even';
+    if(!sModes.includes(mode))fail('unknown spatial mode');
+    const minSpacing=number(input.minSpacing??1,'minSpacing',.25,100000),
+      maxSpacing=number(input.maxSpacing??500,'maxSpacing',minSpacing,100000),
+      baseSpacingPx=number(input.baseSpacingPx??10,'baseSpacingPx',.25,100000),
+      jitter=number(input.jitter??0,'jitter',0,.45),
+      seed=number(input.seed??0,'seed',-2147483648,2147483647),
+      maxPoints=number(input.maxPoints??1024,'maxPoints',1,MAX_POINTS);
+    if(!Number.isInteger(seed)||!Number.isInteger(maxPoints))fail('seed/maxPoints must be integers');
+    const pathFollow=input.pathFollow??'clamp';
+    if(!['clamp','wrap','mirror'].includes(pathFollow))fail('pathFollow invalid');
+    const spacingCurve=validateCurve(input.spacingCurve,'spacingPx','pathPosition');
+    if(spacingCurve&&spacingCurve.valueUnit!=='px')fail('spacingCurve must output px');
+    return {schemaVersion:1,path,mode,baseSpacingPx,minSpacing,maxSpacing,jitter,seed,maxPoints,
+      spacingCurve,pathFollow,alignToTangent:input.alignToTangent!==false,
+      reverse:input.reverse===true,tolerancePx:input.tolerancePx??.25};
+  }
+  function createSpatialPlacement(input){
+    const c=normalizeSpatial(input),table=buildArcTable(c.path,{tolerancePx:c.tolerancePx}),
+      points=[],random=rng(c.seed^0x32d8823a);
+    if(table.length<=0)return {config:c,table,points,capped:false};
+    let distance=0,capped=false,index=0;
+    while(distance<table.length-1e-9){
+      const u=distance/table.length;
+      let spacing=c.spacingCurve?Curves.evaluate(c.spacingCurve,u):c.baseSpacingPx;
+      if(c.mode==='random')spacing*=.5+random();
+      if(c.mode==='stratified')spacing*=.8+.4*random();
+      if(c.mode==='clustered')spacing*=index%5<3?.55:1.675;
+      if(c.jitter)spacing*=1+(2*random()-1)*c.jitter;
+      const step=clamp(spacing,c.minSpacing,c.maxSpacing);
+      distance+=step;
+      if(c.path.closed && distance>=table.length-1e-9)break; // seam is never duplicated
+      if(distance>table.length+1e-9)break;
+      if(points.length>=c.maxPoints){capped=true;break;}
+      const position=pointAtDistance(table,distance,c.pathFollow,c.reverse);
+      points.push({index:points.length,distance,x:position.x,y:position.y,
+        angle:c.alignToTangent?position.angle:0,tangent:c.alignToTangent?position.tangent:null,
+        normalizedDistance:distance/table.length});
+      index++;
+    }
+    return {config:c,table,points,capped};
+  }
+  function combineSchedule({schedule,placement,motion=[],mode='time',teleportThresholdPx=512,maxEvents=2048}){
+    if(!['time','distance','both'].includes(mode))fail('combined mode must be time/distance/both');
+    number(teleportThresholdPx,'teleportThresholdPx',0,1e7);
+    number(maxEvents,'maxEvents',1,MAX_EVENTS);
+    if(!Number.isInteger(maxEvents))fail('maxEvents must be an integer');
+    if(!schedule||!Array.isArray(schedule.events)||!placement||!Array.isArray(placement.points))fail('schedule/placement required');
+    const anchors=placement.points;
+    if(!anchors.length)return {events:[],capped:false};
+    const follow=placement.config?.pathFollow??'clamp';
+    const closed=placement.table?.path?.closed===true;
+    function chooseAnchor(i){
+      if(follow==='wrap'||closed)return anchors[i%anchors.length];
+      if(follow==='mirror'){
+        const period=Math.max(1,2*(anchors.length-1)),j=i%period;
+        return anchors[j>=anchors.length?period-j:j];
+      }
+      return anchors[Math.min(i,anchors.length-1)];
+    }
+    const stops=motion.map(m=>({time:number(m.time,'motion time',0,1e9),
+      x:number(m.x,'motion x',-1e6,1e6),y:number(m.y,'motion y',-1e6,1e6),teleport:m.teleport===true}));
+    for(let i=1;i<stops.length;i++)if(stops[i].time<=stops[i-1].time)fail('motion timestamps must increase');
+    const result=[];let capped=false;
+    function append(time,point){
+      if(result.length>=maxEvents){capped=true;return false;}
+      result.push({time,index:result.length,anchorIndex:point.index,
+        x:point.x,y:point.y,angle:point.angle,distance:point.distance});return true;
+    }
+    if(mode==='time'){
+      for(const e of schedule.events){
+        if(!append(e.time,chooseAnchor(result.length)))break;
+      }
+      return {events:result,capped};
+    }
+    const pathLength=placement.table.length;
+    const threshold=i=>anchors[i%anchors.length].distance+Math.floor(i/anchors.length)*pathLength;
+    let cumulative=0,next=0,prev=stops[0];
+    const traversed=[{time:stops[0]?.time??0,distance:0}];
+    for(let i=1;i<stops.length;i++){
+      const now=stops[i],distance=Math.hypot(now.x-prev.x,now.y-prev.y);
+      if(!now.teleport&&distance<=teleportThresholdPx) {
+        const before=cumulative;
+        cumulative+=distance;
+        if(mode==='distance'){
+          while(next<MAX_EVENTS && threshold(next)<=cumulative+1e-9){
+            const fraction=clamp((threshold(next)-before)/Math.max(distance,1e-12),0,1);
+            const point={...chooseAnchor(next),
+              x:prev.x+(now.x-prev.x)*fraction,y:prev.y+(now.y-prev.y)*fraction,
+              angle:Math.atan2(now.y-prev.y,now.x-prev.x)};
+            if(!append(prev.time+(now.time-prev.time)*fraction,point))break;
+            next++;
+          }
+        }
+      }
+      traversed.push({time:now.time,distance:cumulative});
+      prev=now;
+      if(capped)break;
+    }
+    if(mode==='both'){
+      next=0;
+      for(const e of schedule.events){
+        let d=0,motionPoint=null;
+        if(stops.length){
+          if(e.time>=traversed.at(-1).time){
+            d=cumulative;
+            motionPoint={...stops.at(-1),angle:stops.length>1?
+              Math.atan2(stops.at(-1).y-stops.at(-2).y,stops.at(-1).x-stops.at(-2).x):0};
+          }else if(e.time>=traversed[0].time){
+            let left=0,right=traversed.length-1;
+            while(left+1<right){
+              const mid=(left+right)>>1;
+              if(traversed[mid].time<e.time)left=mid;else right=mid;
+            }
+            const a=traversed[left],b=traversed[right],fraction=clamp((e.time-a.time)/(b.time-a.time),0,1);
+            d=a.distance+(b.distance-a.distance)*fraction;
+            const lo=stops[left],hi=stops[right],f=hi.teleport?0:fraction;
+            motionPoint={x:lo.x+(hi.x-lo.x)*f,y:lo.y+(hi.y-lo.y)*f,
+              angle:Math.atan2(hi.y-lo.y,hi.x-lo.x)};
+          }else motionPoint={...stops[0],angle:0};
+        }
+        if(d+1e-9>=threshold(next)){
+          const anchor=chooseAnchor(next);
+          const position=motionPoint?{...anchor,x:motionPoint.x,y:motionPoint.y,angle:motionPoint.angle}:anchor;
+          if(!append(e.time,position))break;
+          next++;
+        }
+      }
+    }
+    return {events:result,capped};
+  }
+  return {VERSION:1,normalizeTemporal,createTemporalSchedule,createCursor,normalizePath,
+    evaluateCubic,buildArcTable,pointAtDistance,normalizeSpatial,createSpatialPlacement,combineSchedule};
+});
+</script>
+<script id="fxSpacingUi">// FX-CORE-02: optional spacing authoring panel, independent of the pure math.
+(function(root){
+'use strict';
+const NS='http://www.w3.org/2000/svg';
+const el=(tag,attrs={},text='')=>{
+  const n=document.createElement(tag);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,String(v));
+  if(text)n.textContent=text;return n;
+};
+function curvePreset(key,unit,lo,hi,value,domain){
+  return FxCurves.normalize({schemaVersion:1,parameterKey:key,domain,
+    inputUnit:domain==='pathPosition'?'normalized-path':'normalized-duration',
+    valueUnit:unit,inputRange:[0,1],valueRange:[lo,hi],defaultValue:value,
+    clamp:'hold',monotonic:false,keys:[{id:'start',x:0,y:value,mode:'linear'},
+    {id:'end',x:1,y:value,mode:'linear'}]});
+}
+function mount(container,{cfg,onChange,isLocked,getFrameCount}){
+ const details=el('details',{id:'fxSpacingPanel'});
+ details.append(el('summary',{},'Temporal & spatial spacing'));
+ const body=el('div',{class:'section fx-spacing-body'});
+ const help=el('p',{class:'mini'},'Optional path-based sparks. Temporal schedule and path spacing are independent; spark travel speed is unchanged. Guide lines are preview-only.');
+ body.append(help);
+ const status=el('output',{id:'fxSpacingStatus',role:'status','aria-live':'polite'});
+ const inputs={};
+ const controlId=key=>'fxSpacing'+(key.startsWith('spacing')?key.slice(7):key[0].toUpperCase()+key.slice(1));
+ function select(key,label,values){
+   const wrap=el('label',{class:'fx-spacing-field'},label);
+   const input=el('select',{id:controlId(key)});
+   for(const [value,name]of values)input.append(el('option',{value},name));
+   wrap.append(input);body.append(wrap);inputs[key]=input;
+   input.value=String(cfg[key]);
+   input.addEventListener('change',()=>change(key,input.value));
+   return input;
+ }
+ function numeric(key,label,min,max,step){
+   const wrap=el('label',{class:'fx-spacing-field'},label);
+   const input=el('input',{type:'number',id:controlId(key),min,max,step});
+   input.value=String(cfg[key]);wrap.append(input);body.append(wrap);inputs[key]=input;
+   input.addEventListener('change',()=>{
+     const raw=input.value.trim(),value=Number(raw);
+     if(!raw||!Number.isFinite(value)||value<min||value>max){
+       input.value=String(cfg[key]);status.textContent='Invalid '+label+'; expected '+min+'–'+max;return;
+     }
+     change(key,value);
+   });
+   return input;
+ }
+ function toggle(key,label){
+   const wrap=el('label',{class:'fx-spacing-check'});
+   const input=el('input',{type:'checkbox',id:controlId(key)});
+   input.checked=Boolean(cfg[key]);wrap.append(input,document.createTextNode(label));
+   body.append(wrap);inputs[key]=input;
+   input.addEventListener('change',()=>change(key,input.checked));
+   return input;
+ }
+ function apply(){
+   // Validate proposed settings before notifying the renderer.
+   const t=FxSpacing.createTemporalSchedule({schemaVersion:1,mode:cfg.spacingTemporalMode,
+     frequencySource:cfg.spacingFrequencySource,baseRate:cfg.spacingBaseRate,interval:cfg.spacingInterval,
+     duration:getFrameCount()/60,minInterval:cfg.spacingMinInterval,jitter:cfg.spacingTimeJitter,
+     burstCount:cfg.spacingBurstCount,burstDelay:cfg.spacingBurstDelay,seed:cfg.spacingSeed,
+     maxEvents:512,rateCurve:cfg.spacingRateCurve,intervalCurve:cfg.spacingIntervalCurve});
+   const p=FxSpacing.createSpatialPlacement({path:cfg.spacingPath,mode:cfg.spacingSpatialMode,
+     baseSpacingPx:cfg.spacingBasePx,minSpacing:cfg.spacingMinPx,maxSpacing:cfg.spacingMaxPx,
+     jitter:cfg.spacingSpatialJitter,seed:cfg.spacingSeed,maxPoints:512,
+     spacingCurve:cfg.spacingDistanceCurve,alignToTangent:cfg.spacingAlignToTangent,
+     pathFollow:cfg.spacingPathFollow});
+   onChange();
+   status.textContent='Time events: '+t.events.length+' · Path anchors: '+p.points.length+
+     (t.capped||p.capped?' · capped to quality budget':'');
+ }
+ function change(key,value){
+   if(isLocked?.()){refresh();status.textContent='Wait for baking/loading to finish.';return;}
+   const original=cfg[key];
+   cfg[key]=value;
+   try{apply();}catch(e){cfg[key]=original;refresh();status.textContent=e.message;}
+ }
+ toggle('spacingEnabled','Enable path-based emission (legacy Spine surface stays the default)');
+ select('spacingCombine','Schedule policy',[['time','Time events on path anchors'],['distance','Distance travelled'],['both','Time AND distance']]);
+ select('spacingFrequencySource','Frequency source',[['rate','Events / second'],['interval','Seconds / event']]);
+ numeric('spacingBaseRate','Base rate (events/s)',0,400,1);
+ numeric('spacingInterval','Base interval (s)',.0001,60,.001);
+ select('spacingTemporalMode','Temporal distribution',[
+   ['uniform','Uniform'],['accelerating','Accelerating'],['decelerating','Decelerating'],
+   ['burst','Burst'],['clustered','Clustered'],['custom','Custom rate / interval curve']]);
+ numeric('spacingBurstCount','Burst count',1,24,1);
+ numeric('spacingBurstDelay','Burst delay (s)',0,2,.005);
+ numeric('spacingMinInterval','Minimum event interval (s)',0,2,.001);
+ numeric('spacingTimeJitter','Seeded time jitter (0–0.45)',0,.45,.01);
+ const sectionTitle=el('div',{class:'fx-spacing-subtitle'},'Path & spatial placement');
+ body.append(sectionTitle);
+ select('spacingSpatialMode','Spatial distribution',[['even','Even arc length'],['random','Random'],['stratified','Stratified'],['clustered','Clustered']]);
+ numeric('spacingBasePx','Base spacing (px)',.25,500,1);
+ numeric('spacingMinPx','Minimum spacing (px)',.25,500,1);
+ numeric('spacingMaxPx','Maximum spacing (px)',.25,1000,1);
+ numeric('spacingSpatialJitter','Seeded spacing jitter (0–0.45)',0,.45,.01);
+ numeric('spacingTravelSpeedPx','Emitter path travel (px/s)',0,1000,1);
+ numeric('spacingTeleportThresholdPx','Teleport threshold (px)',0,2048,1);
+ numeric('spacingSeed','Independent spacing seed',0,2147483647,1);
+ select('spacingPathFollow','Path follow',[['clamp','Stop at path end'],['wrap','Wrap'],['mirror','Reverse at ends']]);
+ toggle('spacingAlignToTangent','Align particle launch to path tangent');
+ toggle('spacingGuides','Show path and placement guides (preview only)');
+ toggle('sparkTrails','Show spark trails (all modes)');
+ const pathHeader=el('div',{class:'fx-spacing-subtitle'},'Cubic Bézier path · authoring pixels / 512 × 512');
+ body.append(pathHeader);
+ const pathGrid=el('div',{class:'fx-spacing-grid'});
+ const pointNames=['Start','Handle 1','Handle 2','End'];
+ for(let i=0;i<4;i++)for(let axis=0;axis<2;axis++){
+   const name=pointNames[i]+' '+(axis?'Y':'X'),label=el('label',{class:'fx-spacing-field'},name);
+   const input=el('input',{type:'number',id:'fxSpacingPath'+i+(axis?'Y':'X'),
+     min:-8192,max:8192,step:1});
+   input.value=String(cfg.spacingPath.segments[0][['p0','p1','p2','p3'][i]][axis]);
+   label.append(input);pathGrid.append(label);
+   input.addEventListener('change',()=>{
+     if(isLocked?.()){refresh();return;}
+     const value=Number(input.value);
+     if(!input.value.trim()||!Number.isFinite(value)||value< -8192||value>8192){
+       status.textContent='Path coordinates must be within ±8192';refresh();return;
+     }
+     const previous=cfg.spacingPath;
+     const segments=previous.segments.map(s=>({p0:[...s.p0],p1:[...s.p1],p2:[...s.p2],p3:[...s.p3]}));
+     segments[0][['p0','p1','p2','p3'][i]][axis]=value;
+     cfg.spacingPath={schemaVersion:1,closed:previous.closed,segments};
+     try{apply();}catch(e){cfg.spacingPath=previous;refresh();status.textContent=e.message;}
+   });
+ }
+ body.append(pathGrid);
+ const closed=el('label',{class:'fx-spacing-check'}),closedInput=el('input',{type:'checkbox',id:'fxSpacingClosed'});
+ closedInput.checked=cfg.spacingPath.closed;
+ closed.append(closedInput,document.createTextNode('Close path (without duplicate seam events)'));
+ body.append(closed);
+ closedInput.addEventListener('change',()=>{
+   const before=cfg.spacingPath;
+   cfg.spacingPath={...before,closed:closedInput.checked};
+   try{apply();}catch(e){cfg.spacingPath=before;refresh();status.textContent=e.message;}
+ });
+ const curvesTitle=el('div',{class:'fx-spacing-subtitle'},'Optional frequency / distance curve');
+ body.append(curvesTitle);
+ const curveType=el('select',{id:'fxSpacingCurveTarget','aria-label':'Curve to edit'});
+ for(const [key,label]of [['rate','Rate multiplier'],['interval','Interval multiplier'],['spacing','Spacing in pixels']])
+   curveType.append(el('option',{value:key},label));
+ body.append(curveType);
+ const host=el('div',{id:'fxSpacingCurveRoot'});
+ body.append(host);
+ let active='rate',editor=null;
+ function keyFor(which){return which==='rate'?'spacingRateCurve':which==='interval'?'spacingIntervalCurve':'spacingDistanceCurve';}
+ function modelFor(which){
+   const key=keyFor(which);
+   if(cfg[key])return FxCurves.normalize(cfg[key]);
+   if(which==='rate')return curvePreset('emissionRate','normalized',.05,4,1,'emitterTime');
+   if(which==='interval')return curvePreset('emissionInterval','normalized',.05,4,1,'emitterTime');
+   return curvePreset('spacingPx','px',.25,1000,cfg.spacingBasePx,'pathPosition');
+ }
+ editor=FxCurveEditor.mount(host,{idPrefix:'fxSpacingCurve',curve:modelFor(active),
+   getFrameCount:()=>getFrameCount(),isLocked,
+   onChange(value) {
+     const key=keyFor(active),old=cfg[key],oldMode=cfg.spacingTemporalMode;
+     cfg[key]=FxCurves.normalize(value);
+     if(active!=='spacing')cfg.spacingTemporalMode='custom';
+     inputs.spacingTemporalMode.value=cfg.spacingTemporalMode;
+     try{apply();}catch(e){cfg[key]=old;cfg.spacingTemporalMode=oldMode;inputs.spacingTemporalMode.value=oldMode;status.textContent=e.message;}
+   },
+   onScrub(){/* No preview time seek for a generic spacing-value curve. */}
+ });
+ curveType.addEventListener('change',()=>{
+   active=curveType.value;
+   editor.setCurve(modelFor(active));
+   status.textContent='Editing '+active+' curve; changes are stored in the spacing preset.';
+ });
+ function refresh(){
+   for(const [key,input]of Object.entries(inputs)){
+     if(input.type==='checkbox')input.checked=Boolean(cfg[key]);
+     else input.value=String(cfg[key]);
+   }
+   for(let i=0;i<4;i++)for(let axis=0;axis<2;axis++){
+     const input=details.querySelector('#fxSpacingPath'+i+(axis?'Y':'X'));
+     input.value=String(cfg.spacingPath.segments[0][['p0','p1','p2','p3'][i]][axis]);
+   }
+   closedInput.checked=cfg.spacingPath.closed;
+   editor.setCurve(modelFor(active));
+ }
+ const styles=el('style',{id:'fxSpacingStyles'});
+ styles.textContent='.fx-spacing-body{display:grid;gap:8px}'+
+ '.fx-spacing-field{display:flex;align-items:center;justify-content:space-between;gap:9px;font-size:12px;color:#b8c3cd}'+
+ '.fx-spacing-field>input,.fx-spacing-field>select{max-width:145px;min-width:80px;box-sizing:border-box}'+
+ '.fx-spacing-check{display:flex;gap:6px;align-items:center;font-size:12px}'+
+ '.fx-spacing-subtitle{font-size:12px;font-weight:600;color:#ffd09e;margin-top:8px}'+
+ '.fx-spacing-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}'+
+ '.fx-spacing-grid label{display:flex;flex-direction:column;align-items:stretch}'+
+ '.fx-spacing-grid input{max-width:100%;width:100%}'+
+ '#fxSpacingCurveRoot .fx-curve-editor{margin-top:6px}'+
+ '#fxSpacingStatus{font-size:11px;color:#ffbb72;overflow-wrap:anywhere}';
+ document.head.append(styles);
+ body.append(status);details.append(body);container.append(details);
+ try{apply();}catch(e){status.textContent=e.message;}
+ return {refresh,details};
+}
+root.FxSpacingUi=Object.freeze({mount});
+})(globalThis);
+</script>
 <script id="sharedCore">/* Shared Spine burn transition. PixiJS 8.22.0, Spine 4.2.120. No DOM controls or network requests. */
 (function(global){
 'use strict';
@@ -2952,18 +3509,92 @@ function createBurnTransition({PIXI,spine:spineRuntime,app,host,model,settings,b
  function sync(){if(dead)return;const u=filter.resources.burnUniforms.uniforms;u.uOrigin=[coordinateOffset.x,coordinateOffset.y,0,0];u.uRect=[rect.x+coordinateOffset.x,rect.y+coordinateOffset.y,rect.w,rect.h];u.uMask=[progress,cfg.shape,cfg.angle*Math.PI/180,cfg.roughness];u.uShape=[cfg.centerX,cfg.centerY,cfg.noiseScale,cfg.seed];u.uEdge=[cfg.softness,cfg.edgeWidth,0,cfg.charStrength];u.uFire=[cfg.flameHeight,cfg.flameBrightness,cfg.glow,cfg.turbulence];u.uMotion=[time,cfg.fireSpeed,cfg.flicker,cfg.reverse?1:0];u.uGray=[cfg.desaturation,cfg.brightness,cfg.contrast,cfg.charWidth];u.uFireColor=rgb(cfg.fireColor);u.uHotColor=rgb(cfg.hotColor);filter.resources.burnUniforms.update();host.filterArea=new PIXI.Rectangle(0,0,app.screen.width,app.screen.height);if(enabled){if(!(host.filters||[]).includes(filter))host.filters=[...previousFilters,filter];}else if((host.filters||[]).includes(filter))host.filters=previousFilters;graphics.visible=enabled;}
  function setProgress(value){const previousProgress=progress;progress=Math.max(0,Math.min(1,Number(value)||0));if(progress===0||progress===1){particles=[];spawnBudget=0;graphics.clear();}if(Math.abs(previousProgress-progress)>.03)maskAge=1;sync();}
  function setBounds(value){rect={...value};maskAge=1;points=[];particles=[];sync();}
- function configure(value){const old=profileName;const before=JSON.stringify(cfg);Object.assign(cfg,value);if(JSON.stringify(cfg)===before)return;if(qualityName(cfg.quality)!==old)buildFilter();maskAge=1;points=[];sync();}
+ function configure(value){const old=profileName;const before=JSON.stringify(cfg);Object.assign(cfg,value);if(JSON.stringify(cfg)===before)return;if(qualityName(cfg.quality)!==old)buildFilter();maskAge=1;points=[];prepareSpacing();sync();}
  function refreshEmitter(){triangles=[];points=[];if(!model?.skeleton||!spineRuntime)return;const clip=new spineRuntime.SkeletonClipping(),transform=model.worldTransform;let total=0;
  for(const slot of model.skeleton.drawOrder){const attachment=slot.getAttachment();if(!slot.bone.active||!attachment){clip.clipEndWithSlot(slot);continue;}if(attachment instanceof spineRuntime.ClippingAttachment){clip.clipStart(slot,attachment);continue;}let vertices,uvs,indices;if(attachment instanceof spineRuntime.RegionAttachment){vertices=new Float32Array(8);attachment.computeWorldVertices(slot,vertices,0,2);uvs=attachment.uvs;indices=[0,1,2,2,3,0];}else if(attachment instanceof spineRuntime.MeshAttachment){vertices=new Float32Array(attachment.worldVerticesLength);attachment.computeWorldVertices(slot,0,vertices.length,vertices,0,2);uvs=attachment.uvs;indices=attachment.triangles;}else{clip.clipEndWithSlot(slot);continue;}const opacity=slot.color.a*attachment.color.a*model.skeleton.color.a*(model.worldAlpha??model.groupAlpha??model.alpha??1);if(opacity<=.05){clip.clipEndWithSlot(slot);continue;}if(clip.isClipping()){clip.clipTrianglesUnpacked(vertices,indices,indices.length,uvs);vertices=clip.clippedVertices;uvs=clip.clippedUVs;indices=clip.clippedTriangles;}const source=attachment.region?.texture?.texture?.source;const image=alphaImage(source,profile.alphaSize);if(!image){clip.clipEndWithSlot(slot);continue;}for(let i=0;i<indices.length;i+=3){const p=[];for(let j=0;j<3;j++){const k=indices[i+j]*2,x=vertices[k],y=vertices[k+1];p.push([x*transform.a+y*transform.c+transform.tx,x*transform.b+y*transform.d+transform.ty,uvs[k],uvs[k+1]]);}const area=Math.abs((p[1][0]-p[0][0])*(p[2][1]-p[0][1])-(p[1][1]-p[0][1])*(p[2][0]-p[0][0]))*.5;if(area>.05){total+=area;triangles.push({p,image,opacity,end:total});}}clip.clipEndWithSlot(slot);}clip.clipEnd();
  const band=Math.max(.012,cfg.edgeWidth/Math.max(rect.w,rect.h)*1.6);
  for(let i=0;i<profile.attempts&&triangles.length&&points.length<80;i++){const pick=random()*total;let lo=0,hi=triangles.length-1;while(lo<hi){const mid=(lo+hi)>>1;if(triangles[mid].end<pick)lo=mid+1;else hi=mid;}const t=triangles[lo];let a=random(),b=random();if(a+b>1){a=1-a;b=1-b;}const c=1-a-b,p=t.p;const x=p[0][0]*a+p[1][0]*b+p[2][0]*c,y=p[0][1]*a+p[1][1]*b+p[2][1]*c;const v=field(cfg,rect,(x-rect.x)/rect.w,(y-rect.y)/rect.h);if(Math.abs(v-progress)>band)continue;const u=p[0][2]*a+p[1][2]*b+p[2][2]*c,w=p[0][3]*a+p[1][3]*b+p[2][3]*c;const ix=Math.max(0,Math.min(t.image.w-1,Math.floor(u*t.image.w))),iy=Math.max(0,Math.min(t.image.h-1,Math.floor(w*t.image.h)));if(t.image.alpha[iy*t.image.w+ix]*t.opacity>60)points.push([x,y]);}
  }
+ let spacingPlan=null,spacingCursor=null,spacingSignature='',spacingEmitted=[];
+ const spacingKeys=['spacingEnabled','spacingCombine','spacingTemporalMode','spacingFrequencySource',
+  'spacingBaseRate','spacingInterval','spacingBurstCount','spacingBurstDelay',
+  'spacingMinInterval','spacingTimeJitter','spacingSpatialMode','spacingBasePx',
+  'spacingMinPx','spacingMaxPx','spacingSpatialJitter','spacingTravelSpeedPx',
+  'spacingTeleportThresholdPx','spacingSeed','spacingPathFollow',
+  'spacingAlignToTangent','spacingPath','spacingRateCurve','spacingIntervalCurve',
+  'spacingDistanceCurve','duration','seed','sparks'];
+ function prepareSpacing(){
+  const signature=JSON.stringify([profileName,...spacingKeys.map(key=>cfg[key])]);
+  if(signature===spacingSignature)return;
+  spacingSignature=signature;spacingCursor=null;spacingPlan=null;spacingEmitted=[];
+  particles=[];spawnBudget=0; // no stale particles when changing emission source or spacing policy
+  if(!cfg.spacingEnabled)return;
+  const S=global.FxSpacing;
+  if(!S)throw new Error('FxSpacing must be loaded before creating a path emitter.');
+  const duration=Math.max(0,Number(cfg.duration)||0),seed=Number(cfg.spacingSeed)||0;
+  const schedule=S.createTemporalSchedule({schemaVersion:1,
+    mode:cfg.spacingTemporalMode,frequencySource:cfg.spacingFrequencySource,
+    baseRate:Math.min(cfg.spacingBaseRate,profile.emissionCap),
+    interval:cfg.spacingInterval,duration,minInterval:cfg.spacingMinInterval,
+    jitter:cfg.spacingTimeJitter,burstCount:cfg.spacingBurstCount,
+    burstDelay:cfg.spacingBurstDelay,seed,maxEvents:Math.min(4096,Math.ceil(duration*profile.emissionCap)+128),
+    rateCurve:cfg.spacingRateCurve,intervalCurve:cfg.spacingIntervalCurve});
+  const placement=S.createSpatialPlacement({
+    path:cfg.spacingPath,mode:cfg.spacingSpatialMode,
+    baseSpacingPx:cfg.spacingBasePx,minSpacing:cfg.spacingMinPx,maxSpacing:cfg.spacingMaxPx,
+    jitter:cfg.spacingSpatialJitter,seed,maxPoints:Math.min(1024,profile.maxSparks*4),
+    spacingCurve:cfg.spacingDistanceCurve,alignToTangent:cfg.spacingAlignToTangent,
+    pathFollow:cfg.spacingPathFollow,tolerancePx:.25});
+  let motion=[];
+  if(cfg.spacingCombine!=='time'){
+    const steps=Math.min(8192,Math.max(1,Math.ceil(duration*240)));
+    const length=placement.table.length,speed=Math.min(1000,Math.max(0,cfg.spacingTravelSpeedPx));
+    for(let i=0;i<=steps;i++){
+      const t=duration*i/steps,travel=speed*t;
+      const spot=S.pointAtDistance(placement.table,travel,cfg.spacingPathFollow);
+      const oldTravel=i>0?speed*duration*(i-1)/steps:0;
+      // A wrapped OPEN path jumps to its beginning; this is not traversed distance.
+      const teleport=i>0&&!cfg.spacingPath.closed&&cfg.spacingPathFollow==='wrap'&&length>0&&
+        Math.floor(travel/length)>Math.floor(oldTravel/length);
+      motion.push({time:t,x:spot.x,y:spot.y,teleport});
+    }
+  }
+  const combined=S.combineSchedule({schedule,placement,motion,mode:cfg.spacingCombine,
+    teleportThresholdPx:cfg.spacingTeleportThresholdPx,
+    maxEvents:Math.min(4096,Math.ceil(duration*profile.emissionCap)+128)});
+  spacingPlan={temporal:schedule,spatial:placement,events:combined.events,
+    capped:schedule.capped||placement.capped||combined.capped,
+    pathLengthPx:placement.table.length};
+  spacingCursor=S.createCursor({events:combined.events});
+  if(time>0)spacingCursor.consume(time); // changing controls mid-play starts a fresh future-only schedule
+ }
+ function spawnSpacedEvent(e){
+  if(particles.length>=profile.maxSparks)return;
+  // Stable per-event RNG: skipped/capped events cannot perturb later random choices.
+  let state=((cfg.spacingSeed|0)^Math.imul(e.index+1,0x9e3779b1))>>>0;
+  const next=()=>{
+    state=(state+0x6d2b79f5)>>>0;let n=Math.imul(state^state>>>15,1|state);
+    n^=n+Math.imul(n^n>>>7,61|n);return ((n^n>>>14)>>>0)/4294967296;
+  };
+  const angle=(cfg.spacingAlignToTangent?e.angle:-Math.PI/2)+(next()-.5)*cfg.sparkSpread*Math.PI/180;
+  const speed=cfg.sparkSpeed*(.45+next()*.75);
+  const x=e.x-256+rect.x+rect.w/2,y=e.y-256+rect.y+rect.h/2;
+  particles.push({x,y,originX:x,originY:y,bornAt:e.time,
+    vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,
+    size:cfg.sparkSize*(.5+next()),life:cfg.sparkLife*(.6+next()*.65),age:0,
+    pathBased:true});
+  spacingEmitted.push({time:e.time,x,y,anchorIndex:e.anchorIndex});
+ }
  function update(realDt){if(dead)return;realDt=Math.max(0,Number(realDt)||0);const dt=Math.min(realDt,.05);time+=realDt;if(playing){phase=Math.min(1,phase+realDt/cfg.duration);setProgress(ease(phase,cfg.easing,cfg.timeCurve));if(phase>=1)playing=false;}sync();const active=enabled&&progress>0&&progress<1;
- if(active&&cfg.sparks>0){maskAge+=dt;if(maskAge>=profile.interval){maskAge=0;refreshEmitter();}spawnBudget=Math.min(20,spawnBudget+dt*Math.min(cfg.sparks,profile.emissionCap));while(spawnBudget>=1&&points.length&&particles.length<profile.maxSparks){spawnBudget--;const point=points[Math.floor(random()*points.length)],angle=-Math.PI/2+(random()-.5)*cfg.sparkSpread*Math.PI/180,speed=cfg.sparkSpeed*(.45+random()*.75);particles.push({x:point[0],y:point[1],vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,size:cfg.sparkSize*(.5+random()),life:cfg.sparkLife*(.6+random()*.65),age:0});}}else spawnBudget=0;
- graphics.clear();particles=particles.filter(p=>p.age<p.life);if(!enabled){particles=[];return;}const color=parseInt(cfg.sparkColor.slice(1),16);for(const p of particles){p.age+=dt;p.vy+=cfg.gravity*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;const alpha=Math.max(0,1-p.age/p.life);graphics.circle(p.x,p.y,p.size).fill({color,alpha});if(profileName!=='low')graphics.moveTo(p.x,p.y).lineTo(p.x-p.vx*.025,p.y-p.vy*.025).stroke({color,width:Math.max(.6,p.size*.55),alpha:alpha*.6});}}
+ if(cfg.spacingEnabled){
+   if(spacingCursor){const due=spacingCursor.consume(time);
+     if(active&&cfg.sparks>0)for(const event of due)spawnSpacedEvent(event);
+   }
+ }else if(active&&cfg.sparks>0){maskAge+=dt;if(maskAge>=profile.interval){maskAge=0;refreshEmitter();}spawnBudget=Math.min(20,spawnBudget+dt*Math.min(cfg.sparks,profile.emissionCap));while(spawnBudget>=1&&points.length&&particles.length<profile.maxSparks){spawnBudget--;const point=points[Math.floor(random()*points.length)],angle=-Math.PI/2+(random()-.5)*cfg.sparkSpread*Math.PI/180,speed=cfg.sparkSpeed*(.45+random()*.75);particles.push({x:point[0],y:point[1],vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,size:cfg.sparkSize*(.5+random()),life:cfg.sparkLife*(.6+random()*.65),age:0});}}else spawnBudget=0;
+ graphics.clear();particles=particles.filter(p=>p.pathBased?time-p.bornAt<p.life:p.age<p.life);if(!enabled){particles=[];return;}const color=parseInt(cfg.sparkColor.slice(1),16);for(const p of particles){if(p.pathBased){p.age=Math.max(0,time-p.bornAt);p.x=p.originX+p.vx*p.age;p.y=p.originY+p.vy*p.age+.5*cfg.gravity*p.age*p.age;}else{p.age+=dt;p.vy+=cfg.gravity*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;}const alpha=Math.max(0,1-p.age/p.life);graphics.circle(p.x,p.y,p.size).fill({color,alpha});if(profileName!=='low'&&cfg.sparkTrails!==false)graphics.moveTo(p.x,p.y).lineTo(p.x-p.vx*.025,p.y-p.vy*.025).stroke({color,width:Math.max(.6,p.size*.55),alpha:alpha*.6});}}
  function play(){let lo=0,hi=1;if(progress>=1)setProgress(0);for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(ease(mid,cfg.easing,cfg.timeCurve)<progress)lo=mid;else hi=mid;}phase=(lo+hi)/2;playing=true;}
  function destroy(){if(dead)return;dead=true;host.filters=previousFilters;host.filterArea=previousArea;graphics.destroy();filter.destroy();particles=[];points=[];triangles=[];}
- sync();return {configure,setBounds,setProgress,update,play,pause(){playing=false;},reset(){playing=false;setProgress(0);},destroy,setEnabled(value){if(enabled===!!value)return;enabled=!!value;particles=[];sync();},field(x,y){return field(cfg,rect,x,y);},get progress(){return progress;},get filter(){return filter;},get particles(){return particles;},get emitterPoints(){return points;},get settings(){return {...cfg};},get profile(){return profileName;},get playing(){return playing;},refreshEmitter};
+ sync();prepareSpacing();return {configure,setBounds,setProgress,update,play,pause(){playing=false;},reset(){playing=false;setProgress(0);},destroy,setEnabled(value){if(enabled===!!value)return;enabled=!!value;particles=[];sync();},field(x,y){return field(cfg,rect,x,y);},get progress(){return progress;},get filter(){return filter;},get particles(){return particles;},get emitterPoints(){return points;},get spacingPlan(){return spacingPlan;},get spacingEmitted(){return spacingEmitted;},get settings(){return {...cfg};},get profile(){return profileName;},get playing(){return playing;},refreshEmitter};
 }
 global.SpineBurnFx={createBurnTransition,createApplication,qualityName,PROFILES,field,ease,GL_VERTEX,GL_FRAGMENT,GPU_SHADER};
 })(globalThis);
@@ -3021,7 +3652,7 @@ THE SOFTWARE.
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const defaults={quality:'auto',shape:0,angle:0,centerX:0.5,centerY:0.5,roughness:0.10,noiseScale:6,seed:8,softness:0.006,duration:3,easing:1,timeCurve:FxCurves.createPreset('easeInOut',{parameterKey:'transitionProgress',monotonic:true}),flameHeight:38,edgeWidth:5,flameBrightness:1.8,glow:0.8,turbulence:0.7,fireSpeed:1,flicker:0.35,fireColor:'#ff6b19',hotColor:'#ffe7a0',sparks:65,sparkSize:1.8,sparkSpeed:65,sparkSpread:65,sparkLife:1.1,gravity:-18,sparkColor:'#ffc278',desaturation:1,brightness:0.86,contrast:1.12,charWidth:0.035,charStrength:0.6,animationSpeed:1,zoom:1};
+const defaults={quality:'auto',shape:0,angle:0,centerX:0.5,centerY:0.5,roughness:0.10,noiseScale:6,seed:8,softness:0.006,duration:3,easing:1,timeCurve:FxCurves.createPreset('easeInOut',{parameterKey:'transitionProgress',monotonic:true}),flameHeight:38,edgeWidth:5,flameBrightness:1.8,glow:0.8,turbulence:0.7,fireSpeed:1,flicker:0.35,fireColor:'#ff6b19',hotColor:'#ffe7a0',sparks:65,sparkSize:1.8,sparkSpeed:65,sparkSpread:65,sparkLife:1.1,gravity:-18,sparkColor:'#ffc278',desaturation:1,brightness:0.86,contrast:1.12,charWidth:0.035,charStrength:0.6,animationSpeed:1,zoom:1,sparkTrails:true,spacingEnabled:false,spacingCombine:'time',spacingTemporalMode:'uniform',spacingFrequencySource:'rate',spacingBaseRate:65,spacingInterval:.05,spacingBurstCount:3,spacingBurstDelay:.03,spacingMinInterval:0,spacingTimeJitter:0,spacingSpatialMode:'even',spacingBasePx:20,spacingMinPx:2,spacingMaxPx:80,spacingSpatialJitter:0,spacingTravelSpeedPx:120,spacingTeleportThresholdPx:512,spacingSeed:8,spacingPathFollow:'clamp',spacingAlignToTangent:true,spacingGuides:false,spacingRateCurve:null,spacingIntervalCurve:null,spacingDistanceCurve:null,spacingPath:{schemaVersion:1,closed:false,segments:[{p0:[96,256],p1:[180,104],p2:[332,408],p3:[416,256]}]}};
 const cfg={...defaults};
 const groups=[
 ['Transition',true,[['shape','Shape','select',[[0,'Linear'],[1,'Circular'],[2,'Organic patches']]],['angle','Direction angle',0,360,1,'°'],['centerX','Center X',0,1,0.01,'%'],['centerY','Center Y',0,1,0.01,'%'],['roughness','Edge irregularity',0,0.35,0.005,'%'],['noiseScale','Noise scale',1,30,0.5,''],['seed','Noise seed',0,99,1,''],['softness','Edge softness',0.001,0.08,0.001,'%'],['easing','Timing curve','select',[[0,'Linear'],[1,'Smooth'],[2,'Ease in'],[3,'Ease out'],[4,'Custom curve']]]]],
@@ -3090,6 +3721,50 @@ $('duration').onchange=()=>applyDuration($('duration').value,'seconds');$('durat
 // Commit on Enter without requiring a mouse click.
 for(const id of ['duration','durationFrames'])$(id).onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$(id).blur();}};
 renderAssetSelection();updateDurationInputs();updateTimeline();
+const spacingGuide=document.createElementNS('http://www.w3.org/2000/svg','svg');
+spacingGuide.id='fxSpacingGuide';spacingGuide.setAttribute('aria-hidden','true');
+spacingGuide.style.cssText='position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:3';
+$('cameraPlane').append(spacingGuide);
+let spacingUi=null;
+{
+  const holder=document.createElement('div');
+  const sparksGroup=[...$('settings').children].find(d=>d.querySelector('summary')?.textContent==='Sparks');
+  if(sparksGroup)sparksGroup.after(holder);else $('settings').append(holder);
+  spacingUi=FxSpacingUi.mount(holder,{cfg,getFrameCount:()=>durationFrames(),
+    isLocked:()=>bakeBusy||loading||rendererBusy,
+    onChange:()=>{syncUniforms();updateSpacingGuides();}});
+}
+function updateSpacingGuides(){
+  spacingGuide.replaceChildren();
+  if(!app||!cfg.spacingEnabled||!cfg.spacingGuides||!model){spacingGuide.hidden=true;return;}
+  spacingGuide.hidden=false;
+  const w=app.screen.width,h=app.screen.height;
+  spacingGuide.setAttribute('viewBox','0 0 '+w+' '+h);
+  spacingGuide.setAttribute('width',w);spacingGuide.setAttribute('height',h);
+  spacingGuide.style.width=w+'px';spacingGuide.style.height=h+'px';
+  const cx=frameBox.x+frameBox.w/2-256,cy=frameBox.y+frameBox.h/2-256;
+  const segments=cfg.spacingPath.segments;
+  let d='';for(let i=0;i<segments.length;i++){
+    const s=segments[i];const fmt=p=>(p[0]+cx)+','+(p[1]+cy);
+    d+=(i?' ':'M '+fmt(s.p0))+' C '+fmt(s.p1)+' '+fmt(s.p2)+' '+fmt(s.p3);
+  }
+  if(cfg.spacingPath.closed)d+=' Z';
+  const line=document.createElementNS('http://www.w3.org/2000/svg','path');
+  line.setAttribute('d',d);line.setAttribute('fill','none');line.setAttribute('stroke','#69c5f9');
+  line.setAttribute('stroke-width','1.5');line.setAttribute('stroke-dasharray','6 4');
+  spacingGuide.append(line);
+  try{
+    const points=FxSpacing.createSpatialPlacement({path:cfg.spacingPath,mode:cfg.spacingSpatialMode,
+      baseSpacingPx:cfg.spacingBasePx,minSpacing:cfg.spacingMinPx,maxSpacing:cfg.spacingMaxPx,
+      jitter:cfg.spacingSpatialJitter,seed:cfg.spacingSeed,maxPoints:300,
+      spacingCurve:cfg.spacingDistanceCurve,alignToTangent:cfg.spacingAlignToTangent,
+      pathFollow:cfg.spacingPathFollow}).points;
+    for(const point of points){const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('cx',point.x+cx);dot.setAttribute('cy',point.y+cy);
+      dot.setAttribute('r','2');dot.setAttribute('fill','#ffbe7d');spacingGuide.append(dot);}
+  }catch(e){spacingGuide.hidden=true;}
+}
+
 function rgb(hex){return [(parseInt(hex.slice(1,3),16))/255,(parseInt(hex.slice(3,5),16))/255,(parseInt(hex.slice(5,7),16))/255];}
 function setStatus(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error);}
 function showFatal(error){$('fatal').style.display='block';$('fatal').textContent='Preview could not start: '+error.message+'. Enable hardware acceleration and open this file in desktop Chrome or Edge.';$('loading').style.display='none';setStatus(error.message,true);}
@@ -3099,7 +3774,7 @@ function ease(t){return cfg.easing===4?FxCurves.evaluate(cfg.timeCurve,t):cfg.ea
 function inverseEase(v){if(v<=0)return 0;if(v>=1)return 1;let lo=0,hi=1;for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(ease(mid)<v)lo=mid;else hi=mid;}return (lo+hi)/2;}
 function setProgress(value){progress=Math.max(0,Math.min(1,value));$('progress').value=progress;$('progressValue').textContent=(progress*100).toFixed(1)+'%';maskAge=1;if(progress===0||progress===1){particles=[];spawnBudget=0;}if(fx)fx.setProgress(progress);updateTimeline();syncUniforms();updateCenterHandle();}
 function setPlaying(value){playing=value;$('play').textContent=playing?'Pause transition':'Play transition';}
-function fit(){if(!app||!model||!poseBox)return;const w=app.screen.width,h=app.screen.height,viewW=bakeArea.width,viewH=bakeArea.height;const margin=Math.min(75,viewW*.12,viewH*.12);const scale=Math.max(.01,Math.min((viewW-margin*2)/poseBox.w,(viewH-margin*2)/poseBox.h)*cfg.zoom);model.scale.set(Math.max(.01,scale));model.position.set(w/2-(poseBox.x+poseBox.w/2)*scale,h/2-(poseBox.y+poseBox.h/2)*scale+15);frameBox={x:model.x+poseBox.x*scale,y:model.y+poseBox.y*scale,w:poseBox.w*scale,h:poseBox.h*scale};if(fx)fx.setBounds(frameBox);particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();}
+function fit(){if(!app||!model||!poseBox)return;const w=app.screen.width,h=app.screen.height,viewW=bakeArea.width,viewH=bakeArea.height;const margin=Math.min(75,viewW*.12,viewH*.12);const scale=Math.max(.01,Math.min((viewW-margin*2)/poseBox.w,(viewH-margin*2)/poseBox.h)*cfg.zoom);model.scale.set(Math.max(.01,scale));model.position.set(w/2-(poseBox.x+poseBox.w/2)*scale,h/2-(poseBox.y+poseBox.h/2)*scale+15);frameBox={x:model.x+poseBox.x*scale,y:model.y+poseBox.y*scale,w:poseBox.w*scale,h:poseBox.h*scale};if(fx)fx.setBounds(frameBox);particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();updateSpacingGuides();}
 function measurePose(){model.scale.set(1);model.position.set(0);model.update(0);const b=model.getLocalBounds();if(!(b.width>0&&b.height>0))throw new Error('The skeleton has no visible attachments in this skin.');poseBox={x:b.x,y:b.y,w:b.width,h:b.height};fit();}
 function updateAlphaMask(){if(fx){fx.refreshEmitter();emitterPoints=fx.emitterPoints;}}
 function updateParticles(dt){if(fx){fx.update(dt);particles=fx.particles;emitterPoints=fx.emitterPoints;}}
@@ -3112,7 +3787,7 @@ const parser=binary?new spine.SkeletonBinary(new spine.AtlasAttachmentLoader(new
 if(fx){fx.destroy();fx=null;}if(model){subject.removeChild(model);model.destroy();}if(atlas)atlas.dispose();textureSources.forEach(x=>x.destroy());atlas=newAtlas;textureSources=newSources;model=newModel;subject.addChild(model);$('animation').replaceChildren();const setup=document.createElement('option');setup.value='';setup.textContent='Setup pose';$('animation').append(setup);for(const anim of skeletonData.animations){const o=document.createElement('option');o.value=anim.name;o.textContent=anim.name;$('animation').append(o);}if(skeletonData.animations.length)$('animation').value=skeletonData.animations.some(x=>x.name==='idle')?'idle':skeletonData.animations[0].name;$('skin').replaceChildren();for(const skin of skeletonData.skins){const o=document.createElement('option');o.value=skin.name;o.textContent=skin.name;$('skin').append(o);}if(skeletonData.skins.length){$('skin').value=skeletonData.skins.some(x=>x.name==='default')?'default':skeletonData.skins[0].name;model.skeleton.setSkinByName($('skin').value);model.skeleton.setSlotsToSetupPose();}$('skin').disabled=!skeletonData.skins.length;setAnimation();loadedAsset=exportInfo||{skeletonName:binary?'skeleton.skel':'skeleton.json',atlasName:'skeleton.atlas',skeleton:new Blob([binary?skeleton:skeleton],{type:binary?'application/octet-stream':'application/json'}),atlas:new Blob([atlasText],{type:'application/octet-stream'}),images:new Map(imageMap)};loadedAsset.version=version;fx=SpineBurnFx.createBurnTransition({PIXI,spine,app,host:subject,model,settings:{...cfg,reverse:$('reverse').checked},bounds:frameBox});fx.setProgress(progress);filter=fx.filter;syncUniforms();updateCenterHandle();$('assetName').textContent=name;setStatus('Loaded '+name+' · Spine '+version+' · '+newAtlas.pages.length+' atlas page'+(newAtlas.pages.length===1?'':'s')+' · '+skeletonData.animations.length+' animations');particles=[];maskAge=1;}catch(e){if(newModel&&newModel!==model)newModel.destroy();if(newAtlas&&newAtlas!==atlas)newAtlas.dispose();newSources.filter(x=>!textureSources.includes(x)).forEach(x=>x.destroy());setStatus(e.message,true);throw e;}finally{if(serial===loadSerial){loading=false;renderAssetSelection();$('loading').style.display='none';}}}
 async function loadFiles(files){if(loading||rendererBusy||bakeBusy){assetMessage('The preview is busy. Try again when it finishes.',true);return false;}const list=Array.from(files);const skeletons=list.filter(f=>/\.(json|skel)$/i.test(f.name)),atlases=list.filter(f=>/\.atlas$/i.test(f.name));if(skeletons.length!==1||atlases.length!==1){assetMessage('Select exactly one .json or .skel, one .atlas, and all atlas images. .spine editor projects must be exported first.',true);return false;}const images=new Map();for(const f of list.filter(f=>/\.(png|webp|jpe?g)$/i.test(f.name))){if(images.has(f.name)){assetMessage('Duplicate texture filename: '+f.name+'.',true);return false;}images.set(f.name,f);}selectedSkeleton=skeletons[0];selectedAtlas=atlases[0];selectedImages=new Map(images);renderAssetSelection();try{const skel=skeletons[0];await installAsset(/\.skel$/i.test(skel.name)?new Uint8Array(await skel.arrayBuffer()):await skel.text(),await atlases[0].text(),images,skel.name,/\.skel$/i.test(skel.name),{skeletonName:skel.name,atlasName:atlases[0].name,skeleton:skel,atlas:atlases[0],images:new Map(images)});assetMessage('Loaded '+skel.name+' into the preview.');return true;}catch(e){assetMessage(e.message,true);return false;}}
 async function loadSample(){if(loading||rendererBusy||bakeBusy)return;const data=JSON.parse($('sampleData').textContent);const images=new Map(Object.entries(data.images).map(([name,b64])=>[name,new Blob([Uint8Array.from(atob(b64),c=>c.charCodeAt(0))],{type:'image/png'})]));const skeletonText=JSON.stringify(data.skeleton);await installAsset(skeletonText,data.atlas,images,data.label+' · built-in sample',false,{skeletonName:data.skeletonName,atlasName:data.atlasName,skeleton:new Blob([skeletonText],{type:'application/json'}),atlas:new Blob([data.atlas],{type:'text/plain'}),images:new Map(images)});}
-$('load').onclick=()=>{$('assetPanel').open=true;$('assetPanel').scrollIntoView({block:'nearest'});$('skeletonFile').focus({preventScroll:true});};$('selectAll').onclick=()=>$('files').click();$('files').onchange=()=>{loadFiles($('files').files);$('files').value='';};$('sample').onclick=()=>loadSample().catch(()=>{});$('animation').onchange=setAnimation;$('skin').onchange=setSkin;$('background').onchange=()=>{$('viewport').classList.toggle('checker',$('background').value==='checker');$('viewport').style.backgroundColor=$('background').value==='checker'?'':$('background').value;};$('play').onclick=()=>{if(progress>=1){phase=0;setProgress(0);}else phase=inverseEase(progress);setPlaying(!playing);};$('reset').onclick=()=>{setPlaying(false);phase=0;setProgress(0);};$('finish').onclick=()=>{setPlaying(false);phase=1;setProgress(1);};$('progress').oninput=()=>{setPlaying(false);setProgress(Number($('progress').value));phase=inverseEase(progress);particles=[];};$('reverse').onchange=()=>{particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();};$('effect').onchange=()=>{particles=[];syncUniforms();};$('defaults').onclick=()=>{Object.assign(cfg,defaults);curveEditor?.setCurve(cfg.timeCurve);for(const [, ,fields]of groups)for(const [key,,a,,,unit]of fields){$(key).value=cfg[key];if($(key+'Value'))$(key+'Value').textContent=displayValue(cfg[key],unit);}$('reverse').checked=false;$('effect').checked=true;updateDurationInputs();fit();phase=inverseEase(progress);updateTimeline();};
+$('load').onclick=()=>{$('assetPanel').open=true;$('assetPanel').scrollIntoView({block:'nearest'});$('skeletonFile').focus({preventScroll:true});};$('selectAll').onclick=()=>$('files').click();$('files').onchange=()=>{loadFiles($('files').files);$('files').value='';};$('sample').onclick=()=>loadSample().catch(()=>{});$('animation').onchange=setAnimation;$('skin').onchange=setSkin;$('background').onchange=()=>{$('viewport').classList.toggle('checker',$('background').value==='checker');$('viewport').style.backgroundColor=$('background').value==='checker'?'':$('background').value;};$('play').onclick=()=>{if(progress>=1){phase=0;setProgress(0);}else phase=inverseEase(progress);setPlaying(!playing);};$('reset').onclick=()=>{setPlaying(false);phase=0;setProgress(0);};$('finish').onclick=()=>{setPlaying(false);phase=1;setProgress(1);};$('progress').oninput=()=>{setPlaying(false);setProgress(Number($('progress').value));phase=inverseEase(progress);particles=[];};$('reverse').onchange=()=>{particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();};$('effect').onchange=()=>{particles=[];syncUniforms();};$('defaults').onclick=()=>{Object.assign(cfg,defaults);curveEditor?.setCurve(cfg.timeCurve);for(const [, ,fields]of groups)for(const [key,,a,,,unit]of fields){$(key).value=cfg[key];if($(key+'Value'))$(key+'Value').textContent=displayValue(cfg[key],unit);}$('reverse').checked=false;$('effect').checked=true;updateDurationInputs();fit();phase=inverseEase(progress);updateTimeline();spacingUi?.refresh();updateSpacingGuides();};
 let dragDepth=0;const viewport=$('viewport');viewport.addEventListener('dragenter',e=>{e.preventDefault();dragDepth++;viewport.classList.add('dragging');});viewport.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});viewport.addEventListener('dragleave',()=>{if(--dragDepth<=0){dragDepth=0;viewport.classList.remove('dragging');}});viewport.addEventListener('drop',e=>{e.preventDefault();dragDepth=0;viewport.classList.remove('dragging');loadFiles(e.dataTransfer.files);});window.addEventListener('dragover',e=>e.preventDefault());window.addEventListener('drop',e=>e.preventDefault());
 async function initRenderer(preferred='webgl'){
  const result=await SpineBurnFx.createApplication(PIXI,{backgroundAlpha:0,resolution:1,autoDensity:true,width:viewport.clientWidth,height:viewport.clientHeight},preferred,cfg.quality);app=result.app;backend=result.backend;$('cameraPlane').prepend(app.canvas);subject=new PIXI.Container();app.stage.addChild(subject);
@@ -3360,7 +4035,16 @@ async function bakeSequence() {
       lastSampleSeconds: (count - 1) / BAKE_FPS, sampling: 't = frameIndex / fps; end exclusive',
       transparent: true, trimmed: false, renderer: backend, animation, skin, animationLoop: true,
       animationSpeed: settings.animationSpeed, effectEnabled, effectSettings: settings,
-      capture: crop, referenceBounds: { ...frameBox }, modelTransform: transform, sparkRandomSeed: settings.seed };
+      capture: crop, referenceBounds: { ...frameBox }, modelTransform: transform, sparkRandomSeed: settings.seed,
+      spacing: bakeFx.spacingPlan ? {schemaVersion:1,enabled:true,mode:settings.spacingCombine,
+        pathLengthPx:bakeFx.spacingPlan.pathLengthPx,capped:bakeFx.spacingPlan.capped,
+        eventTimesSeconds:bakeFx.spacingPlan.events.map(e=>e.time),
+        actuallySpawned:bakeFx.spacingEmitted.map(e=>({time:e.time,x:e.x,y:e.y,anchorIndex:e.anchorIndex})),
+        eventAnchors:bakeFx.spacingPlan.events.map(e=>({x:e.x,y:e.y,distance:e.distance,angle:e.angle})),
+        spatialDistancesPx:bakeFx.spacingPlan.spatial.points.map(p=>p.distance),
+        emissionClock:'absolute seconds; not tied to render ticks',
+        coordinateSpace:'logical px relative to 512 × 512 authoring field centered on Spine bounds'} :
+        {schemaVersion:1,enabled:false} };
     entries.push({ name: 'sequence.json', data: JSON.stringify(metadata, null, 2) },
       { name: 'README.txt', data: 'SPINE PNG SEQUENCE\n\n' + count + ' transparent RGBA PNG frames, all exactly ' +
         crop.width + ' x ' + crop.height + ' pixels. Play at 60 FPS. Do not trim individual frames.\n' +
@@ -3512,8 +4196,8 @@ sequenceZip=zip;
 function safePath(name){const normalized=name.replace(/\\/g,'/');if(normalized.startsWith('/')||normalized.split('/').some(p=>p==='..'||p===''||p==='.')||/^[A-Za-z]:/.test(normalized))throw new Error('The atlas contains an unsupported export path: '+name);return normalized;}
 function preset(target){const a=loadedAsset;return {schemaVersion:1,name:'Spine burn transition',rendererPreference:target,fallbackRenderer:'webgl',settings:{...cfg,reverse:$('reverse').checked},timing:{durationSeconds:cfg.duration,durationFrames:durationFrames(),fps:TIMELINE_FPS,clock:'elapsed-seconds'},asset:{skeleton:'assets/'+a.skeletonName,atlas:'assets/'+a.atlasName,spineVersion:a.version,animation:$('animation').value,skin:$('skin').value},reference:{progress,elapsedSeconds:inverseEase(progress)*cfg.duration,frame:Math.round(inverseEase(progress)*durationFrames()),quality:fx.profile,viewport:{width:app.screen.width,height:app.screen.height},bounds:{...frameBox},localBounds:{...poseBox},animationSpeed:cfg.animationSpeed,animateSkeleton:$('animPlay').checked},units:{center:'Normalized within fixed symbol bounds: X right, Y down, 0..1',progress:'0 = original; 1 = fully burned',flameAndSparks:'Logical renderer pixels, not device pixels'},compatibility:{pixi:'8.22.0',spineRuntime:'4.2.120',minimumGpuPath:'WebGL 1',physicalDeviceCertification:false}};}
 function example(target){return `import * as PIXI from 'pixi.js';\nimport * as SpineRuntime from '@esotericsoftware/spine-pixi-v8';\nimport { createApplication, createBurnTransition } from './BurnTransition.mjs';\n\n// Keep bootstrap inside a function to avoid a top-level-await cycle in Vite chunks.\nasync function main() {\nconst preset = await (await fetch('./preset.json')).json();\nconst { app, backend, fallbackReason } = await createApplication(PIXI, {\n  resizeTo: window, backgroundAlpha: 0, resolution: 1, autoDensity: true\n}, '${target}', preset.settings.quality);\ndocument.body.appendChild(app.canvas);\nif (fallbackReason) console.info(fallbackReason);\n\nPIXI.Assets.add({ alias: 'skeleton', src: preset.asset.skeleton });\nPIXI.Assets.add({ alias: 'atlas', src: preset.asset.atlas });\nawait PIXI.Assets.load(['skeleton', 'atlas']);\nconst skeleton = SpineRuntime.Spine.from({ skeleton: 'skeleton', atlas: 'atlas', autoUpdate: false });\nif (preset.asset.skin) {\n  skeleton.skeleton.setSkinByName(preset.asset.skin);\n  skeleton.skeleton.setSlotsToSetupPose();\n}\nif (preset.asset.animation) skeleton.state.setAnimation(0, preset.asset.animation, true);\nskeleton.update(0);\nconst host = new PIXI.Container();\napp.stage.addChild(host);\nhost.addChild(skeleton);\n\n// Preserve the author's fixed reference bounds. Do not recompute them every animation frame.\nconst local = preset.reference.localBounds;\nlet fx;\nfunction layout() {\n  const scale = Math.max(.01, Math.min((app.screen.width - 80) / local.w, (app.screen.height - 80) / local.h));\n  skeleton.scale.set(scale);\n  skeleton.position.set(app.screen.width / 2 - (local.x + local.w / 2) * scale,\n    app.screen.height / 2 - (local.y + local.h / 2) * scale);\n  const bounds = { x: skeleton.x + local.x * scale, y: skeleton.y + local.y * scale, w: local.w * scale, h: local.h * scale };\n  if (fx) fx.setBounds(bounds);\n  return bounds;\n}\nfx = createBurnTransition({ PIXI, spine: SpineRuntime, app, host, model: skeleton, settings: preset.settings, bounds: layout() });\n// Use preset.reference.progress to reproduce the exported still; start gameplay transitions at 0.\nfx.setProgress(preset.reference.progress);\nconst tick = ticker => {\n  const seconds = ticker.elapsedMS / 1000;\n  skeleton.update(preset.reference.animateSkeleton ? Math.min(seconds, .05) * preset.reference.animationSpeed : 0);\n  fx.update(seconds);\n};\napp.ticker.add(tick);\nwindow.addEventListener('resize', layout);\n// Existing games: supply your current Spine instance and your own ticker; do not update it twice.\nwindow.burnDemo = { app, skeleton, fx, backend,\n  play() { fx.reset(); fx.play(); },\n  setProgress(value) { fx.pause(); fx.setProgress(value); },\n  dispose() { window.removeEventListener('resize', layout); app.ticker.remove(tick); fx.destroy();\n    skeleton.destroy(); host.destroy(); app.destroy(true); }\n};\n}\nmain().catch(error => { console.error(error); document.body.textContent = error.message; });\n`;} 
-function readme(target){return `# Spine Burn Transition — ${target==='webgpu'?'WebGPU preferred, with WebGL fallback':'WebGL / WebGL 1 compatibility'}\n\nThis package contains the exact shared effect module used by Spine Burn Lab and the settings selected at export time. All assets remain local. The exporter copies the supplied Spine files; it does not modify them.\n\n## Package contents\n- preset.json: every effect parameter, center, timing, quality, selected skin/animation, reference bounds and preview progress.\n- FxCurves.mjs: reusable, validated versioned curve evaluator (linear, stepped and cubic Bezier; no dependencies).\n- BurnTransition.mjs: reusable PixiJS effect, GLSL + WGSL programs, alpha-aware and clipping-aware CPU spark emitter, and application initialization helper.\n- example.js + index.html + package.json: runnable integration example.\n- shaders/: readable shader sources; the runtime module contains the same source.\n- public/assets/: the selected skeleton, atlas, and all atlas pages.\n- LICENSES.txt: bundled runtime and Pixi notices.\n\n## Run the integration example\nRequires Node.js 20.19+ or 22.12+ on the developer machine, not on the target phone.\n\n1. Extract this ZIP to a directory.\n2. Run npm install.\n3. Run npm run dev.\n4. Open the printed localhost URL. The selected preview progress appears immediately.\n5. Call burnDemo.play() in the console to play a complete transition, or burnDemo.setProgress(0.5) to inspect it.\n\nThe WebGPU example needs HTTPS or a secure localhost context. For a phone on your network, serve the example with HTTPS; ordinary LAN HTTP does not expose WebGPU. The app helper falls back to WebGL if WebGPU is unavailable or initialization fails. WebGL does not require WebGPU support.\n\n## Integrate into an existing PixiJS game\nUse PixiJS 8.22.0 and @esotericsoftware/spine-pixi-v8 4.2.120 (Spine 4.2 exports). The createApplication helper refreshes Pixi 8.22’s shared default batch shader to match the active renderer texture limit when switching backends. This uses the version-specific DefaultBatcher._updateMaxTextures method; keep the exact pin or revalidate this initialization step before upgrading. Import createBurnTransition from BurnTransition.mjs. Pass PIXI, the Spine runtime namespace, your app, a Spine instance, preset.settings, and a fixed renderer-space bounds rectangle.\n\nPut the Spine instance inside an identity-transform Container directly under app.stage and pass that Container as host. Move/scale the Spine instance inside the host. The host may contain existing filters; the effect appends its filter and restores the prior filter list on destroy. The example shows this contract explicitly. Use one effect host per symbol.\n\nCall fx.update(elapsedSeconds) once per frame AFTER updating the skeleton pose. Use fx.setProgress(value) for external animation/tween control, or fx.reset(); fx.play() for the exported duration and easing. fx.pause() pauses the transition progress while fx.update() continues flame and particle motion. The effect does not update the Spine animation itself. Avoid double ticker updates.\n\nCall fx.configure({ centerX: 0.3, centerY: 0.7 }) to change the origin, and fx.setBounds(bounds) after moving/resizing the symbol. Call fx.setEnabled(false) to compare the original. Remove your ticker callback and call fx.destroy() when the symbol leaves the scene; destroy your own skeleton and atlas resources according to their ownership.\n\n## Duration, timeline, and 60 FPS frames\nThe author enters Duration (seconds) or Duration (frames @ 60 FPS). These are synchronized; seconds snap to the nearest whole frame, with a minimum of one frame. preset.settings.duration and preset.timing.durationSeconds are the canonical duration in seconds. preset.timing.durationFrames = durationSeconds * 60; preset.timing.fps is 60. For example, 90 frames = 1.5 seconds. Pass settings.duration unchanged into the effect.\n\nFrames are authoring units, not a counter of actual rendered frames. Use ticker.elapsedMS / 1000 with fx.update(); do not increment progress by a fixed 1/frameCount each callback. A 30 FPS phone and a 120 Hz desktop both complete a 90-frame preset in 1.5 seconds of active elapsed time, subject to the next available render frame.\n\nCustom timing: choose Timing curve = Custom in the editor; preset.settings.timeCurve contains the versioned FX-CORE-01 JSON curve (normalized fraction of duration on the X axis). The developer example and PNG bake run the same FxCurves evaluator through BurnTransition.mjs, including monotonic and Bezier constraints.\n\nThe effect progress is the mask position after the selected easing curve. Elapsed seconds and nominal frame position use the inverse curve, so 25% mask progress can correspond to more or less than 25% elapsed time. preset.reference.elapsedSeconds and frame record this position for the exported still.\n\n## Geometry, units, and appearance\nshape 0 = Linear, 1 = Circular, 2 = Organic patches. centerX and centerY are normalized inside the fixed reference box, with +X right and +Y down. The Circular mask measures actual renderer-space distance, so a non-square box produces a circle rather than an ellipse. Progress expands its radius from zero to the farthest box corner. With Edge irregularity > 0 the circle has a noisy burning perimeter; use roughness = 0 for a geometrically exact circle. Reverse direction burns from the outside inward.\n\nUse preset.reference.localBounds for the same selected skin/animation coordinate frame; do not replace the bounds each frame with a moving animated AABB. At progress 0 the source is unchanged; at 1 it has the exported burned appearance and original alpha. The center marker is an editor overlay, not part of the exported effect.\n\nFlame height, ember width, spark size and launch speed use logical renderer pixels. To reproduce the author's apparent size exactly, match preset.reference.bounds.w/h. If you intentionally resize the symbol and want proportional flames, scale these pixel parameters by your displayed size / reference size. DPR is independent; start with app resolution 1 on older phones. A single fixed author preset is exported; Auto quality selects Low on mobile and Balanced on typical desktops. Select a fixed quality in the lab when exact profile matching matters.\n\n## Phones manufactured in 2019–2020\nManufacturing year alone does not establish support or frame rate. The compatibility path is WebGL, including WebGL 1, with an updated browser and working GPU drivers. WebGPU is an enhancement and is never the only path. A third Canvas export is not included: Canvas does not execute these shaders and the Spine Canvas renderer has feature limitations. Devices without usable WebGL can display an application-provided unfiltered symbol/fallback message.\n\nLow profile: filter resolution 0.5, 3 flame samples, no halo samples, up to 96 active sparks, emission capped at 45/s, a bounded CPU sampling budget, no synchronous GPU pixel readbacks, and anti-aliasing disabled when the application helper selects Low. Balanced uses resolution 1 / 6 samples / 4 halo samples; High uses 1.5 / 9 / 8. Low preserves your parameters but applies documented cost caps. Sparks use attachment alpha, transformed region/mesh geometry, and Spine clipping.\n\nKeep atlases at 2048x2048 or below where practical; inspect MAX_TEXTURE_SIZE on WebGL and maxTextureDimension2D on WebGPU before loading. One RGBA 2048 page alone occupies about 16 MiB on the GPU; multiple pages, render targets, and other symbols add to this. Avoid applying one full-screen filter per dozens of simultaneously active symbols. Profile the intended number of symbols in the actual game.\n\nPhysical-device acceptance checklist: test representative Android 2019 and 2020 devices and the oldest supported iPhone/browser; test WebGL 1 explicitly; verify load, 0/50/100% progress, transparency/PMA, circular center at corners, resize, background/resume, context loss, cleanup, and sustained frame time/memory with the intended symbol count. This package is NOT a certification that every phone from those years reaches a fixed FPS.\n\n## Validation and backend differences\nGLSL and WGSL implement the same mask, parameters, deterministic lattice noise, premultiplied-alpha compositing, and quality constants. Small floating-point and sampling differences between devices/renderers are possible. Particle placement is stochastic. Compare the boundary and burned image rather than expecting identical random spark positions. The package does not contain a fabricated physical-mobile benchmark.\n\n## References\nhttps://pixijs.com/8.x/guides/components/filters\nhttps://pixijs.com/8.x/guides/components/application\nhttps://esotericsoftware.com/spine-pixi\nhttps://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API\n`;}
-async function buildPackage(target){if($('timingMessage').classList.contains('error'))throw new Error('Enter a valid duration before exporting.');if(!loadedAsset||!fx)throw new Error('Load a Spine asset before exporting.');const a=loadedAsset,p=preset(target),core="import './FxCurves.mjs';\n"+$('sharedCore').textContent+'\nexport const { createBurnTransition, createApplication, qualityName } = globalThis.SpineBurnFx;\n';const entries=[{name:'preset.json',data:JSON.stringify(p,null,2)},{name:'public/preset.json',data:JSON.stringify(p,null,2)},{name:'FxCurves.mjs',data:$('fxCurveCore').textContent+'\nexport const FxCurves = globalThis.FxCurves;\n'},{name:'BurnTransition.mjs',data:core},{name:'example.js',data:example(target)},{name:'README.md',data:readme(target)},{name:'index.html',data:'<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spine Burn — '+target+'<\/title><style>html,body{margin:0;width:100%;height:100%;background:#151820;overflow:hidden}canvas{display:block}<\/style><script type="module" src="/example.js"><\/script><\/html>'},{name:'package.json',data:JSON.stringify({name:'spine-burn-'+target,private:true,type:'module',scripts:{dev:'vite --host 0.0.0.0',build:'vite build'},dependencies:{'pixi.js':'8.22.0','@esotericsoftware/spine-pixi-v8':'4.2.120'},devDependencies:{vite:'7.1.12'}},null,2)},{name:'shaders/burn.vert.glsl',data:SpineBurnFx.GL_VERTEX},{name:'shaders/burn.frag.glsl',data:SpineBurnFx.GL_FRAGMENT.replace('precision highp float;','precision highp float;\n#define FIRE_STEPS '+SpineBurnFx.PROFILES[fx.profile].steps+'\n#define HALO_STEPS '+SpineBurnFx.PROFILES[fx.profile].halo+'\n#define HALO_DIVISOR '+Math.max(1,SpineBurnFx.PROFILES[fx.profile].halo)+'\n')},{name:'LICENSES.txt',data:$('runtimeLicenses').textContent},{name:'public/assets/'+safePath(a.skeletonName),data:a.skeleton},{name:'public/assets/'+safePath(a.atlasName),data:a.atlas}];if(target==='webgpu')entries.push({name:'shaders/burn.wgsl',data:SpineBurnFx.GPU_SHADER.replaceAll('FIRE_STEPS_VALUE',String(SpineBurnFx.PROFILES[fx.profile].steps)).replaceAll('HALO_STEPS_VALUE',String(SpineBurnFx.PROFILES[fx.profile].halo))});for(const page of atlas.pages){const pageName=safePath(page.name);let image=a.images.get(page.name);if(!image){const found=[...a.images].filter(([k])=>k.split('/').pop()===page.name.replace(/\\/g,'/').split('/').pop());if(found.length===1)image=found[0][1];}if(!image)throw new Error('Cannot export missing atlas image: '+page.name);entries.push({name:'public/assets/'+pageName,data:image});}const names=entries.map(x=>x.name);if(new Set(names).size!==names.length)throw new Error('Export filenames conflict. Rename the skeleton or atlas files and load them again.');return {blob:await zip(entries),preset:p,entries};}
+function readme(target){return `# Spine Burn Transition — ${target==='webgpu'?'WebGPU preferred, with WebGL fallback':'WebGL / WebGL 1 compatibility'}\n\nThis package contains the exact shared effect module used by Spine Burn Lab and the settings selected at export time. All assets remain local. The exporter copies the supplied Spine files; it does not modify them.\n\n## Package contents\n- preset.json: every effect parameter, center, timing, quality, selected skin/animation, reference bounds and preview progress.\n- FxSpacing.mjs: deterministic time scheduling, exact seeded spacing and adaptive arc-length paths.\n- FxCurves.mjs: reusable, validated versioned curve evaluator (linear, stepped and cubic Bezier; no dependencies).\n- BurnTransition.mjs: reusable PixiJS effect, GLSL + WGSL programs, alpha-aware and clipping-aware CPU spark emitter, and application initialization helper.\n- example.js + index.html + package.json: runnable integration example.\n- shaders/: readable shader sources; the runtime module contains the same source.\n- public/assets/: the selected skeleton, atlas, and all atlas pages.\n- LICENSES.txt: bundled runtime and Pixi notices.\n\n## Run the integration example\nRequires Node.js 20.19+ or 22.12+ on the developer machine, not on the target phone.\n\n1. Extract this ZIP to a directory.\n2. Run npm install.\n3. Run npm run dev.\n4. Open the printed localhost URL. The selected preview progress appears immediately.\n5. Call burnDemo.play() in the console to play a complete transition, or burnDemo.setProgress(0.5) to inspect it.\n\nThe WebGPU example needs HTTPS or a secure localhost context. For a phone on your network, serve the example with HTTPS; ordinary LAN HTTP does not expose WebGPU. The app helper falls back to WebGL if WebGPU is unavailable or initialization fails. WebGL does not require WebGPU support.\n\n## Integrate into an existing PixiJS game\nUse PixiJS 8.22.0 and @esotericsoftware/spine-pixi-v8 4.2.120 (Spine 4.2 exports). The createApplication helper refreshes Pixi 8.22’s shared default batch shader to match the active renderer texture limit when switching backends. This uses the version-specific DefaultBatcher._updateMaxTextures method; keep the exact pin or revalidate this initialization step before upgrading. Import createBurnTransition from BurnTransition.mjs. Pass PIXI, the Spine runtime namespace, your app, a Spine instance, preset.settings, and a fixed renderer-space bounds rectangle.\n\nPut the Spine instance inside an identity-transform Container directly under app.stage and pass that Container as host. Move/scale the Spine instance inside the host. The host may contain existing filters; the effect appends its filter and restores the prior filter list on destroy. The example shows this contract explicitly. Use one effect host per symbol.\n\nCall fx.update(elapsedSeconds) once per frame AFTER updating the skeleton pose. Use fx.setProgress(value) for external animation/tween control, or fx.reset(); fx.play() for the exported duration and easing. fx.pause() pauses the transition progress while fx.update() continues flame and particle motion. The effect does not update the Spine animation itself. Avoid double ticker updates.\n\nCall fx.configure({ centerX: 0.3, centerY: 0.7 }) to change the origin, and fx.setBounds(bounds) after moving/resizing the symbol. Call fx.setEnabled(false) to compare the original. Remove your ticker callback and call fx.destroy() when the symbol leaves the scene; destroy your own skeleton and atlas resources according to their ownership.\n\n## Duration, timeline, and 60 FPS frames\nThe author enters Duration (seconds) or Duration (frames @ 60 FPS). These are synchronized; seconds snap to the nearest whole frame, with a minimum of one frame. preset.settings.duration and preset.timing.durationSeconds are the canonical duration in seconds. preset.timing.durationFrames = durationSeconds * 60; preset.timing.fps is 60. For example, 90 frames = 1.5 seconds. Pass settings.duration unchanged into the effect.\n\nFrames are authoring units, not a counter of actual rendered frames. Use ticker.elapsedMS / 1000 with fx.update(); do not increment progress by a fixed 1/frameCount each callback. A 30 FPS phone and a 120 Hz desktop both complete a 90-frame preset in 1.5 seconds of active elapsed time, subject to the next available render frame.\n\nCustom timing: choose Timing curve = Custom in the editor; preset.settings.timeCurve contains the versioned FX-CORE-01 JSON curve (normalized fraction of duration on the X axis). The developer example and PNG bake run the same FxCurves evaluator through BurnTransition.mjs, including monotonic and Bezier constraints.\n\nThe effect progress is the mask position after the selected easing curve. Elapsed seconds and nominal frame position use the inverse curve, so 25% mask progress can correspond to more or less than 25% elapsed time. preset.reference.elapsedSeconds and frame record this position for the exported still.\n\n## Geometry, units, and appearance\nshape 0 = Linear, 1 = Circular, 2 = Organic patches. centerX and centerY are normalized inside the fixed reference box, with +X right and +Y down. The Circular mask measures actual renderer-space distance, so a non-square box produces a circle rather than an ellipse. Progress expands its radius from zero to the farthest box corner. With Edge irregularity > 0 the circle has a noisy burning perimeter; use roughness = 0 for a geometrically exact circle. Reverse direction burns from the outside inward.\n\nUse preset.reference.localBounds for the same selected skin/animation coordinate frame; do not replace the bounds each frame with a moving animated AABB. At progress 0 the source is unchanged; at 1 it has the exported burned appearance and original alpha. The center marker is an editor overlay, not part of the exported effect.\n\nFlame height, ember width, spark size and launch speed use logical renderer pixels. To reproduce the author's apparent size exactly, match preset.reference.bounds.w/h. If you intentionally resize the symbol and want proportional flames, scale these pixel parameters by your displayed size / reference size. DPR is independent; start with app resolution 1 on older phones. A single fixed author preset is exported; Auto quality selects Low on mobile and Balanced on typical desktops. Select a fixed quality in the lab when exact profile matching matters.\n\n## Phones manufactured in 2019–2020\nManufacturing year alone does not establish support or frame rate. The compatibility path is WebGL, including WebGL 1, with an updated browser and working GPU drivers. WebGPU is an enhancement and is never the only path. A third Canvas export is not included: Canvas does not execute these shaders and the Spine Canvas renderer has feature limitations. Devices without usable WebGL can display an application-provided unfiltered symbol/fallback message.\n\nLow profile: filter resolution 0.5, 3 flame samples, no halo samples, up to 96 active sparks, emission capped at 45/s, a bounded CPU sampling budget, no synchronous GPU pixel readbacks, and anti-aliasing disabled when the application helper selects Low. Balanced uses resolution 1 / 6 samples / 4 halo samples; High uses 1.5 / 9 / 8. Low preserves your parameters but applies documented cost caps. Sparks use attachment alpha, transformed region/mesh geometry, and Spine clipping.\n\nKeep atlases at 2048x2048 or below where practical; inspect MAX_TEXTURE_SIZE on WebGL and maxTextureDimension2D on WebGPU before loading. One RGBA 2048 page alone occupies about 16 MiB on the GPU; multiple pages, render targets, and other symbols add to this. Avoid applying one full-screen filter per dozens of simultaneously active symbols. Profile the intended number of symbols in the actual game.\n\nPhysical-device acceptance checklist: test representative Android 2019 and 2020 devices and the oldest supported iPhone/browser; test WebGL 1 explicitly; verify load, 0/50/100% progress, transparency/PMA, circular center at corners, resize, background/resume, context loss, cleanup, and sustained frame time/memory with the intended symbol count. This package is NOT a certification that every phone from those years reaches a fixed FPS.\n\n## Validation and backend differences\nGLSL and WGSL implement the same mask, parameters, deterministic lattice noise, premultiplied-alpha compositing, and quality constants. Small floating-point and sampling differences between devices/renderers are possible. Particle placement is stochastic. Compare the boundary and burned image rather than expecting identical random spark positions. The package does not contain a fabricated physical-mobile benchmark.\n\n## References\nhttps://pixijs.com/8.x/guides/components/filters\nhttps://pixijs.com/8.x/guides/components/application\nhttps://esotericsoftware.com/spine-pixi\nhttps://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API\n`;}
+async function buildPackage(target){if($('timingMessage').classList.contains('error'))throw new Error('Enter a valid duration before exporting.');if(!loadedAsset||!fx)throw new Error('Load a Spine asset before exporting.');const a=loadedAsset,p=preset(target),core="import './FxCurves.mjs';\nimport './FxSpacing.mjs';\n"+$('sharedCore').textContent+'\nexport const { createBurnTransition, createApplication, qualityName } = globalThis.SpineBurnFx;\n';const entries=[{name:'preset.json',data:JSON.stringify(p,null,2)},{name:'public/preset.json',data:JSON.stringify(p,null,2)},{name:'FxCurves.mjs',data:$('fxCurveCore').textContent+'\nexport const FxCurves = globalThis.FxCurves;\n'},{name:'FxSpacing.mjs',data:"import './FxCurves.mjs';\n"+$('fxSpacingCore').textContent+'\nexport const FxSpacing = globalThis.FxSpacing;\n'},{name:'BurnTransition.mjs',data:core},{name:'example.js',data:example(target)},{name:'README.md',data:readme(target)},{name:'index.html',data:'<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spine Burn — '+target+'<\/title><style>html,body{margin:0;width:100%;height:100%;background:#151820;overflow:hidden}canvas{display:block}<\/style><script type="module" src="/example.js"><\/script><\/html>'},{name:'package.json',data:JSON.stringify({name:'spine-burn-'+target,private:true,type:'module',scripts:{dev:'vite --host 0.0.0.0',build:'vite build'},dependencies:{'pixi.js':'8.22.0','@esotericsoftware/spine-pixi-v8':'4.2.120'},devDependencies:{vite:'7.1.12'}},null,2)},{name:'shaders/burn.vert.glsl',data:SpineBurnFx.GL_VERTEX},{name:'shaders/burn.frag.glsl',data:SpineBurnFx.GL_FRAGMENT.replace('precision highp float;','precision highp float;\n#define FIRE_STEPS '+SpineBurnFx.PROFILES[fx.profile].steps+'\n#define HALO_STEPS '+SpineBurnFx.PROFILES[fx.profile].halo+'\n#define HALO_DIVISOR '+Math.max(1,SpineBurnFx.PROFILES[fx.profile].halo)+'\n')},{name:'LICENSES.txt',data:$('runtimeLicenses').textContent},{name:'public/assets/'+safePath(a.skeletonName),data:a.skeleton},{name:'public/assets/'+safePath(a.atlasName),data:a.atlas}];if(target==='webgpu')entries.push({name:'shaders/burn.wgsl',data:SpineBurnFx.GPU_SHADER.replaceAll('FIRE_STEPS_VALUE',String(SpineBurnFx.PROFILES[fx.profile].steps)).replaceAll('HALO_STEPS_VALUE',String(SpineBurnFx.PROFILES[fx.profile].halo))});for(const page of atlas.pages){const pageName=safePath(page.name);let image=a.images.get(page.name);if(!image){const found=[...a.images].filter(([k])=>k.split('/').pop()===page.name.replace(/\\/g,'/').split('/').pop());if(found.length===1)image=found[0][1];}if(!image)throw new Error('Cannot export missing atlas image: '+page.name);entries.push({name:'public/assets/'+pageName,data:image});}const names=entries.map(x=>x.name);if(new Set(names).size!==names.length)throw new Error('Export filenames conflict. Rename the skeleton or atlas files and load them again.');return {blob:await zip(entries),preset:p,entries};}
 async function downloadPackage(target){const buttons=[$('exportWebGL'),$('exportWebGPU')];buttons.forEach(b=>b.disabled=true);try{const {blob}=await buildPackage(target);const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='Spine_Burn_'+(target==='webgpu'?'WebGPU':'WebGL')+'.zip';link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);setStatus('Exported '+target.toUpperCase()+' developer package with your preset and Spine assets.');}catch(e){setStatus('Export failed: '+e.message,true);}finally{buttons.forEach(b=>b.disabled=false);}}
 $('exportWebGL').onclick=()=>downloadPackage('webgl');$('exportWebGPU').onclick=()=>downloadPackage('webgpu');window.__burnExport={buildPackage,preset};
 })();

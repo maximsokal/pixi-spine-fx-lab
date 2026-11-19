@@ -32,18 +32,92 @@ function createBurnTransition({PIXI,spine:spineRuntime,app,host,model,settings,b
  function sync(){if(dead)return;const u=filter.resources.burnUniforms.uniforms;u.uOrigin=[coordinateOffset.x,coordinateOffset.y,0,0];u.uRect=[rect.x+coordinateOffset.x,rect.y+coordinateOffset.y,rect.w,rect.h];u.uMask=[progress,cfg.shape,cfg.angle*Math.PI/180,cfg.roughness];u.uShape=[cfg.centerX,cfg.centerY,cfg.noiseScale,cfg.seed];u.uEdge=[cfg.softness,cfg.edgeWidth,0,cfg.charStrength];u.uFire=[cfg.flameHeight,cfg.flameBrightness,cfg.glow,cfg.turbulence];u.uMotion=[time,cfg.fireSpeed,cfg.flicker,cfg.reverse?1:0];u.uGray=[cfg.desaturation,cfg.brightness,cfg.contrast,cfg.charWidth];u.uFireColor=rgb(cfg.fireColor);u.uHotColor=rgb(cfg.hotColor);filter.resources.burnUniforms.update();host.filterArea=new PIXI.Rectangle(0,0,app.screen.width,app.screen.height);if(enabled){if(!(host.filters||[]).includes(filter))host.filters=[...previousFilters,filter];}else if((host.filters||[]).includes(filter))host.filters=previousFilters;graphics.visible=enabled;}
  function setProgress(value){const previousProgress=progress;progress=Math.max(0,Math.min(1,Number(value)||0));if(progress===0||progress===1){particles=[];spawnBudget=0;graphics.clear();}if(Math.abs(previousProgress-progress)>.03)maskAge=1;sync();}
  function setBounds(value){rect={...value};maskAge=1;points=[];particles=[];sync();}
- function configure(value){const old=profileName;const before=JSON.stringify(cfg);Object.assign(cfg,value);if(JSON.stringify(cfg)===before)return;if(qualityName(cfg.quality)!==old)buildFilter();maskAge=1;points=[];sync();}
+ function configure(value){const old=profileName;const before=JSON.stringify(cfg);Object.assign(cfg,value);if(JSON.stringify(cfg)===before)return;if(qualityName(cfg.quality)!==old)buildFilter();maskAge=1;points=[];prepareSpacing();sync();}
  function refreshEmitter(){triangles=[];points=[];if(!model?.skeleton||!spineRuntime)return;const clip=new spineRuntime.SkeletonClipping(),transform=model.worldTransform;let total=0;
  for(const slot of model.skeleton.drawOrder){const attachment=slot.getAttachment();if(!slot.bone.active||!attachment){clip.clipEndWithSlot(slot);continue;}if(attachment instanceof spineRuntime.ClippingAttachment){clip.clipStart(slot,attachment);continue;}let vertices,uvs,indices;if(attachment instanceof spineRuntime.RegionAttachment){vertices=new Float32Array(8);attachment.computeWorldVertices(slot,vertices,0,2);uvs=attachment.uvs;indices=[0,1,2,2,3,0];}else if(attachment instanceof spineRuntime.MeshAttachment){vertices=new Float32Array(attachment.worldVerticesLength);attachment.computeWorldVertices(slot,0,vertices.length,vertices,0,2);uvs=attachment.uvs;indices=attachment.triangles;}else{clip.clipEndWithSlot(slot);continue;}const opacity=slot.color.a*attachment.color.a*model.skeleton.color.a*(model.worldAlpha??model.groupAlpha??model.alpha??1);if(opacity<=.05){clip.clipEndWithSlot(slot);continue;}if(clip.isClipping()){clip.clipTrianglesUnpacked(vertices,indices,indices.length,uvs);vertices=clip.clippedVertices;uvs=clip.clippedUVs;indices=clip.clippedTriangles;}const source=attachment.region?.texture?.texture?.source;const image=alphaImage(source,profile.alphaSize);if(!image){clip.clipEndWithSlot(slot);continue;}for(let i=0;i<indices.length;i+=3){const p=[];for(let j=0;j<3;j++){const k=indices[i+j]*2,x=vertices[k],y=vertices[k+1];p.push([x*transform.a+y*transform.c+transform.tx,x*transform.b+y*transform.d+transform.ty,uvs[k],uvs[k+1]]);}const area=Math.abs((p[1][0]-p[0][0])*(p[2][1]-p[0][1])-(p[1][1]-p[0][1])*(p[2][0]-p[0][0]))*.5;if(area>.05){total+=area;triangles.push({p,image,opacity,end:total});}}clip.clipEndWithSlot(slot);}clip.clipEnd();
  const band=Math.max(.012,cfg.edgeWidth/Math.max(rect.w,rect.h)*1.6);
  for(let i=0;i<profile.attempts&&triangles.length&&points.length<80;i++){const pick=random()*total;let lo=0,hi=triangles.length-1;while(lo<hi){const mid=(lo+hi)>>1;if(triangles[mid].end<pick)lo=mid+1;else hi=mid;}const t=triangles[lo];let a=random(),b=random();if(a+b>1){a=1-a;b=1-b;}const c=1-a-b,p=t.p;const x=p[0][0]*a+p[1][0]*b+p[2][0]*c,y=p[0][1]*a+p[1][1]*b+p[2][1]*c;const v=field(cfg,rect,(x-rect.x)/rect.w,(y-rect.y)/rect.h);if(Math.abs(v-progress)>band)continue;const u=p[0][2]*a+p[1][2]*b+p[2][2]*c,w=p[0][3]*a+p[1][3]*b+p[2][3]*c;const ix=Math.max(0,Math.min(t.image.w-1,Math.floor(u*t.image.w))),iy=Math.max(0,Math.min(t.image.h-1,Math.floor(w*t.image.h)));if(t.image.alpha[iy*t.image.w+ix]*t.opacity>60)points.push([x,y]);}
  }
+ let spacingPlan=null,spacingCursor=null,spacingSignature='',spacingEmitted=[];
+ const spacingKeys=['spacingEnabled','spacingCombine','spacingTemporalMode','spacingFrequencySource',
+  'spacingBaseRate','spacingInterval','spacingBurstCount','spacingBurstDelay',
+  'spacingMinInterval','spacingTimeJitter','spacingSpatialMode','spacingBasePx',
+  'spacingMinPx','spacingMaxPx','spacingSpatialJitter','spacingTravelSpeedPx',
+  'spacingTeleportThresholdPx','spacingSeed','spacingPathFollow',
+  'spacingAlignToTangent','spacingPath','spacingRateCurve','spacingIntervalCurve',
+  'spacingDistanceCurve','duration','seed','sparks'];
+ function prepareSpacing(){
+  const signature=JSON.stringify([profileName,...spacingKeys.map(key=>cfg[key])]);
+  if(signature===spacingSignature)return;
+  spacingSignature=signature;spacingCursor=null;spacingPlan=null;spacingEmitted=[];
+  particles=[];spawnBudget=0; // no stale particles when changing emission source or spacing policy
+  if(!cfg.spacingEnabled)return;
+  const S=global.FxSpacing;
+  if(!S)throw new Error('FxSpacing must be loaded before creating a path emitter.');
+  const duration=Math.max(0,Number(cfg.duration)||0),seed=Number(cfg.spacingSeed)||0;
+  const schedule=S.createTemporalSchedule({schemaVersion:1,
+    mode:cfg.spacingTemporalMode,frequencySource:cfg.spacingFrequencySource,
+    baseRate:Math.min(cfg.spacingBaseRate,profile.emissionCap),
+    interval:cfg.spacingInterval,duration,minInterval:cfg.spacingMinInterval,
+    jitter:cfg.spacingTimeJitter,burstCount:cfg.spacingBurstCount,
+    burstDelay:cfg.spacingBurstDelay,seed,maxEvents:Math.min(4096,Math.ceil(duration*profile.emissionCap)+128),
+    rateCurve:cfg.spacingRateCurve,intervalCurve:cfg.spacingIntervalCurve});
+  const placement=S.createSpatialPlacement({
+    path:cfg.spacingPath,mode:cfg.spacingSpatialMode,
+    baseSpacingPx:cfg.spacingBasePx,minSpacing:cfg.spacingMinPx,maxSpacing:cfg.spacingMaxPx,
+    jitter:cfg.spacingSpatialJitter,seed,maxPoints:Math.min(1024,profile.maxSparks*4),
+    spacingCurve:cfg.spacingDistanceCurve,alignToTangent:cfg.spacingAlignToTangent,
+    pathFollow:cfg.spacingPathFollow,tolerancePx:.25});
+  let motion=[];
+  if(cfg.spacingCombine!=='time'){
+    const steps=Math.min(8192,Math.max(1,Math.ceil(duration*240)));
+    const length=placement.table.length,speed=Math.min(1000,Math.max(0,cfg.spacingTravelSpeedPx));
+    for(let i=0;i<=steps;i++){
+      const t=duration*i/steps,travel=speed*t;
+      const spot=S.pointAtDistance(placement.table,travel,cfg.spacingPathFollow);
+      const oldTravel=i>0?speed*duration*(i-1)/steps:0;
+      // A wrapped OPEN path jumps to its beginning; this is not traversed distance.
+      const teleport=i>0&&!cfg.spacingPath.closed&&cfg.spacingPathFollow==='wrap'&&length>0&&
+        Math.floor(travel/length)>Math.floor(oldTravel/length);
+      motion.push({time:t,x:spot.x,y:spot.y,teleport});
+    }
+  }
+  const combined=S.combineSchedule({schedule,placement,motion,mode:cfg.spacingCombine,
+    teleportThresholdPx:cfg.spacingTeleportThresholdPx,
+    maxEvents:Math.min(4096,Math.ceil(duration*profile.emissionCap)+128)});
+  spacingPlan={temporal:schedule,spatial:placement,events:combined.events,
+    capped:schedule.capped||placement.capped||combined.capped,
+    pathLengthPx:placement.table.length};
+  spacingCursor=S.createCursor({events:combined.events});
+  if(time>0)spacingCursor.consume(time); // changing controls mid-play starts a fresh future-only schedule
+ }
+ function spawnSpacedEvent(e){
+  if(particles.length>=profile.maxSparks)return;
+  // Stable per-event RNG: skipped/capped events cannot perturb later random choices.
+  let state=((cfg.spacingSeed|0)^Math.imul(e.index+1,0x9e3779b1))>>>0;
+  const next=()=>{
+    state=(state+0x6d2b79f5)>>>0;let n=Math.imul(state^state>>>15,1|state);
+    n^=n+Math.imul(n^n>>>7,61|n);return ((n^n>>>14)>>>0)/4294967296;
+  };
+  const angle=(cfg.spacingAlignToTangent?e.angle:-Math.PI/2)+(next()-.5)*cfg.sparkSpread*Math.PI/180;
+  const speed=cfg.sparkSpeed*(.45+next()*.75);
+  const x=e.x-256+rect.x+rect.w/2,y=e.y-256+rect.y+rect.h/2;
+  particles.push({x,y,originX:x,originY:y,bornAt:e.time,
+    vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,
+    size:cfg.sparkSize*(.5+next()),life:cfg.sparkLife*(.6+next()*.65),age:0,
+    pathBased:true});
+  spacingEmitted.push({time:e.time,x,y,anchorIndex:e.anchorIndex});
+ }
  function update(realDt){if(dead)return;realDt=Math.max(0,Number(realDt)||0);const dt=Math.min(realDt,.05);time+=realDt;if(playing){phase=Math.min(1,phase+realDt/cfg.duration);setProgress(ease(phase,cfg.easing,cfg.timeCurve));if(phase>=1)playing=false;}sync();const active=enabled&&progress>0&&progress<1;
- if(active&&cfg.sparks>0){maskAge+=dt;if(maskAge>=profile.interval){maskAge=0;refreshEmitter();}spawnBudget=Math.min(20,spawnBudget+dt*Math.min(cfg.sparks,profile.emissionCap));while(spawnBudget>=1&&points.length&&particles.length<profile.maxSparks){spawnBudget--;const point=points[Math.floor(random()*points.length)],angle=-Math.PI/2+(random()-.5)*cfg.sparkSpread*Math.PI/180,speed=cfg.sparkSpeed*(.45+random()*.75);particles.push({x:point[0],y:point[1],vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,size:cfg.sparkSize*(.5+random()),life:cfg.sparkLife*(.6+random()*.65),age:0});}}else spawnBudget=0;
- graphics.clear();particles=particles.filter(p=>p.age<p.life);if(!enabled){particles=[];return;}const color=parseInt(cfg.sparkColor.slice(1),16);for(const p of particles){p.age+=dt;p.vy+=cfg.gravity*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;const alpha=Math.max(0,1-p.age/p.life);graphics.circle(p.x,p.y,p.size).fill({color,alpha});if(profileName!=='low')graphics.moveTo(p.x,p.y).lineTo(p.x-p.vx*.025,p.y-p.vy*.025).stroke({color,width:Math.max(.6,p.size*.55),alpha:alpha*.6});}}
+ if(cfg.spacingEnabled){
+   if(spacingCursor){const due=spacingCursor.consume(time);
+     if(active&&cfg.sparks>0)for(const event of due)spawnSpacedEvent(event);
+   }
+ }else if(active&&cfg.sparks>0){maskAge+=dt;if(maskAge>=profile.interval){maskAge=0;refreshEmitter();}spawnBudget=Math.min(20,spawnBudget+dt*Math.min(cfg.sparks,profile.emissionCap));while(spawnBudget>=1&&points.length&&particles.length<profile.maxSparks){spawnBudget--;const point=points[Math.floor(random()*points.length)],angle=-Math.PI/2+(random()-.5)*cfg.sparkSpread*Math.PI/180,speed=cfg.sparkSpeed*(.45+random()*.75);particles.push({x:point[0],y:point[1],vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,size:cfg.sparkSize*(.5+random()),life:cfg.sparkLife*(.6+random()*.65),age:0});}}else spawnBudget=0;
+ graphics.clear();particles=particles.filter(p=>p.pathBased?time-p.bornAt<p.life:p.age<p.life);if(!enabled){particles=[];return;}const color=parseInt(cfg.sparkColor.slice(1),16);for(const p of particles){if(p.pathBased){p.age=Math.max(0,time-p.bornAt);p.x=p.originX+p.vx*p.age;p.y=p.originY+p.vy*p.age+.5*cfg.gravity*p.age*p.age;}else{p.age+=dt;p.vy+=cfg.gravity*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;}const alpha=Math.max(0,1-p.age/p.life);graphics.circle(p.x,p.y,p.size).fill({color,alpha});if(profileName!=='low'&&cfg.sparkTrails!==false)graphics.moveTo(p.x,p.y).lineTo(p.x-p.vx*.025,p.y-p.vy*.025).stroke({color,width:Math.max(.6,p.size*.55),alpha:alpha*.6});}}
  function play(){let lo=0,hi=1;if(progress>=1)setProgress(0);for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(ease(mid,cfg.easing,cfg.timeCurve)<progress)lo=mid;else hi=mid;}phase=(lo+hi)/2;playing=true;}
  function destroy(){if(dead)return;dead=true;host.filters=previousFilters;host.filterArea=previousArea;graphics.destroy();filter.destroy();particles=[];points=[];triangles=[];}
- sync();return {configure,setBounds,setProgress,update,play,pause(){playing=false;},reset(){playing=false;setProgress(0);},destroy,setEnabled(value){if(enabled===!!value)return;enabled=!!value;particles=[];sync();},field(x,y){return field(cfg,rect,x,y);},get progress(){return progress;},get filter(){return filter;},get particles(){return particles;},get emitterPoints(){return points;},get settings(){return {...cfg};},get profile(){return profileName;},get playing(){return playing;},refreshEmitter};
+ sync();prepareSpacing();return {configure,setBounds,setProgress,update,play,pause(){playing=false;},reset(){playing=false;setProgress(0);},destroy,setEnabled(value){if(enabled===!!value)return;enabled=!!value;particles=[];sync();},field(x,y){return field(cfg,rect,x,y);},get progress(){return progress;},get filter(){return filter;},get particles(){return particles;},get emitterPoints(){return points;},get spacingPlan(){return spacingPlan;},get spacingEmitted(){return spacingEmitted;},get settings(){return {...cfg};},get profile(){return profileName;},get playing(){return playing;},refreshEmitter};
 }
 global.SpineBurnFx={createBurnTransition,createApplication,qualityName,PROFILES,field,ease,GL_VERTEX,GL_FRAGMENT,GPU_SHADER};
 })(globalThis);
