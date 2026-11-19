@@ -3475,6 +3475,726 @@ function mount(container,{cfg,onChange,isLocked,getFrameCount}){
 root.FxSpacingUi=Object.freeze({mount});
 })(globalThis);
 </script>
+<script id="fxEmitterCore">// FX-CORE-03: pure bounded emitter/layer data and absolute-time particle generation.
+(function (root, factory) {
+  'use strict';
+  const api=Object.freeze(factory(root.FxCurves||
+    (typeof require==='function'?require('./curve-core.js'):null)));
+  if(typeof module==='object'&&module.exports)module.exports=api;
+  else root.FxEmitters=api;
+})(globalThis, function (Curves) {
+  'use strict';
+  const VERSION=1, MAX_EMITTERS=16, MAX_LAYERS=64, MAX_BUDGET=1400;
+  const LAYER_TYPES=Object.freeze(['glow','rays','smoke','debris','sparks','trails','postprocess']);
+  const BLENDS=['normal','add','multiply','screen'];
+  const PLACEMENTS=['behind','front','slot'];
+  const ANCHORS=['world','local','skeleton','bone','slot','attachment'];
+  const finite=n=>typeof n==='number'&&Number.isFinite(n);
+  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+  const fail=s=>{throw new TypeError('Invalid FX emitters: '+s);};
+  function num(n,label,lo,hi){if(!finite(n)||n<lo||n>hi)fail(label+' must be finite in '+lo+'..'+hi);return n;}
+  function integer(n,label,lo,hi){num(n,label,lo,hi);if(!Number.isInteger(n))fail(label+' must be integer');return n;}
+  function str(v,label,max=64){if(typeof v!=='string'||!v.trim()||v.length>max)fail(label+' must be nonempty text');return v;}
+  function id(v,label){if(typeof v!=='string'||!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(v))fail(label+' requires stable ID');return v;}
+  function keys(obj,names,label){
+    if(!obj||typeof obj!=='object'||Array.isArray(obj))fail(label+' must be object');
+    for(const key of Object.keys(obj))if(!names.includes(key))fail('unknown '+label+' key: '+key);
+  }
+  const hash=text=>{let h=2166136261>>>0;for(let i=0;i<text.length;i++)h=Math.imul(h^text.charCodeAt(i),16777619)>>>0;return h;};
+  function random(seed,index,channel){
+    let s=((seed|0)^Math.imul(index+1,0x9e3779b1)^hash(channel))>>>0;
+    s=(s+0x6d2b79f5)>>>0;
+    let n=Math.imul(s^s>>>15,1|s);
+    n^=n+Math.imul(n^n>>>7,61|n);
+    return ((n^n>>>14)>>>0)/4294967296;
+  }
+  const DEFAULTS={glow:['#ff7925',1,44,3],rays:['#ffda76',.85,85,12],
+    smoke:['#777684',.65,28,12],debris:['#ff8c36',.9,16,20],
+    sparks:['#ffd392',1,60,30],trails:['#ffbb60',.9,65,20],
+    postprocess:['#ffa253',.65,75,1]};
+  function newLayer(type,emitterId,order=0){
+    if(!LAYER_TYPES.includes(type))fail('unknown layer type '+type);
+    const [color,opacity,radius,count]=DEFAULTS[type];
+    return {id:emitterId+'_'+type,name:type[0].toUpperCase()+type.slice(1),
+      type,enabled:true,visible:true,x:0,y:0,rotation:0,scale:1,
+      order,blend:type==='smoke'||type==='debris'?'normal':'add',
+      color,opacity,radius,count,budget:count};
+  }
+  function newEmitter(i=0) {
+    const eid='emitter'+(i+1);
+    return {id:eid,name:'Emitter '+(i+1),enabled:true,visible:true,
+      x:i*110-55,y:0,space:'local',anchor:{type:'skeleton',name:''},
+      rotation:0,scale:1,duration:3,timeOffset:0,seed:419+i*997,
+      order:i,placement:'front',fallback:'hide',blend:'normal',budget:160,
+      layers:LAYER_TYPES.map((type,index)=>newLayer(type,eid,index))};
+  }
+  function makeExplosionPreset(){
+    return normalize({schemaVersion:1,enabled:false,globalBudget:600,
+      emitters:[newEmitter(0),newEmitter(1)]});
+  }
+  function normalize(input){
+    keys(input,['schemaVersion','enabled','globalBudget','emitters'],'document');
+    if(input.schemaVersion!==VERSION)fail('unsupported schemaVersion');
+    if(typeof input.enabled!=='boolean')fail('document enabled must be boolean');
+    const globalBudget=integer(input.globalBudget,'globalBudget',0,MAX_BUDGET);
+    if(!Array.isArray(input.emitters)||input.emitters.length>MAX_EMITTERS)
+      fail('maximum 16 emitters');
+    const allIds=new Set(),layerIds=new Set();let layerCount=0;
+    const emitters=input.emitters.map(e=>{
+      keys(e,['id','name','enabled','visible','x','y','space','anchor',
+        'rotation','scale','duration','timeOffset','seed','order',
+        'placement','fallback','blend','budget','layers','timeCurve'],'emitter');
+      const eid=id(e.id,'emitter id');
+      if(allIds.has(eid))fail('duplicate emitter ID '+eid);allIds.add(eid);
+      if(typeof e.enabled!=='boolean'||typeof e.visible!=='boolean')fail('emitter enabled/visible must be boolean');
+      if(!['world','local'].includes(e.space))fail('space must be world or local');
+      keys(e.anchor,['type','name','slot'],'anchor');
+      if(!ANCHORS.includes(e.anchor.type))fail('invalid anchor type');
+      const anchor={type:e.anchor.type,name:e.anchor.name??''};
+      if(e.anchor.type==='bone'||e.anchor.type==='slot'||e.anchor.type==='attachment'){
+        str(anchor.name,'anchor name',128);
+      }
+      if(e.anchor.type==='attachment')anchor.slot=str(e.anchor.slot,'attachment slot',128);
+      if(e.placement==='slot'&&e.anchor.type!=='slot'&&e.anchor.type!=='attachment')
+        fail('slot placement requires a slot/attachment anchor');
+      if(!PLACEMENTS.includes(e.placement))fail('invalid placement');
+      if(!['hide','front'].includes(e.fallback))fail('fallback must be hide or front');
+      if(!BLENDS.includes(e.blend))fail('invalid emitter blend');
+      if(!Array.isArray(e.layers))fail('emitter layers required');
+      const data={id:eid,name:str(e.name,'emitter name',96),enabled:e.enabled,visible:e.visible,
+        x:num(e.x,'x',-16384,16384),y:num(e.y,'y',-16384,16384),space:e.space,
+        anchor,rotation:num(e.rotation,'rotation',-3600,3600),
+        scale:num(e.scale,'scale',.01,20),
+        duration:num(e.duration,'duration',1/60,60),timeOffset:num(e.timeOffset,'timeOffset',-60,60),
+        seed:integer(e.seed,'seed',-2147483648,2147483647),
+        order:integer(e.order,'order',-1000,1000),
+        placement:e.placement,fallback:e.fallback,blend:e.blend,budget:integer(e.budget,'emitter budget',0,MAX_BUDGET),layers:[]};
+      if(e.timeCurve!=null){
+        if(!Curves)fail('FxCurves is required for timeCurve');
+        const curve=Curves.normalize(e.timeCurve);
+        if(curve.parameterKey!=='emitterProgress'||curve.domain!=='emitterTime'||
+           curve.inputUnit!=='normalized-duration')fail('emitter timeCurve must use emitterProgress/emitterTime');
+        data.timeCurve=curve;
+      }
+      data.layers=e.layers.map(l=>{
+        layerCount++;if(layerCount>MAX_LAYERS)fail('maximum 64 layers');
+        keys(l,['id','name','type','enabled','visible','x','y','rotation','scale',
+          'order','blend','color','opacity','radius','count','budget'],'layer');
+        const lid=id(l.id,'layer id');
+        if(layerIds.has(lid))fail('duplicate layer ID '+lid);layerIds.add(lid);
+        if(!LAYER_TYPES.includes(l.type))fail('unknown layer type');
+        if(typeof l.enabled!=='boolean'||typeof l.visible!=='boolean')fail('layer toggle must be boolean');
+        if(!BLENDS.includes(l.blend))fail('invalid layer blend');
+        if(typeof l.color!=='string'||!/^#[0-9a-fA-F]{6}$/.test(l.color))fail('color must be #RRGGBB');
+        return {id:lid,name:str(l.name,'layer name',96),type:l.type,
+          enabled:l.enabled,visible:l.visible,
+          x:num(l.x,'layer x',-16384,16384),y:num(l.y,'layer y',-16384,16384),
+          rotation:num(l.rotation,'layer rotation',-3600,3600),
+          scale:num(l.scale,'layer scale',.01,20),
+          order:integer(l.order,'layer order',-1000,1000),
+          blend:l.blend,color:l.color,opacity:num(l.opacity,'layer opacity',0,1),
+          radius:num(l.radius,'radius',.5,1024),count:integer(l.count,'count',1,128),
+          budget:integer(l.budget,'layer budget',0,MAX_BUDGET)};
+      });
+      return data;
+    });
+    return {schemaVersion:VERSION,enabled:input.enabled,globalBudget,emitters};
+  }
+  function serialize(document){return JSON.stringify(normalize(document));}
+  function deserialize(text){let doc;try{doc=JSON.parse(text)}catch{fail('invalid JSON')}return normalize(doc);}
+  function sample(input,absoluteTime) {
+    const doc=normalize(input);num(absoluteTime,'absoluteTime',0,1000000);
+    const layers=[];let totalCost=0;
+    if(!doc.enabled)return {time:absoluteTime,layers,cost:0,diagnostics:[]};
+    const emitterOrder=[...doc.emitters].sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
+    for(const e of emitterOrder){
+      if(!e.enabled||!e.visible||e.budget<=0)continue;
+      const elapsed=absoluteTime-e.timeOffset;
+      if(elapsed<0||elapsed>=e.duration)continue;
+      let u=elapsed/e.duration;
+      if(e.timeCurve)u=clamp(Curves.evaluate(e.timeCurve,u),0,1);
+      let emitterCost=0;
+      for(const l of [...e.layers].sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id))){
+        if(!l.enabled||!l.visible||l.opacity===0||l.budget===0)continue;
+        const available=Math.min(doc.globalBudget-totalCost,e.budget-emitterCost,l.budget);
+        if(available<=0)continue;
+        const primitives=primitivesFor(e,l,u,available);
+        if(!primitives.length)continue;
+        const item={id:l.id,emitterId:e.id,emitter:e,layer:l,type:l.type,
+          placement:e.placement,blend:l.blend,primitives,cost:primitives.length,
+          order:e.order*100+l.order};
+        layers.push(item);
+        emitterCost+=primitives.length;totalCost+=primitives.length;
+      }
+    }
+    return {time:absoluteTime,layers,cost:totalCost,diagnostics:[]};
+  }
+  function primitivesFor(e,l,u,max) {
+    const result=[],put=v=>{if(result.length<max)result.push(v)};
+    const seed=(e.seed^hash(l.id))|0;
+    const rad=Math.PI/180,fade=Math.pow(1-u,1.3),R=l.radius;
+    const opacity=l.opacity;
+    const origin=(n,axis)=>random(seed,n,axis);
+    // Values are in each layer's local coordinate system; the renderer owns transforms.
+    if(l.type==='glow'){put({shape:'circle',x:0,y:0,radius:R*(.35+1.15*u),alpha:fade*opacity});}
+    if(l.type==='postprocess'){
+      put({shape:'ring',x:0,y:0,radius:R*(.2+1.4*u),width:Math.max(1,6*(1-u)),
+        alpha:fade*opacity});
+    }
+    if(l.type==='rays')for(let i=0;i<l.count&&result.length<max;i++){
+      const a=2*Math.PI*(i+origin(i,'a')*.3)/l.count;
+      const r=R*(.35+u*(.55+.4*origin(i,'r')));
+      put({shape:'line',x1:Math.cos(a)*r*.08,y1:Math.sin(a)*r*.08,
+        x2:Math.cos(a)*r,y2:Math.sin(a)*r,
+        width:Math.max(.5,2.8*(1-u)),alpha:fade*opacity});
+    }
+    if(l.type==='smoke')for(let i=0;i<l.count&&result.length<max;i++){
+      const born=origin(i,'time')*.6,age=clamp((u-born)/.8,0,1);
+      if(u<born)continue;
+      const angle=2*Math.PI*origin(i,'a');
+      const r=R*(.3+.6*origin(i,'r'));
+      put({shape:'circle',x:Math.cos(angle)*r*age+age*7,
+        y:Math.sin(angle)*r*age-age*R*.6,
+        radius:(4+R*.16*(.25+age))*(.7+origin(i,'size')),alpha:opacity*(1-age)*.65});
+    }
+    if(l.type==='debris')for(let i=0;i<l.count&&result.length<max;i++){
+      const angle=2*Math.PI*origin(i,'angle'),speed=R*(.4+origin(i,'speed'));
+      const age=u;
+      const radius=speed*age;
+      const size=(1+origin(i,'size')*3.7)*(1-.5*age);
+      put({shape:'rect',x:Math.cos(angle)*radius,y:Math.sin(angle)*radius+18*age*age,
+        w:size,h:size*(.7+origin(i,'ar')),rotation:angle+age*8,
+        alpha:fade*opacity});
+    }
+    if(l.type==='sparks'||l.type==='trails'){
+      for(let i=0;i<l.count&&result.length<max;i++){
+        const born=origin(i,'born')*.55,age=clamp((u-born)/.7,0,1);
+        if(u<born)continue;
+        const angle=2*Math.PI*origin(i,'a'),speed=R*(.35+origin(i,'speed')*.8);
+        const x=Math.cos(angle)*speed*age,y=Math.sin(angle)*speed*age+R*.2*age*age;
+        const alpha=opacity*(1-age);
+        if(l.type==='sparks')put({shape:'circle',x,y,radius:1.2+2.2*origin(i,'size'),alpha});
+        else put({shape:'line',x1:x,y1:y,x2:x-Math.cos(angle)*Math.max(2,7*age),
+          y2:y-Math.sin(angle)*Math.max(2,7*age),width:1+origin(i,'width'),alpha});
+      }
+    }
+    return result;
+  }
+  return {VERSION,MAX_EMITTERS,MAX_LAYERS,LAYER_TYPES,normalize,serialize,deserialize,
+    makeExplosionPreset,newEmitter,newLayer,sample};
+});
+</script>
+<script id="fxEmitterRuntime">// FX-CORE-03 — PixiJS 8.22 / Spine 4.2 multi-layer renderer.
+// Owns ONLY its containers/graphics/filters/slot bindings, never the caller's Spine assets.
+(function(root){
+'use strict';
+const E=root.FxEmitters;
+function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x:0,y:0}}) {
+  if(!E||!PIXI||!app?.stage||!host||!model)throw Error('Emitter runtime requires FxEmitters, PIXI, app, host and Spine model');
+  const stage=app.stage;
+  if(host.parent!==stage||host.x||host.y||host.rotation||host.scale.x!==1||host.scale.y!==1)
+    throw Error('Emitter FX requires an identity-transform host directly under stage');
+  let doc=E.normalize(settings),rect={...bounds},clock=0,dead=false,diagnostics=[];
+  const groups={behind:new PIXI.Container(),front:new PIXI.Container()};
+  groups.behind.label='FX emitters behind Spine';groups.front.label='FX emitters in front of Spine';
+  groups.behind.sortableChildren=groups.front.sortableChildren=true;
+  stage.addChildAt(groups.behind,stage.getChildIndex(host));
+  stage.addChild(groups.front);
+  const owned=new Map(),slotGroups=new Map();
+  let last={time:0,layers:[],cost:0};
+  function diagnose(code,emitter,message){diagnostics.push({code,emitterId:emitter.id,message});}
+  function destroyLayer(layer){
+    if(!layer)return;
+    if(layer.filter){layer.container.filters=[];layer.filter.destroy();layer.filter=null;}
+    layer.container.destroy({children:true});
+  }
+  function dropSlot(slot){
+    const s=slotGroups.get(slot);if(!s)return;
+    // Spine may own a slot wrapper while emitter children survive a placement change.
+    // Move those still-owned children away BEFORE destroying the wrapper.
+    for(const child of [...s.wrapper.children])groups.front.addChild(child);
+    if(typeof model.removeSlotObject==='function'&&model.getSlotObject?.(slot)===s.wrapper)
+      model.removeSlotObject(slot,s.wrapper);
+    s.wrapper.destroy({children:true});
+    slotGroups.delete(slot);
+  }
+  function slotParent(slot,e){
+    let existing=slotGroups.get(slot);
+    if(existing)return existing.wrapper;
+    if(typeof model.addSlotObject!=='function'||typeof model.removeSlotObject!=='function'){
+      diagnose('slot-unsupported',e,'Pinned Spine runtime has no slot-object insertion');return null;
+    }
+    if(model.getSlotObject?.(slot)){
+      diagnose('slot-occupied',e,'Slot already has a caller-owned Pixi object; cannot replace it');return null;
+    }
+    const wrapper=new PIXI.Container();
+    wrapper.label='FX slot '+slot;
+    wrapper.sortableChildren=true;
+    try{model.addSlotObject(slot,wrapper,{followAttachmentTimeline:false})}
+    catch(error){wrapper.destroy();diagnose('slot-error',e,String(error.message||error));return null;}
+    slotGroups.set(slot,{wrapper});return wrapper;
+  }
+  function anchorWorld(e){
+    const anchor=e.anchor,transform=model.worldTransform;
+    const apply=p=>transform.apply(p,{x:0,y:0});
+    const skeleton=model.skeleton;
+    if(anchor.type==='world')return {x:e.x+worldOffset.x,y:e.y+worldOffset.y};
+    if(!skeleton){diagnose('missing-skeleton',e,'No Spine skeleton');return null;}
+    let px=0,py=0,bone=null;
+    if(anchor.type==='skeleton'){
+      // (0,0) is the Spine container origin, not the camera/crop center.
+    }else if(anchor.type==='bone'){
+      bone=skeleton.findBone(anchor.name);
+      if(!bone||!bone.active){diagnose('missing-bone',e,'Bone not found/active: '+anchor.name);return null;}
+      px=bone.worldX;py=bone.worldY;
+    }else if(anchor.type==='slot'||anchor.type==='attachment'){
+      const slot=skeleton.findSlot(anchor.type==='attachment'?anchor.slot:anchor.name);
+      if(!slot||!slot.bone?.active){
+        diagnose('missing-slot',e,'Slot not found/active: '+(anchor.slot||anchor.name));return null;
+      }
+      bone=slot.bone;px=bone.worldX;py=bone.worldY;
+      if(anchor.type==='attachment'){
+        const att=slot.getAttachment?.();
+        if(!att||att.name!==anchor.name){
+          diagnose('missing-attachment',e,'Active attachment not found: '+anchor.name);return null;
+        }
+        // The actual mesh/region world vertices are in skeleton coordinates.
+        let verts=null;
+        try{
+          if(typeof att.worldVerticesLength==='number'&&att.worldVerticesLength>=2&&
+             typeof att.computeWorldVertices==='function') {
+            verts=new Float32Array(Math.min(att.worldVerticesLength,512));
+            att.computeWorldVertices(slot,0,verts.length,verts,0,2);
+          }else if(typeof att.computeWorldVertices==='function'){
+            verts=new Float32Array(8);att.computeWorldVertices(slot,verts,0,2);
+          }
+        }catch(err){diagnose('attachment-vertices',e,'Cannot obtain attachment world vertices');return null;}
+        if(verts?.length){
+          let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+          for(let i=0;i<verts.length;i+=2) {
+            minX=Math.min(minX,verts[i]);minY=Math.min(minY,verts[i+1]);
+            maxX=Math.max(maxX,verts[i]);maxY=Math.max(maxY,verts[i+1]);
+          }
+          px=(minX+maxX)/2;py=(minY+maxY)/2;
+        }else{diagnose('attachment-unsupported',e,'Attachment has no supported world vertices');return null;}
+      }
+    }
+    if(e.space==='world'){const anchorAt=apply({x:px,y:py});return {x:anchorAt.x+e.x,y:anchorAt.y+e.y};}
+    if(bone){
+      return apply({x:px+bone.a*e.x+bone.b*e.y,
+        y:py+bone.c*e.x+bone.d*e.y});
+    }
+    return apply({x:px+e.x,y:py+e.y});
+  }
+  function parentFor(e){
+    if(e.placement==='behind')return groups.behind;
+    if(e.placement==='front')return groups.front;
+    const slot=e.anchor.type==='attachment'?e.anchor.slot:e.anchor.name;
+    if(!model.skeleton?.findSlot(slot)) {
+      diagnose('missing-slot',e,'Slot for interleaving does not exist: '+slot);
+      return e.fallback==='front'?groups.front:null;
+    }
+    return slotParent(slot,e)||(e.fallback==='front'?groups.front:null);
+  }
+  function setup(){
+    if(dead)return;
+    diagnostics=[];
+    const targetIds=new Set();
+    for(const e of doc.emitters){
+      targetIds.add(e.id);
+      let state=owned.get(e.id);
+      if(!state){
+        state={container:new PIXI.Container(),layers:new Map()};
+        state.container.label='FX '+e.id;
+        state.container.sortableChildren=true;
+        owned.set(e.id,state);
+      }
+      state.container.zIndex=e.order;
+      state.container.blendMode=e.blend;
+      for(const layer of e.layers){
+        let record=state.layers.get(layer.id);
+        if(!record){
+          const container=new PIXI.Container(),graphics=new PIXI.Graphics();
+          container.label='FX layer '+layer.id;
+          container.addChild(graphics);
+          record={container,graphics,filter:null};
+          if(layer.type==='postprocess'){
+            if(!PIXI.BlurFilter)throw Error('PixiJS BlurFilter unavailable for postprocess layer');
+            record.filter=new PIXI.BlurFilter({strength:2.5,quality:2});
+            container.filters=[record.filter];
+          }
+          state.layers.set(layer.id,record);
+          state.container.addChild(container);
+        }
+        record.container.zIndex=layer.order;
+        record.graphics.blendMode=layer.blend;
+        record.container.position.set(layer.x,layer.y);
+        record.container.rotation=layer.rotation*Math.PI/180;
+        record.container.scale.set(layer.scale);
+      }
+      for(const [lid,record] of [...state.layers]){
+        if(!e.layers.some(l=>l.id===lid)){destroyLayer(record);state.layers.delete(lid);}
+      }
+    }
+    for(const [eid,state]of [...owned]){
+      if(!targetIds.has(eid)){
+        for(const record of state.layers.values())destroyLayer(record);
+        state.layers.clear();state.container.destroy();owned.delete(eid);
+      }
+    }
+    // Detach stale slot containers only AFTER releasing all hosted emitters.
+    for(const slot of [...slotGroups.keys()]){
+      if(!doc.emitters.some(e=>e.placement==='slot'&&
+        (e.anchor.type==='attachment'?e.anchor.slot:e.anchor.name)===slot))dropSlot(slot);
+    }
+  }
+  function drawPrimitive(g,p,hex){
+    if(p.alpha<=0)return;
+    if(p.shape==='circle')g.circle(p.x,p.y,Math.max(.1,p.radius)).fill({color:hex,alpha:p.alpha});
+    else if(p.shape==='ring')g.circle(p.x,p.y,p.radius)
+      .stroke({color:hex,alpha:p.alpha,width:p.width});
+    else if(p.shape==='line')g.moveTo(p.x1,p.y1).lineTo(p.x2,p.y2)
+      .stroke({color:hex,alpha:p.alpha,width:p.width});
+    else if(p.shape==='rect'){
+      const c=Math.cos(p.rotation),s=Math.sin(p.rotation),w=p.w/2,h=p.h/2;
+      const corners=[[-w,-h],[w,-h],[w,h],[-w,h]].map(([x,y])=>
+        [p.x+x*c-y*s,p.y+x*s+y*c]);
+      g.poly(corners.flat()).fill({color:hex,alpha:p.alpha});
+    }
+  }
+  function seek(time){
+    if(dead)return;
+    clock=time;
+    const snapshot=E.sample(doc,Math.max(0,time));
+    last=snapshot;
+    diagnostics=[];
+    const byId=new Map(snapshot.layers.map(l=>[l.id,l]));
+    for(const e of doc.emitters){
+      const state=owned.get(e.id);if(!state)continue;
+      const parent=parentFor(e);
+      const world=e.placement==='slot'&&parent!==groups.front?{x:e.x,y:e.y}:anchorWorld(e);
+      const ready=Boolean(parent&&world);
+      if(parent&&state.container.parent!==parent)parent.addChild(state.container);
+      state.container.visible=ready&&doc.enabled&&e.enabled&&e.visible;
+      if(ready){
+        state.container.position.set(world.x,world.y);
+        state.container.rotation=e.rotation*Math.PI/180;
+        state.container.scale.set(e.scale);
+      }
+      for(const l of e.layers){
+        const item=byId.get(l.id),record=state.layers.get(l.id);
+        if(!record)continue;
+        record.container.visible=state.container.visible&&Boolean(item);
+        record.graphics.clear();
+        if(!item||!ready)continue;
+        const color=parseInt(l.color.slice(1),16);
+        for(const shape of item.primitives)drawPrimitive(record.graphics,shape,color);
+      }
+    }
+    return {time,visibleLayers:[...byId.keys()],cost:snapshot.cost,diagnostics:diagnostics.slice()};
+  }
+  function scenePositionForEmitter(id){
+    const e=doc.emitters.find(v=>v.id===id),state=owned.get(id);
+    if(!e||!state||!state.container.visible)return null;
+    if(e.placement==='slot')return stage.toLocal(state.container.getGlobalPosition());
+    return anchorWorld(e);
+  }
+  function scenePositionForLayer(eid,lid){
+    const state=owned.get(eid),record=state?.layers.get(lid);
+    if(!state?.container.visible||!record)return null;
+    return stage.toLocal(record.container.getGlobalPosition());
+  }
+  function emitterOffsetFromScene(id,x,y){
+    const e=doc.emitters.find(v=>v.id===id),state=owned.get(id);
+    if(!e||!state)throw Error('Emitter not found');
+    if(e.placement==='slot'){
+      const parent=state.container.parent;
+      if(!parent)throw Error('Unresolved slot parent');
+      return parent.toLocal(stage.toGlobal({x,y}));
+    }
+    const project=(dx,dy)=>anchorWorld({...e,x:dx,y:dy});
+    const p=project(0,0),a=project(1,0),b=project(0,1);
+    if(!p||!a||!b)throw Error('Anchor is unresolved');
+    const ax=a.x-p.x,ay=a.y-p.y,bx=b.x-p.x,by=b.y-p.y;
+    const det=ax*by-ay*bx;
+    if(Math.abs(det)<1e-12)throw Error('Anchor transform is singular');
+    const vx=x-p.x,vy=y-p.y;
+    return {x:(vx*by-vy*bx)/det,y:(ax*vy-ay*vx)/det};
+  }
+  function layerOffsetFromScene(eid,lid,x,y){
+    const state=owned.get(eid),layer=state?.layers.get(lid);
+    if(!layer)throw Error('Layer not found');
+    return state.container.toLocal(stage.toGlobal({x,y}));
+  }
+  function configure(value){
+    if(dead)throw Error('Emitter runtime destroyed');
+    const next=E.normalize(value);
+    doc=next;setup();seek(clock);
+  }
+  function setBounds(value){rect={...value};seek(clock);}
+  function destroy(){
+    if(dead)return;
+    dead=true;
+    for(const e of owned.values()){
+      for(const record of e.layers.values())destroyLayer(record);
+      e.layers.clear();e.container.destroy();
+    }
+    owned.clear();
+    for(const slot of [...slotGroups.keys()])dropSlot(slot);
+    groups.behind.destroy({children:true});groups.front.destroy({children:true});
+  }
+  setup();seek(0);
+  return {seek,configure,setBounds,destroy,
+    get document(){return doc},get clock(){return clock},
+    get diagnostics(){return diagnostics.slice()},
+    get snapshot(){return last},
+    get nodes(){return owned},
+    get ownedCount(){return owned.size},
+    get slotBindings(){return slotGroups.size},
+    scenePositionForEmitter,scenePositionForLayer,emitterOffsetFromScene,layerOffsetFromScene};
+}
+root.FxEmitterRuntime=Object.freeze({createEmitterLayers});
+})(globalThis);
+</script>
+<script id="fxEmitterUi">// FX-CORE-03 — optional, specialized emitter/layer authoring UI.
+(function(root){
+'use strict';
+const E=root.FxEmitters;
+const node=(tag,attrs={},text='')=>{
+  const n=document.createElement(tag);
+  for(const [k,v]of Object.entries(attrs))n.setAttribute(k,String(v));
+  if(text)n.textContent=text;
+  return n;
+};
+function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
+  let doc=E.normalize(value),selected=doc.emitters[0]?.id||null,selectedLayer=null;
+  let counter=0,internalError='';
+  const panel=node('details',{id:'fxEmitterPanel'});
+  const summary=node('summary',{},'Independent emitters & layers');
+  const body=node('div',{class:'section fx-emitter-body'});
+  const help=node('p',{class:'mini'},'Optional layered explosion. Every emitter/layer can move or hide independently. Drag colored viewport handles or enter precise numbers. Missing Spine anchors hide the layer with a warning.');
+  const controls=node('div',{id:'fxEmitterControls'});
+  const status=node('output',{id:'fxEmitterStatus',role:'status','aria-live':'polite'});
+  body.append(help,controls,status);panel.append(summary,body);parent.append(panel);
+  const styles=node('style',{id:'fxEmitterStyles'});
+  styles.textContent='.fx-emitter-body{display:grid;gap:8px}.fx-emitter-body .fx-emitter-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:4px 0;font-size:12px}' +
+    '.fx-emitter-body input[type=number],.fx-emitter-body input[type=text],.fx-emitter-body select{min-width:0;max-width:160px;box-sizing:border-box}' +
+    '.fx-emitter-body .fx-emitter-actions{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}' +
+    '.fx-emitter-body .fx-emitter-actions button{font-size:11px;padding:5px 7px}' +
+    '.fx-emitter-body .fx-emitter-layer{padding-top:8px;border-top:1px solid #434e60}' +
+    '.fx-emitter-body .fx-emitter-tip{font-size:11px;color:#97a9b9}' +
+    '#fxEmitterStatus{font-size:11px;color:#ffbd80;overflow-wrap:anywhere}';
+  document.head.append(styles);
+  const clone=()=>E.deserialize(E.serialize(doc));
+  const unique=(prefix,ids)=>{let v;do{v=prefix+(++counter)}while(ids.has(v));return v;};
+  const activeEmitter=()=>doc.emitters.find(e=>e.id===selected);
+  const activeLayer=()=>activeEmitter()?.layers.find(l=>l.id===selectedLayer);
+  function commit(changed,reason='Updated'){
+    if(isLocked?.()){status.textContent='Finish baking/loading before changing emitters.';return false;}
+    try{const next=E.normalize(changed);doc=next;onChange(next);
+      internalError='';render();status.textContent=reason;return true;
+    }catch(e){internalError=e.message;status.textContent=e.message;return false;}
+  }
+  function changeEmitter(field,value){
+    const copy=clone(),target=copy.emitters.find(e=>e.id===selected);
+    if(!target)return;
+    target[field]=value;commit(copy,'Emitter updated: '+field);
+  }
+  function changeLayer(field,value){
+    const copy=clone(),target=copy.emitters.find(e=>e.id===selected);
+    const layer=target?.layers.find(l=>l.id===selectedLayer);
+    if(!layer)return;
+    layer[field]=value;commit(copy,'Layer updated: '+field);
+  }
+  function line(label,control){
+    const wrap=node('label',{class:'fx-emitter-row'});
+    const span=node('span',{},label);
+    wrap.append(span,control);return wrap;
+  }
+  function select(id,options,value,onInput) {
+    const input=node('select',{id});
+    for(const [v,label]of options)input.append(node('option',{value:v},label));
+    input.value=String(value);input.addEventListener('change',()=>onInput(input.value));
+    return input;
+  }
+  function num(id,value,min,max,step,callback){
+    const input=node('input',{type:'number',id,min,max,step});input.value=String(value);
+    input.addEventListener('change',()=>{
+      const v=Number(input.value);
+      if(!input.value.trim()||!Number.isFinite(v)||v<min||v>max){
+        status.textContent='Invalid '+id+'; expected '+min+'–'+max;input.value=String(value);return;
+      }
+      callback(v);
+    });return input;
+  }
+  function txt(id,value,callback){
+    const input=node('input',{type:'text',id,maxlength:96});input.value=value;
+    input.addEventListener('change',()=>callback(input.value));return input;
+  }
+  function toggle(id,checked,callback){
+    const input=node('input',{type:'checkbox',id});
+    input.checked=checked;input.addEventListener('change',()=>callback(input.checked));return input;
+  }
+  function button(id,label,callback){
+    const b=node('button',{type:'button',id},label);b.addEventListener('click',callback);return b;
+  }
+  function addEmitter(){
+    const copy=clone();
+    if(copy.emitters.length>=E.MAX_EMITTERS)return void(status.textContent='Maximum 16 emitters.');
+    const instance=E.newEmitter(copy.emitters.length);
+    instance.id=unique('emitter',new Set(copy.emitters.map(e=>e.id)));
+    instance.name='Emitter '+(copy.emitters.length+1);
+    for(const layer of instance.layers)layer.id=instance.id+'_'+layer.type;
+    selected=instance.id;selectedLayer=instance.layers[0].id;
+    copy.emitters.push(instance);commit(copy,'Emitter added');
+  }
+  function duplicateEmitter(){
+    const copy=clone(),source=copy.emitters.find(e=>e.id===selected);
+    if(!source||copy.emitters.length>=E.MAX_EMITTERS)return;
+    const duplicated=JSON.parse(JSON.stringify(source));
+    duplicated.id=unique('emitter',new Set(copy.emitters.map(e=>e.id)));
+    duplicated.name=source.name+' copy';duplicated.x+=32;duplicated.seed++;
+    duplicated.layers.forEach(l=>l.id=duplicated.id+'_'+l.type);
+    selected=duplicated.id;selectedLayer=duplicated.layers[0]?.id||null;
+    copy.emitters.push(duplicated);commit(copy,'Emitter duplicated with independent seed');
+  }
+  function deleteEmitter(){
+    const copy=clone();copy.emitters=copy.emitters.filter(e=>e.id!==selected);
+    selected=copy.emitters[0]?.id||null;selectedLayer=copy.emitters[0]?.layers[0]?.id||null;
+    commit(copy,'Emitter deleted and owned layers disposed');
+  }
+  function addLayer(type){
+    const copy=clone(),em=copy.emitters.find(e=>e.id===selected);
+    if(!em||copy.emitters.reduce((n,e)=>n+e.layers.length,0)>=E.MAX_LAYERS)return;
+    const layer=E.newLayer(type,em.id,em.layers.length);
+    layer.id=unique('layer',new Set(copy.emitters.flatMap(e=>e.layers.map(l=>l.id))));
+    selectedLayer=layer.id;em.layers.push(layer);commit(copy,'Layer added');
+  }
+  function deleteLayer(){
+    const copy=clone(),em=copy.emitters.find(e=>e.id===selected);
+    if(!em)return;
+    em.layers=em.layers.filter(l=>l.id!==selectedLayer);
+    selectedLayer=em.layers[0]?.id||null;commit(copy,'Layer removed');
+  }
+  function render() {
+    controls.replaceChildren();
+    const global=toggle('fxEmittersEnabled',doc.enabled,v=>commit({...clone(),enabled:v},'FX layers '+(v?'enabled':'disabled')));
+    controls.append(line('Enable independent FX layers',global));
+    controls.append(line('Whole-effect particle budget',
+      num('fxEmittersGlobalBudget',doc.globalBudget,0,1400,1,v=>commit({...clone(),globalBudget:v}))));
+    const actions=node('div',{class:'fx-emitter-actions'});
+    actions.append(button('fxEmitterAdd','Add emitter',addEmitter),
+      button('fxEmitterDuplicate','Duplicate',duplicateEmitter),
+      button('fxEmitterDelete','Remove',deleteEmitter));
+    controls.append(actions);
+    if(!doc.emitters.length){status.textContent='No emitters. Add one to start.';return;}
+    if(!activeEmitter())selected=doc.emitters[0].id;
+    const emitter=activeEmitter();
+    controls.append(line('Selected emitter',
+      select('fxEmitterSelect',doc.emitters.map(e=>[e.id,e.name+' ('+e.id+')']),
+        emitter.id,id=>{selected=id;selectedLayer=null;render();onSelect?.(selected,null);})));
+    controls.append(line('Name',txt('fxEmitterName',emitter.name,v=>changeEmitter('name',v))));
+    controls.append(line('Enabled',toggle('fxEmitterEnabled',emitter.enabled,v=>changeEmitter('enabled',v))));
+    controls.append(line('Visible',toggle('fxEmitterVisible',emitter.visible,v=>changeEmitter('visible',v))));
+    for(const [key,label,min,max,step]of [
+      ['x','X (px)',-16384,16384,.01],['y','Y (px)',-16384,16384,.01],
+      ['rotation','Rotation (°)',-3600,3600,.1],['scale','Scale',.01,20,.01],
+      ['duration','Duration (s)',1/60,60,.01],['timeOffset','Time offset (s)',-60,60,.01],
+      ['seed','Seed',-2147483648,2147483647,1],['order','Layer order',-1000,1000,1],
+      ['budget','Emitter particle budget',0,1400,1]
+    ])controls.append(line(label,num('fxEmitter'+key[0].toUpperCase()+key.slice(1),emitter[key],min,max,step,v=>changeEmitter(key,v))));
+    controls.append(line('Coordinates',
+      select('fxEmitterSpace',[['local','Spine/anchor local'],['world','Stage world']],emitter.space,v=>changeEmitter('space',v))));
+    controls.append(line('Anchor type',
+      select('fxEmitterAnchorType',[['world','World'],['skeleton','Skeleton origin'],
+        ['bone','Spine bone'],['slot','Spine slot'],['attachment','Active attachment']],emitter.anchor.type,
+        v=>changeAnchor({type:v,name: v==='bone'?'root':v==='slot'?'body':v==='attachment'?'body': '',
+          ...(v==='attachment'?{slot:'body'}:{})}))));
+    controls.append(line('Anchor name',
+      txt('fxEmitterAnchorName',emitter.anchor.name,v=>changeAnchor({...emitter.anchor,name:v}))));
+    if(emitter.anchor.type==='attachment')controls.append(line('Attachment slot',
+      txt('fxEmitterAnchorSlot',emitter.anchor.slot||'',v=>changeAnchor({...emitter.anchor,slot:v}))));
+    controls.append(line('Spine layering',
+      select('fxEmitterPlacement',[['behind','Behind Spine'],['front','In front of Spine'],
+        ['slot','Inside selected Spine slot']],emitter.placement,v=>changeEmitter('placement',v))));
+    controls.append(line('Unsupported slot fallback',
+      select('fxEmitterFallback',[['hide','Hide and report diagnostic'],['front','Explicit front fallback']],emitter.fallback,v=>changeEmitter('fallback',v))));
+    controls.append(line('Blend',
+      select('fxEmitterBlend',[['normal','Normal'],['add','Additive'],
+        ['multiply','Multiply'],['screen','Screen']],emitter.blend,v=>changeEmitter('blend',v))));
+    const layersTitle=node('div',{class:'fx-emitter-layer'});
+    layersTitle.append(node('strong',{},'Independent effect layers'));
+    const addLine=node('div',{class:'fx-emitter-actions'});
+    const typeSelect=select('fxEmitterNewLayerType',E.LAYER_TYPES.map(type=>[type,type]),'sparks',()=>{});
+    addLine.append(typeSelect,button('fxEmitterLayerAdd','Add layer',()=>addLayer(typeSelect.value)));
+    layersTitle.append(addLine);
+    const toggles=node('div',{class:'fx-emitter-toggles'});
+    for(const layer of emitter.layers){
+      const name=node('span',{},layer.name+' ('+layer.type+')');
+      const chk=toggle('fxEmitterToggle_'+layer.id,layer.enabled,v=>{
+        const copy=clone();copy.emitters.find(e=>e.id===selected).layers.find(l=>l.id===layer.id).enabled=v;
+        commit(copy,layer.name+' '+(v?'on':'off'));
+      });
+      const wrap=node('label',{class:'fx-emitter-row'});wrap.append(name,chk);toggles.append(wrap);
+    }
+    layersTitle.append(toggles);controls.append(layersTitle);
+    if(!emitter.layers.length){selectedLayer=null;status.textContent='No layers in this emitter.';return;}
+    if(!activeLayer())selectedLayer=emitter.layers[0].id;
+    const layer=activeLayer();
+    controls.append(line('Edit layer',
+      select('fxEmitterLayerSelect',emitter.layers.map(l=>[l.id,l.name+' ('+l.type+')']),
+        layer.id,id=>{selectedLayer=id;render();onSelect?.(selected,id);})));
+    controls.append(button('fxEmitterLayerDelete','Remove selected layer',deleteLayer));
+    controls.append(line('Layer name',txt('fxEmitterLayerName',layer.name,v=>changeLayer('name',v))));
+    controls.append(line('Layer visible',
+      toggle('fxEmitterLayerVisible',layer.visible,v=>changeLayer('visible',v))));
+    for(const [key,label,min,max,step]of [
+      ['x','Layer X (px)',-16384,16384,.01],['y','Layer Y (px)',-16384,16384,.01],
+      ['rotation','Layer rotation',-3600,3600,.1],['scale','Layer scale',.01,20,.01],
+      ['order','Layer sort order',-1000,1000,1],['opacity','Opacity',0,1,.01],
+      ['radius','Radius (px)',.5,1024,.1],['count','Particles / spokes',1,128,1],
+      ['budget','Layer budget',0,1400,1]
+    ])controls.append(line(label,num('fxEmitterLayer'+key[0].toUpperCase()+key.slice(1),
+      layer[key],min,max,step,v=>changeLayer(key,v))));
+    controls.append(line('Layer blend',
+      select('fxEmitterLayerBlend',[['normal','Normal'],['add','Additive'],
+        ['multiply','Multiply'],['screen','Screen']],layer.blend,v=>changeLayer('blend',v))));
+    const color=node('input',{type:'color',id:'fxEmitterLayerColor'});
+    color.value=layer.color;color.addEventListener('change',()=>changeLayer('color',color.value));
+    controls.append(line('Layer color',color));
+    const issue=diagnostics?.()?.map(d=>d.emitterId+': '+d.message)||[];
+    status.textContent=issue.length?issue.join(' · '):internalError;
+  }
+  function changeAnchor(anchor){
+    const copy=clone(),em=copy.emitters.find(e=>e.id===selected);
+    em.anchor=anchor;
+    // An anchored slot layer is only meaningful on a slot/attachment anchor.
+    if(em.placement==='slot'&&!['slot','attachment'].includes(anchor.type))em.placement='front';
+    commit(copy,'Anchor updated');
+  }
+  function setFromScene(type,id,x,y){
+    const copy=clone(),em=copy.emitters.find(e=>e.id===selected);
+    if(!em)return false;
+    if(type==='emitter'&&em.id===id){em.x=Number(x.toFixed(3));em.y=Number(y.toFixed(3));}
+    else if(type==='layer'){
+      const layer=em.layers.find(l=>l.id===id);if(!layer)return false;
+      layer.x=Number(x.toFixed(3));layer.y=Number(y.toFixed(3));
+    }else return false;
+    return commit(copy,'Drag position updated');
+  }
+  function refresh(value){
+    doc=E.normalize(value);
+    if(!doc.emitters.some(e=>e.id===selected))selected=doc.emitters[0]?.id||null;
+    render();
+  }
+  function getSelected(){return {emitterId:selected,layerId:selectedLayer};}
+  render();
+  return {refresh,getSelected,setFromScene,details:panel,
+    get document(){return doc}};
+}
+root.FxEmitterUi=Object.freeze({mount});
+})(globalThis);
+</script>
 <script id="sharedCore">/* Shared Spine burn transition. PixiJS 8.22.0, Spine 4.2.120. No DOM controls or network requests. */
 (function(global){
 'use strict';
@@ -3652,7 +4372,7 @@ THE SOFTWARE.
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const defaults={quality:'auto',shape:0,angle:0,centerX:0.5,centerY:0.5,roughness:0.10,noiseScale:6,seed:8,softness:0.006,duration:3,easing:1,timeCurve:FxCurves.createPreset('easeInOut',{parameterKey:'transitionProgress',monotonic:true}),flameHeight:38,edgeWidth:5,flameBrightness:1.8,glow:0.8,turbulence:0.7,fireSpeed:1,flicker:0.35,fireColor:'#ff6b19',hotColor:'#ffe7a0',sparks:65,sparkSize:1.8,sparkSpeed:65,sparkSpread:65,sparkLife:1.1,gravity:-18,sparkColor:'#ffc278',desaturation:1,brightness:0.86,contrast:1.12,charWidth:0.035,charStrength:0.6,animationSpeed:1,zoom:1,sparkTrails:true,spacingEnabled:false,spacingCombine:'time',spacingTemporalMode:'uniform',spacingFrequencySource:'rate',spacingBaseRate:65,spacingInterval:.05,spacingBurstCount:3,spacingBurstDelay:.03,spacingMinInterval:0,spacingTimeJitter:0,spacingSpatialMode:'even',spacingBasePx:20,spacingMinPx:2,spacingMaxPx:80,spacingSpatialJitter:0,spacingTravelSpeedPx:120,spacingTeleportThresholdPx:512,spacingSeed:8,spacingPathFollow:'clamp',spacingAlignToTangent:true,spacingGuides:false,spacingRateCurve:null,spacingIntervalCurve:null,spacingDistanceCurve:null,spacingPath:{schemaVersion:1,closed:false,segments:[{p0:[96,256],p1:[180,104],p2:[332,408],p3:[416,256]}]}};
+const defaults={quality:'auto',shape:0,angle:0,centerX:0.5,centerY:0.5,roughness:0.10,noiseScale:6,seed:8,softness:0.006,duration:3,easing:1,timeCurve:FxCurves.createPreset('easeInOut',{parameterKey:'transitionProgress',monotonic:true}),flameHeight:38,edgeWidth:5,flameBrightness:1.8,glow:0.8,turbulence:0.7,fireSpeed:1,flicker:0.35,fireColor:'#ff6b19',hotColor:'#ffe7a0',sparks:65,sparkSize:1.8,sparkSpeed:65,sparkSpread:65,sparkLife:1.1,gravity:-18,sparkColor:'#ffc278',desaturation:1,brightness:0.86,contrast:1.12,charWidth:0.035,charStrength:0.6,animationSpeed:1,zoom:1,multiEmitters:FxEmitters.makeExplosionPreset(),sparkTrails:true,spacingEnabled:false,spacingCombine:'time',spacingTemporalMode:'uniform',spacingFrequencySource:'rate',spacingBaseRate:65,spacingInterval:.05,spacingBurstCount:3,spacingBurstDelay:.03,spacingMinInterval:0,spacingTimeJitter:0,spacingSpatialMode:'even',spacingBasePx:20,spacingMinPx:2,spacingMaxPx:80,spacingSpatialJitter:0,spacingTravelSpeedPx:120,spacingTeleportThresholdPx:512,spacingSeed:8,spacingPathFollow:'clamp',spacingAlignToTangent:true,spacingGuides:false,spacingRateCurve:null,spacingIntervalCurve:null,spacingDistanceCurve:null,spacingPath:{schemaVersion:1,closed:false,segments:[{p0:[96,256],p1:[180,104],p2:[332,408],p3:[416,256]}]}};
 const cfg={...defaults};
 const groups=[
 ['Transition',true,[['shape','Shape','select',[[0,'Linear'],[1,'Circular'],[2,'Organic patches']]],['angle','Direction angle',0,360,1,'°'],['centerX','Center X',0,1,0.01,'%'],['centerY','Center Y',0,1,0.01,'%'],['roughness','Edge irregularity',0,0.35,0.005,'%'],['noiseScale','Noise scale',1,30,0.5,''],['seed','Noise seed',0,99,1,''],['softness','Edge softness',0.001,0.08,0.001,'%'],['easing','Timing curve','select',[[0,'Linear'],[1,'Smooth'],[2,'Ease in'],[3,'Ease out'],[4,'Custom curve']]]]],
@@ -3700,7 +4420,7 @@ let curveEditor = null;
     }
   });
 }
-let fx,loadedAsset=null,backend='webgl',rendererBusy=false;
+let fx,multiFx=null,emitterUi=null,loadedAsset=null,backend='webgl',rendererBusy=false;
 let app,subject,model,filter,atlas,textureSources=[],maskRT,maskData=null,maskAge=1,emitterPoints=[],particles=[],progress=0.46,phase=0.46,playing=false,fxTime=0,frameBox={x:0,y:0,w:1,h:1},poseBox,spawnBudget=0,loading=false,loadSerial=0,elapsed=0,fps=60;
 const TIMELINE_FPS=60;
 let selectedSkeleton=null,selectedAtlas=null,selectedImages=new Map();
@@ -3734,6 +4454,94 @@ let spacingUi=null;
     isLocked:()=>bakeBusy||loading||rendererBusy,
     onChange:()=>{syncUniforms();updateSpacingGuides();}});
 }
+const emitterGuide=document.createElementNS('http://www.w3.org/2000/svg','svg');
+emitterGuide.id='fxEmitterGuide';emitterGuide.setAttribute('aria-label','Draggable FX emitter handles');
+emitterGuide.style.cssText='position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:4';
+$('cameraPlane').append(emitterGuide);
+{
+  const holder=document.createElement('div');
+  const spacing=$('fxSpacingPanel');
+  if(spacing)spacing.after(holder);else $('settings').append(holder);
+  emitterUi=FxEmitterUi.mount(holder,{
+    value:cfg.multiEmitters,
+    isLocked:()=>bakeBusy||loading||rendererBusy,
+    diagnostics:()=>multiFx?.diagnostics||[],
+    onChange(value){
+      cfg.multiEmitters=value;
+      if(multiFx)multiFx.configure(value);
+      updateEmitterHandles();
+    },
+    onSelect:()=>updateEmitterHandles()
+  });
+  $('fxEmitterPanel').addEventListener('toggle',updateEmitterHandles);
+}
+let emitterDrag=null;
+function updateEmitterHandles(){
+  const activeNodes=new Set();
+  if(!app||!model||!multiFx||!cfg.multiEmitters.enabled||!$('fxEmitterPanel').open){
+    emitterGuide.hidden=true;emitterGuide.replaceChildren();return;
+  }
+  emitterGuide.hidden=false;
+  const w=app.screen.width*previewScale,h=app.screen.height*previewScale;
+  emitterGuide.setAttribute('viewBox','0 0 '+w+' '+h);
+  emitterGuide.setAttribute('width',w);emitterGuide.setAttribute('height',h);
+  emitterGuide.style.width=w+'px';emitterGuide.style.height=h+'px';
+  const selected=emitterUi?.getSelected();
+  for(const emitter of cfg.multiEmitters.emitters){
+    if(!emitter.enabled||!emitter.visible)continue;
+    const point=multiFx.scenePositionForEmitter(emitter.id);
+    if(!point)continue;
+    const circle=[...emitterGuide.children].find(n=>n.getAttribute('data-kind')==='emitter'&&n.getAttribute('data-id')===emitter.id)||document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',point.x*previewScale);
+    circle.setAttribute('cy',point.y*previewScale);
+    circle.setAttribute('r',emitter.id===selected.emitterId?10:7);
+    circle.setAttribute('fill','#ffba74');circle.setAttribute('fill-opacity','.25');
+    circle.setAttribute('stroke','#ffc980');circle.setAttribute('stroke-width','2');
+    circle.setAttribute('data-id',emitter.id);circle.setAttribute('data-kind','emitter');
+    circle.style.cursor='move';circle.style.pointerEvents='all';
+    circle.setAttribute('aria-label','Drag emitter '+emitter.name);
+    if(circle.parentNode!==emitterGuide)emitterGuide.append(circle);
+    activeNodes.add(circle);
+    if(emitter.id!==selected.emitterId||!selected.layerId)continue;
+    const layer=multiFx.scenePositionForLayer(emitter.id,selected.layerId);
+    if(!layer)continue;
+    const rect=[...emitterGuide.children].find(n=>n.getAttribute('data-kind')==='layer'&&n.getAttribute('data-id')===selected.layerId)||document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',layer.x*previewScale-5);rect.setAttribute('y',layer.y*previewScale-5);
+    rect.setAttribute('width',10);rect.setAttribute('height',10);
+    rect.setAttribute('fill','#9ddcfc');rect.setAttribute('stroke','#14222b');
+    rect.setAttribute('data-id',selected.layerId);rect.setAttribute('data-kind','layer');
+    rect.style.cursor='move';rect.style.pointerEvents='all';
+    rect.setAttribute('aria-label','Drag selected layer position');
+    if(rect.parentNode!==emitterGuide)emitterGuide.append(rect);
+    activeNodes.add(rect);
+  }
+  for(const element of [...emitterGuide.children])if(!activeNodes.has(element))element.remove();
+}
+emitterGuide.addEventListener('pointerdown',event=>{
+  const target=event.target.closest('[data-kind]');
+  if(!target||bakeBusy||loading||rendererBusy)return;
+  event.preventDefault();
+  emitterDrag={kind:target.getAttribute('data-kind'),id:target.getAttribute('data-id')};
+  emitterGuide.setPointerCapture(event.pointerId);
+});
+emitterGuide.addEventListener('pointermove',event=>{
+  if(!emitterDrag||!emitterGuide.hasPointerCapture(event.pointerId)||!multiFx)return;
+  const bounds=$('viewport').getBoundingClientRect();
+  const point=previewToScene(event.clientX-bounds.left-$('viewport').clientLeft,
+    event.clientY-bounds.top-$('viewport').clientTop);
+  const selection=emitterUi.getSelected();
+  try{
+    if(emitterDrag.kind==='emitter'){
+      const local=multiFx.emitterOffsetFromScene(emitterDrag.id,point.x,point.y);
+      emitterUi.setFromScene('emitter',emitterDrag.id,local.x,local.y);
+    }else if(selection?.emitterId){
+      const local=multiFx.layerOffsetFromScene(selection.emitterId,emitterDrag.id,point.x,point.y);
+      emitterUi.setFromScene('layer',emitterDrag.id,local.x,local.y);
+    }
+  }catch(error){$('fxEmitterStatus').textContent=error.message;}
+});
+for(const type of ['pointerup','pointercancel','lostpointercapture'])
+  emitterGuide.addEventListener(type,()=>{emitterDrag=null;});
 function updateSpacingGuides(){
   spacingGuide.replaceChildren();
   if(!app||!cfg.spacingEnabled||!cfg.spacingGuides||!model){spacingGuide.hidden=true;return;}
@@ -3772,9 +4580,9 @@ function field(x,y){return SpineBurnFx.field({...cfg,reverse:$('reverse').checke
 function syncUniforms(){if(!fx)return;fx.configure({...cfg,reverse:$('reverse').checked});fx.setEnabled($('effect').checked);filter=fx.filter;filter.resolution=SpineBurnFx.PROFILES[fx.profile].resolution*previewScale;}
 function ease(t){return cfg.easing===4?FxCurves.evaluate(cfg.timeCurve,t):cfg.easing===1?t*t*(3-2*t):cfg.easing===2?t*t:cfg.easing===3?1-(1-t)*(1-t):t;}
 function inverseEase(v){if(v<=0)return 0;if(v>=1)return 1;let lo=0,hi=1;for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(ease(mid)<v)lo=mid;else hi=mid;}return (lo+hi)/2;}
-function setProgress(value){progress=Math.max(0,Math.min(1,value));$('progress').value=progress;$('progressValue').textContent=(progress*100).toFixed(1)+'%';maskAge=1;if(progress===0||progress===1){particles=[];spawnBudget=0;}if(fx)fx.setProgress(progress);updateTimeline();syncUniforms();updateCenterHandle();}
+function setProgress(value){progress=Math.max(0,Math.min(1,value));$('progress').value=progress;$('progressValue').textContent=(progress*100).toFixed(1)+'%';maskAge=1;if(progress===0||progress===1){particles=[];spawnBudget=0;}if(fx)fx.setProgress(progress);if(multiFx)multiFx.seek(inverseEase(progress)*cfg.duration);updateTimeline();syncUniforms();updateCenterHandle();updateEmitterHandles();}
 function setPlaying(value){playing=value;$('play').textContent=playing?'Pause transition':'Play transition';}
-function fit(){if(!app||!model||!poseBox)return;const w=app.screen.width,h=app.screen.height,viewW=bakeArea.width,viewH=bakeArea.height;const margin=Math.min(75,viewW*.12,viewH*.12);const scale=Math.max(.01,Math.min((viewW-margin*2)/poseBox.w,(viewH-margin*2)/poseBox.h)*cfg.zoom);model.scale.set(Math.max(.01,scale));model.position.set(w/2-(poseBox.x+poseBox.w/2)*scale,h/2-(poseBox.y+poseBox.h/2)*scale+15);frameBox={x:model.x+poseBox.x*scale,y:model.y+poseBox.y*scale,w:poseBox.w*scale,h:poseBox.h*scale};if(fx)fx.setBounds(frameBox);particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();updateSpacingGuides();}
+function fit(){if(!app||!model||!poseBox)return;const w=app.screen.width,h=app.screen.height,viewW=bakeArea.width,viewH=bakeArea.height;const margin=Math.min(75,viewW*.12,viewH*.12);const scale=Math.max(.01,Math.min((viewW-margin*2)/poseBox.w,(viewH-margin*2)/poseBox.h)*cfg.zoom);model.scale.set(Math.max(.01,scale));model.position.set(w/2-(poseBox.x+poseBox.w/2)*scale,h/2-(poseBox.y+poseBox.h/2)*scale+15);frameBox={x:model.x+poseBox.x*scale,y:model.y+poseBox.y*scale,w:poseBox.w*scale,h:poseBox.h*scale};if(fx)fx.setBounds(frameBox);particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();updateSpacingGuides();if(multiFx)multiFx.setBounds(frameBox);updateEmitterHandles();}
 function measurePose(){model.scale.set(1);model.position.set(0);model.update(0);const b=model.getLocalBounds();if(!(b.width>0&&b.height>0))throw new Error('The skeleton has no visible attachments in this skin.');poseBox={x:b.x,y:b.y,w:b.width,h:b.height};fit();}
 function updateAlphaMask(){if(fx){fx.refreshEmitter();emitterPoints=fx.emitterPoints;}}
 function updateParticles(dt){if(fx){fx.update(dt);particles=fx.particles;emitterPoints=fx.emitterPoints;}}
@@ -3784,16 +4592,16 @@ async function imageFromBlob(blob){const url=URL.createObjectURL(blob);try{const
 function readVersion(bytes){if(!bytes.length)throw new Error('The skeleton file is empty.');const input=new spine.BinaryInput(bytes);input.readInt32();input.readInt32();return input.readString();}
 async function installAsset(skeleton,atlasText,imageMap,name,binary=false,exportInfo=null){const serial=++loadSerial;loading=true;renderAssetSelection();$('loading').style.display='grid';$('loading').textContent='Loading Spine export…';setPlaying(false);let newAtlas,newModel,newSources=[];try{const data=binary?skeleton:JSON.parse(skeleton);const version=binary?readVersion(skeleton):data.skeleton?.spine;if(typeof version!=='string'||!version.startsWith('4.2.'))throw new Error('This preview requires Spine 4.2 exports. File version: '+(version||'unknown')+'.');newAtlas=new spine.TextureAtlas(atlasText);if(!newAtlas.pages.length)throw new Error('The atlas contains no texture pages.');for(const page of newAtlas.pages){const key=page.name.replace(/\\/g,'/');let blob=imageMap.get(key);if(!blob){const matches=[...imageMap.entries()].filter(([n])=>n.split('/').pop()===key.split('/').pop());if(matches.length===1)blob=matches[0][1];else if(matches.length>1)throw new Error('Ambiguous texture filename: '+page.name+'. Select the export folder files with unique page names.');}if(!blob)throw new Error('Missing atlas image: '+page.name+'. Select every image listed in the atlas.');const img=await imageFromBlob(blob);const source=new PIXI.ImageSource({resource:img,alphaMode:page.pma?'premultiplied-alpha':'premultiply-alpha-on-upload',autoGenerateMipmaps:false});newSources.push(source);page.setTexture(spine.SpineTexture.from(source));}
 const parser=binary?new spine.SkeletonBinary(new spine.AtlasAttachmentLoader(newAtlas)):new spine.SkeletonJson(new spine.AtlasAttachmentLoader(newAtlas));const skeletonData=parser.readSkeletonData(data);newModel=new spine.Spine({skeletonData,autoUpdate:false});if(skeletonData.skins.length&&!skeletonData.defaultSkin){newModel.skeleton.setSkin(skeletonData.skins[0]);newModel.skeleton.setSlotsToSetupPose();}newModel.update(0);const b=newModel.getLocalBounds();if(!(b.width>0&&b.height>0))throw new Error('The setup pose has no visible attachments. Export a skeleton with a visible default skin.');if(serial!==loadSerial){newModel.destroy();newAtlas.dispose();newSources.forEach(x=>x.destroy());return;}
-if(fx){fx.destroy();fx=null;}if(model){subject.removeChild(model);model.destroy();}if(atlas)atlas.dispose();textureSources.forEach(x=>x.destroy());atlas=newAtlas;textureSources=newSources;model=newModel;subject.addChild(model);$('animation').replaceChildren();const setup=document.createElement('option');setup.value='';setup.textContent='Setup pose';$('animation').append(setup);for(const anim of skeletonData.animations){const o=document.createElement('option');o.value=anim.name;o.textContent=anim.name;$('animation').append(o);}if(skeletonData.animations.length)$('animation').value=skeletonData.animations.some(x=>x.name==='idle')?'idle':skeletonData.animations[0].name;$('skin').replaceChildren();for(const skin of skeletonData.skins){const o=document.createElement('option');o.value=skin.name;o.textContent=skin.name;$('skin').append(o);}if(skeletonData.skins.length){$('skin').value=skeletonData.skins.some(x=>x.name==='default')?'default':skeletonData.skins[0].name;model.skeleton.setSkinByName($('skin').value);model.skeleton.setSlotsToSetupPose();}$('skin').disabled=!skeletonData.skins.length;setAnimation();loadedAsset=exportInfo||{skeletonName:binary?'skeleton.skel':'skeleton.json',atlasName:'skeleton.atlas',skeleton:new Blob([binary?skeleton:skeleton],{type:binary?'application/octet-stream':'application/json'}),atlas:new Blob([atlasText],{type:'application/octet-stream'}),images:new Map(imageMap)};loadedAsset.version=version;fx=SpineBurnFx.createBurnTransition({PIXI,spine,app,host:subject,model,settings:{...cfg,reverse:$('reverse').checked},bounds:frameBox});fx.setProgress(progress);filter=fx.filter;syncUniforms();updateCenterHandle();$('assetName').textContent=name;setStatus('Loaded '+name+' · Spine '+version+' · '+newAtlas.pages.length+' atlas page'+(newAtlas.pages.length===1?'':'s')+' · '+skeletonData.animations.length+' animations');particles=[];maskAge=1;}catch(e){if(newModel&&newModel!==model)newModel.destroy();if(newAtlas&&newAtlas!==atlas)newAtlas.dispose();newSources.filter(x=>!textureSources.includes(x)).forEach(x=>x.destroy());setStatus(e.message,true);throw e;}finally{if(serial===loadSerial){loading=false;renderAssetSelection();$('loading').style.display='none';}}}
+if(multiFx){multiFx.destroy();multiFx=null;}if(fx){fx.destroy();fx=null;}if(model){subject.removeChild(model);model.destroy();}if(atlas)atlas.dispose();textureSources.forEach(x=>x.destroy());atlas=newAtlas;textureSources=newSources;model=newModel;subject.addChild(model);$('animation').replaceChildren();const setup=document.createElement('option');setup.value='';setup.textContent='Setup pose';$('animation').append(setup);for(const anim of skeletonData.animations){const o=document.createElement('option');o.value=anim.name;o.textContent=anim.name;$('animation').append(o);}if(skeletonData.animations.length)$('animation').value=skeletonData.animations.some(x=>x.name==='idle')?'idle':skeletonData.animations[0].name;$('skin').replaceChildren();for(const skin of skeletonData.skins){const o=document.createElement('option');o.value=skin.name;o.textContent=skin.name;$('skin').append(o);}if(skeletonData.skins.length){$('skin').value=skeletonData.skins.some(x=>x.name==='default')?'default':skeletonData.skins[0].name;model.skeleton.setSkinByName($('skin').value);model.skeleton.setSlotsToSetupPose();}$('skin').disabled=!skeletonData.skins.length;setAnimation();loadedAsset=exportInfo||{skeletonName:binary?'skeleton.skel':'skeleton.json',atlasName:'skeleton.atlas',skeleton:new Blob([binary?skeleton:skeleton],{type:binary?'application/octet-stream':'application/json'}),atlas:new Blob([atlasText],{type:'application/octet-stream'}),images:new Map(imageMap)};loadedAsset.version=version;fx=SpineBurnFx.createBurnTransition({PIXI,spine,app,host:subject,model,settings:{...cfg,reverse:$('reverse').checked},bounds:frameBox});fx.setProgress(progress);multiFx=FxEmitterRuntime.createEmitterLayers({PIXI,app,host:subject,model,settings:cfg.multiEmitters,bounds:frameBox});multiFx.seek(inverseEase(progress)*cfg.duration);filter=fx.filter;syncUniforms();updateCenterHandle();updateEmitterHandles();$('assetName').textContent=name;setStatus('Loaded '+name+' · Spine '+version+' · '+newAtlas.pages.length+' atlas page'+(newAtlas.pages.length===1?'':'s')+' · '+skeletonData.animations.length+' animations');particles=[];maskAge=1;}catch(e){if(newModel&&newModel!==model)newModel.destroy();if(newAtlas&&newAtlas!==atlas)newAtlas.dispose();newSources.filter(x=>!textureSources.includes(x)).forEach(x=>x.destroy());setStatus(e.message,true);throw e;}finally{if(serial===loadSerial){loading=false;renderAssetSelection();$('loading').style.display='none';}}}
 async function loadFiles(files){if(loading||rendererBusy||bakeBusy){assetMessage('The preview is busy. Try again when it finishes.',true);return false;}const list=Array.from(files);const skeletons=list.filter(f=>/\.(json|skel)$/i.test(f.name)),atlases=list.filter(f=>/\.atlas$/i.test(f.name));if(skeletons.length!==1||atlases.length!==1){assetMessage('Select exactly one .json or .skel, one .atlas, and all atlas images. .spine editor projects must be exported first.',true);return false;}const images=new Map();for(const f of list.filter(f=>/\.(png|webp|jpe?g)$/i.test(f.name))){if(images.has(f.name)){assetMessage('Duplicate texture filename: '+f.name+'.',true);return false;}images.set(f.name,f);}selectedSkeleton=skeletons[0];selectedAtlas=atlases[0];selectedImages=new Map(images);renderAssetSelection();try{const skel=skeletons[0];await installAsset(/\.skel$/i.test(skel.name)?new Uint8Array(await skel.arrayBuffer()):await skel.text(),await atlases[0].text(),images,skel.name,/\.skel$/i.test(skel.name),{skeletonName:skel.name,atlasName:atlases[0].name,skeleton:skel,atlas:atlases[0],images:new Map(images)});assetMessage('Loaded '+skel.name+' into the preview.');return true;}catch(e){assetMessage(e.message,true);return false;}}
 async function loadSample(){if(loading||rendererBusy||bakeBusy)return;const data=JSON.parse($('sampleData').textContent);const images=new Map(Object.entries(data.images).map(([name,b64])=>[name,new Blob([Uint8Array.from(atob(b64),c=>c.charCodeAt(0))],{type:'image/png'})]));const skeletonText=JSON.stringify(data.skeleton);await installAsset(skeletonText,data.atlas,images,data.label+' · built-in sample',false,{skeletonName:data.skeletonName,atlasName:data.atlasName,skeleton:new Blob([skeletonText],{type:'application/json'}),atlas:new Blob([data.atlas],{type:'text/plain'}),images:new Map(images)});}
-$('load').onclick=()=>{$('assetPanel').open=true;$('assetPanel').scrollIntoView({block:'nearest'});$('skeletonFile').focus({preventScroll:true});};$('selectAll').onclick=()=>$('files').click();$('files').onchange=()=>{loadFiles($('files').files);$('files').value='';};$('sample').onclick=()=>loadSample().catch(()=>{});$('animation').onchange=setAnimation;$('skin').onchange=setSkin;$('background').onchange=()=>{$('viewport').classList.toggle('checker',$('background').value==='checker');$('viewport').style.backgroundColor=$('background').value==='checker'?'':$('background').value;};$('play').onclick=()=>{if(progress>=1){phase=0;setProgress(0);}else phase=inverseEase(progress);setPlaying(!playing);};$('reset').onclick=()=>{setPlaying(false);phase=0;setProgress(0);};$('finish').onclick=()=>{setPlaying(false);phase=1;setProgress(1);};$('progress').oninput=()=>{setPlaying(false);setProgress(Number($('progress').value));phase=inverseEase(progress);particles=[];};$('reverse').onchange=()=>{particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();};$('effect').onchange=()=>{particles=[];syncUniforms();};$('defaults').onclick=()=>{Object.assign(cfg,defaults);curveEditor?.setCurve(cfg.timeCurve);for(const [, ,fields]of groups)for(const [key,,a,,,unit]of fields){$(key).value=cfg[key];if($(key+'Value'))$(key+'Value').textContent=displayValue(cfg[key],unit);}$('reverse').checked=false;$('effect').checked=true;updateDurationInputs();fit();phase=inverseEase(progress);updateTimeline();spacingUi?.refresh();updateSpacingGuides();};
+$('load').onclick=()=>{$('assetPanel').open=true;$('assetPanel').scrollIntoView({block:'nearest'});$('skeletonFile').focus({preventScroll:true});};$('selectAll').onclick=()=>$('files').click();$('files').onchange=()=>{loadFiles($('files').files);$('files').value='';};$('sample').onclick=()=>loadSample().catch(()=>{});$('animation').onchange=setAnimation;$('skin').onchange=setSkin;$('background').onchange=()=>{$('viewport').classList.toggle('checker',$('background').value==='checker');$('viewport').style.backgroundColor=$('background').value==='checker'?'':$('background').value;};$('play').onclick=()=>{if(progress>=1){phase=0;setProgress(0);}else phase=inverseEase(progress);setPlaying(!playing);};$('reset').onclick=()=>{setPlaying(false);phase=0;setProgress(0);};$('finish').onclick=()=>{setPlaying(false);phase=1;setProgress(1);};$('progress').oninput=()=>{setPlaying(false);setProgress(Number($('progress').value));phase=inverseEase(progress);particles=[];};$('reverse').onchange=()=>{particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();};$('effect').onchange=()=>{particles=[];syncUniforms();};$('defaults').onclick=()=>{Object.assign(cfg,defaults);curveEditor?.setCurve(cfg.timeCurve);emitterUi?.refresh(cfg.multiEmitters);if(multiFx)multiFx.configure(cfg.multiEmitters);for(const [, ,fields]of groups)for(const [key,,a,,,unit]of fields){$(key).value=cfg[key];if($(key+'Value'))$(key+'Value').textContent=displayValue(cfg[key],unit);}$('reverse').checked=false;$('effect').checked=true;updateDurationInputs();fit();phase=inverseEase(progress);updateTimeline();spacingUi?.refresh();updateSpacingGuides();updateEmitterHandles();};
 let dragDepth=0;const viewport=$('viewport');viewport.addEventListener('dragenter',e=>{e.preventDefault();dragDepth++;viewport.classList.add('dragging');});viewport.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});viewport.addEventListener('dragleave',()=>{if(--dragDepth<=0){dragDepth=0;viewport.classList.remove('dragging');}});viewport.addEventListener('drop',e=>{e.preventDefault();dragDepth=0;viewport.classList.remove('dragging');loadFiles(e.dataTransfer.files);});window.addEventListener('dragover',e=>e.preventDefault());window.addEventListener('drop',e=>e.preventDefault());
 async function initRenderer(preferred='webgl'){
  const result=await SpineBurnFx.createApplication(PIXI,{backgroundAlpha:0,resolution:1,autoDensity:true,width:viewport.clientWidth,height:viewport.clientHeight},preferred,cfg.quality);app=result.app;backend=result.backend;$('cameraPlane').prepend(app.canvas);subject=new PIXI.Container();app.stage.addChild(subject);
- app.ticker.add(ticker=>{const realDt=Math.max(0,ticker.elapsedMS/1000),dt=Math.min(realDt,.05);fxTime+=realDt;if(model&&!loading)model.update($('animPlay').checked?dt*cfg.animationSpeed:0);if(playing){phase=Math.min(1,phase+realDt/cfg.duration);setProgress(ease(phase));if(phase>=1){if($('loop').checked){phase=0;setProgress(0);}else setPlaying(false);}}syncUniforms();updateParticles(realDt);elapsed+=dt;fps=fps*.95+(realDt>0?1/realDt:60)*.05;if(elapsed>.5){elapsed=0;$('stats').textContent=backend.toUpperCase()+' · '+(fx?.profile||SpineBurnFx.qualityName(cfg.quality))+' · '+Math.round(fps)+' FPS · '+particles.length+' sparks';}});return result;
+ app.ticker.add(ticker=>{const realDt=Math.max(0,ticker.elapsedMS/1000),dt=Math.min(realDt,.05);fxTime+=realDt;if(model&&!loading)model.update($('animPlay').checked?dt*cfg.animationSpeed:0);if(playing){phase=Math.min(1,phase+realDt/cfg.duration);setProgress(ease(phase));if(phase>=1){if($('loop').checked){phase=0;setProgress(0);}else setPlaying(false);}}syncUniforms();updateParticles(realDt);if(multiFx){multiFx.seek(phase*cfg.duration);if($('fxEmitterPanel').open)updateEmitterHandles();}elapsed+=dt;fps=fps*.95+(realDt>0?1/realDt:60)*.05;if(elapsed>.5){elapsed=0;$('stats').textContent=backend.toUpperCase()+' · '+(fx?.profile||SpineBurnFx.qualityName(cfg.quality))+' · '+Math.round(fps)+' FPS · '+particles.length+' sparks';}});return result;
 }
-async function switchRenderer(){if(loading||rendererBusy||bakeBusy)return;rendererBusy=true;setPlaying(false);const asset=loadedAsset,animation=$('animation').value,skin=$('skin').value,assetName=$('assetName').textContent;$('loading').style.display='grid';$('loading').textContent='Switching renderer…';try{app.stop();if(fx){fx.destroy();fx=null;}if(model){model.destroy();model=null;}app.destroy(true);if(atlas){atlas.dispose();atlas=null;}textureSources.forEach(x=>x.destroy());textureSources=[];const result=await initRenderer($('renderer').value);if(asset){await installAsset(/\.skel$/i.test(asset.skeletonName)?new Uint8Array(await asset.skeleton.arrayBuffer()):await asset.skeleton.text(),await asset.atlas.text(),asset.images,assetName,/\.skel$/i.test(asset.skeletonName),asset);if([...$('skin').options].some(x=>x.value===skin)){$('skin').value=skin;setSkin();}if([...$('animation').options].some(x=>x.value===animation)){$('animation').value=animation;setAnimation();}}if(result.fallbackReason)setStatus(result.fallbackReason+'. Your preset and asset are retained.');}catch(e){showFatal(e);}finally{rendererBusy=false;renderAssetSelection();layoutPreview();$('loading').style.display='none';}}
+async function switchRenderer(){if(loading||rendererBusy||bakeBusy)return;rendererBusy=true;setPlaying(false);const asset=loadedAsset,animation=$('animation').value,skin=$('skin').value,assetName=$('assetName').textContent;$('loading').style.display='grid';$('loading').textContent='Switching renderer…';try{app.stop();if(multiFx){multiFx.destroy();multiFx=null;}if(fx){fx.destroy();fx=null;}if(model){model.destroy();model=null;}app.destroy(true);if(atlas){atlas.dispose();atlas=null;}textureSources.forEach(x=>x.destroy());textureSources=[];const result=await initRenderer($('renderer').value);if(asset){await installAsset(/\.skel$/i.test(asset.skeletonName)?new Uint8Array(await asset.skeleton.arrayBuffer()):await asset.skeleton.text(),await asset.atlas.text(),asset.images,assetName,/\.skel$/i.test(asset.skeletonName),asset);if([...$('skin').options].some(x=>x.value===skin)){$('skin').value=skin;setSkin();}if([...$('animation').options].some(x=>x.value===animation)){$('animation').value=animation;setAnimation();}}if(result.fallbackReason)setStatus(result.fallbackReason+'. Your preset and asset are retained.');}catch(e){showFatal(e);}finally{rendererBusy=false;renderAssetSelection();layoutPreview();$('loading').style.display='none';}}
 $('renderer').onchange=switchRenderer;
 function updateCenterHandle(){const h=$('centerHandle');h.hidden=cfg.shape!==1||!model;if(!h.hidden){h.style.left=((frameBox.x+cfg.centerX*frameBox.w)*previewScale)+'px';h.style.top=((frameBox.y+cfg.centerY*frameBox.h)*previewScale)+'px';}}
 function moveCenter(e){const bounds=viewport.getBoundingClientRect(),point=previewToScene(e.clientX-bounds.left-viewport.clientLeft,e.clientY-bounds.top-viewport.clientTop);cfg.centerX=Math.max(0,Math.min(1,(point.x-frameBox.x)/frameBox.w));cfg.centerY=Math.max(0,Math.min(1,(point.y-frameBox.y)/frameBox.h));for(const k of ['centerX','centerY']){$(k).value=cfg[k];$(k+'Value').textContent=displayValue(cfg[k],'%');}syncUniforms();updateCenterHandle();}
@@ -3983,7 +4791,8 @@ async function bakeSequence() {
   const transform = { x: model.x - crop.x, y: model.y - crop.y, scaleX: model.scale.x, scaleY: model.scale.y };
   const bounds = { ...frameBox, x: frameBox.x - crop.x, y: frameBox.y - crop.y };
   const disabled = new Map([...document.querySelectorAll('button,input,select')].map(el => [el, el.disabled]));
-  let root, bakeModel, bakeFx, target, pngCanvas, gpuReadback;
+  let root, bakeModel, bakeFx, bakeMulti, target, pngCanvas, gpuReadback;
+  const emitterFrames=[];
   bakeBusy = true; bakeCancelled = false;
   disabled.forEach((_, el) => { el.disabled = true; });
   $('bakeCancel').disabled = false;
@@ -4006,6 +4815,8 @@ async function bakeSequence() {
     bakeFx = SpineBurnFx.createBurnTransition({ PIXI, spine, app: { stage: root, screen: crop }, host,
       model: bakeModel, bounds, settings, enabled: effectEnabled, coordinateOffset: { x: crop.x, y: crop.y },
       random: seededBakeRandom(settings.seed) });
+    bakeMulti = FxEmitterRuntime.createEmitterLayers({PIXI,app:{stage:root},host,model:bakeModel,
+      settings:settings.multiEmitters,bounds,worldOffset:{x:-crop.x,y:-crop.y}});
     target = PIXI.RenderTexture.create({ width: crop.width, height: crop.height, resolution: 1, antialias: false });
     if (backend === 'webgpu') gpuReadback = createGpuBakeReadback(target);
     const entries = [];
@@ -4017,6 +4828,11 @@ async function bakeSequence() {
       // The authoring clock and physics use fixed steps, independent of encoding time.
       bakeFx.setProgress(SpineBurnFx.ease(Math.min(1, seconds / settings.duration), settings.easing, settings.timeCurve));
       bakeFx.update(index === 0 ? 0 : 1 / BAKE_FPS);
+      const emitterFrame=bakeMulti.seek(seconds);
+      emitterFrames.push({seconds,cost:emitterFrame.cost,
+        visibleLayers:emitterFrame.visibleLayers,
+        positions:settings.multiEmitters.emitters.map(e=>({id:e.id,
+          position:bakeMulti.scenePositionForEmitter(e.id)}))});
       app.renderer.render({ container: root, target, clear: true, clearColor: [0, 0, 0, 0] });
       pngCanvas = gpuReadback ? await gpuReadback.read() : extractWebGlBakeCanvas(target);
       const png = await canvasPng(pngCanvas);
@@ -4036,6 +4852,8 @@ async function bakeSequence() {
       transparent: true, trimmed: false, renderer: backend, animation, skin, animationLoop: true,
       animationSpeed: settings.animationSpeed, effectEnabled, effectSettings: settings,
       capture: crop, referenceBounds: { ...frameBox }, modelTransform: transform, sparkRandomSeed: settings.seed,
+      emitters:{schemaVersion:1,enabled:settings.multiEmitters.enabled,
+        frames:emitterFrames,rendererSpace:'isolated crop-local scene coordinates'},
       spacing: bakeFx.spacingPlan ? {schemaVersion:1,enabled:true,mode:settings.spacingCombine,
         pathLengthPx:bakeFx.spacingPlan.pathLengthPx,capped:bakeFx.spacingPlan.capped,
         eventTimesSeconds:bakeFx.spacingPlan.events.map(e=>e.time),
@@ -4066,6 +4884,7 @@ async function bakeSequence() {
   } finally {
     gpuReadback?.destroy();
     if (pngCanvas) pngCanvas.width = pngCanvas.height = 1;
+    bakeMulti?.destroy();
     bakeFx?.destroy();
     root?.destroy({ children: true });
     target?.destroy(true);
@@ -4195,9 +5014,9 @@ async function zip(entries,onEntry){let offset=0;const locals=[],centrals=[];for
 sequenceZip=zip;
 function safePath(name){const normalized=name.replace(/\\/g,'/');if(normalized.startsWith('/')||normalized.split('/').some(p=>p==='..'||p===''||p==='.')||/^[A-Za-z]:/.test(normalized))throw new Error('The atlas contains an unsupported export path: '+name);return normalized;}
 function preset(target){const a=loadedAsset;return {schemaVersion:1,name:'Spine burn transition',rendererPreference:target,fallbackRenderer:'webgl',settings:{...cfg,reverse:$('reverse').checked},timing:{durationSeconds:cfg.duration,durationFrames:durationFrames(),fps:TIMELINE_FPS,clock:'elapsed-seconds'},asset:{skeleton:'assets/'+a.skeletonName,atlas:'assets/'+a.atlasName,spineVersion:a.version,animation:$('animation').value,skin:$('skin').value},reference:{progress,elapsedSeconds:inverseEase(progress)*cfg.duration,frame:Math.round(inverseEase(progress)*durationFrames()),quality:fx.profile,viewport:{width:app.screen.width,height:app.screen.height},bounds:{...frameBox},localBounds:{...poseBox},animationSpeed:cfg.animationSpeed,animateSkeleton:$('animPlay').checked},units:{center:'Normalized within fixed symbol bounds: X right, Y down, 0..1',progress:'0 = original; 1 = fully burned',flameAndSparks:'Logical renderer pixels, not device pixels'},compatibility:{pixi:'8.22.0',spineRuntime:'4.2.120',minimumGpuPath:'WebGL 1',physicalDeviceCertification:false}};}
-function example(target){return `import * as PIXI from 'pixi.js';\nimport * as SpineRuntime from '@esotericsoftware/spine-pixi-v8';\nimport { createApplication, createBurnTransition } from './BurnTransition.mjs';\n\n// Keep bootstrap inside a function to avoid a top-level-await cycle in Vite chunks.\nasync function main() {\nconst preset = await (await fetch('./preset.json')).json();\nconst { app, backend, fallbackReason } = await createApplication(PIXI, {\n  resizeTo: window, backgroundAlpha: 0, resolution: 1, autoDensity: true\n}, '${target}', preset.settings.quality);\ndocument.body.appendChild(app.canvas);\nif (fallbackReason) console.info(fallbackReason);\n\nPIXI.Assets.add({ alias: 'skeleton', src: preset.asset.skeleton });\nPIXI.Assets.add({ alias: 'atlas', src: preset.asset.atlas });\nawait PIXI.Assets.load(['skeleton', 'atlas']);\nconst skeleton = SpineRuntime.Spine.from({ skeleton: 'skeleton', atlas: 'atlas', autoUpdate: false });\nif (preset.asset.skin) {\n  skeleton.skeleton.setSkinByName(preset.asset.skin);\n  skeleton.skeleton.setSlotsToSetupPose();\n}\nif (preset.asset.animation) skeleton.state.setAnimation(0, preset.asset.animation, true);\nskeleton.update(0);\nconst host = new PIXI.Container();\napp.stage.addChild(host);\nhost.addChild(skeleton);\n\n// Preserve the author's fixed reference bounds. Do not recompute them every animation frame.\nconst local = preset.reference.localBounds;\nlet fx;\nfunction layout() {\n  const scale = Math.max(.01, Math.min((app.screen.width - 80) / local.w, (app.screen.height - 80) / local.h));\n  skeleton.scale.set(scale);\n  skeleton.position.set(app.screen.width / 2 - (local.x + local.w / 2) * scale,\n    app.screen.height / 2 - (local.y + local.h / 2) * scale);\n  const bounds = { x: skeleton.x + local.x * scale, y: skeleton.y + local.y * scale, w: local.w * scale, h: local.h * scale };\n  if (fx) fx.setBounds(bounds);\n  return bounds;\n}\nfx = createBurnTransition({ PIXI, spine: SpineRuntime, app, host, model: skeleton, settings: preset.settings, bounds: layout() });\n// Use preset.reference.progress to reproduce the exported still; start gameplay transitions at 0.\nfx.setProgress(preset.reference.progress);\nconst tick = ticker => {\n  const seconds = ticker.elapsedMS / 1000;\n  skeleton.update(preset.reference.animateSkeleton ? Math.min(seconds, .05) * preset.reference.animationSpeed : 0);\n  fx.update(seconds);\n};\napp.ticker.add(tick);\nwindow.addEventListener('resize', layout);\n// Existing games: supply your current Spine instance and your own ticker; do not update it twice.\nwindow.burnDemo = { app, skeleton, fx, backend,\n  play() { fx.reset(); fx.play(); },\n  setProgress(value) { fx.pause(); fx.setProgress(value); },\n  dispose() { window.removeEventListener('resize', layout); app.ticker.remove(tick); fx.destroy();\n    skeleton.destroy(); host.destroy(); app.destroy(true); }\n};\n}\nmain().catch(error => { console.error(error); document.body.textContent = error.message; });\n`;} 
-function readme(target){return `# Spine Burn Transition — ${target==='webgpu'?'WebGPU preferred, with WebGL fallback':'WebGL / WebGL 1 compatibility'}\n\nThis package contains the exact shared effect module used by Spine Burn Lab and the settings selected at export time. All assets remain local. The exporter copies the supplied Spine files; it does not modify them.\n\n## Package contents\n- preset.json: every effect parameter, center, timing, quality, selected skin/animation, reference bounds and preview progress.\n- FxSpacing.mjs: deterministic time scheduling, exact seeded spacing and adaptive arc-length paths.\n- FxCurves.mjs: reusable, validated versioned curve evaluator (linear, stepped and cubic Bezier; no dependencies).\n- BurnTransition.mjs: reusable PixiJS effect, GLSL + WGSL programs, alpha-aware and clipping-aware CPU spark emitter, and application initialization helper.\n- example.js + index.html + package.json: runnable integration example.\n- shaders/: readable shader sources; the runtime module contains the same source.\n- public/assets/: the selected skeleton, atlas, and all atlas pages.\n- LICENSES.txt: bundled runtime and Pixi notices.\n\n## Run the integration example\nRequires Node.js 20.19+ or 22.12+ on the developer machine, not on the target phone.\n\n1. Extract this ZIP to a directory.\n2. Run npm install.\n3. Run npm run dev.\n4. Open the printed localhost URL. The selected preview progress appears immediately.\n5. Call burnDemo.play() in the console to play a complete transition, or burnDemo.setProgress(0.5) to inspect it.\n\nThe WebGPU example needs HTTPS or a secure localhost context. For a phone on your network, serve the example with HTTPS; ordinary LAN HTTP does not expose WebGPU. The app helper falls back to WebGL if WebGPU is unavailable or initialization fails. WebGL does not require WebGPU support.\n\n## Integrate into an existing PixiJS game\nUse PixiJS 8.22.0 and @esotericsoftware/spine-pixi-v8 4.2.120 (Spine 4.2 exports). The createApplication helper refreshes Pixi 8.22’s shared default batch shader to match the active renderer texture limit when switching backends. This uses the version-specific DefaultBatcher._updateMaxTextures method; keep the exact pin or revalidate this initialization step before upgrading. Import createBurnTransition from BurnTransition.mjs. Pass PIXI, the Spine runtime namespace, your app, a Spine instance, preset.settings, and a fixed renderer-space bounds rectangle.\n\nPut the Spine instance inside an identity-transform Container directly under app.stage and pass that Container as host. Move/scale the Spine instance inside the host. The host may contain existing filters; the effect appends its filter and restores the prior filter list on destroy. The example shows this contract explicitly. Use one effect host per symbol.\n\nCall fx.update(elapsedSeconds) once per frame AFTER updating the skeleton pose. Use fx.setProgress(value) for external animation/tween control, or fx.reset(); fx.play() for the exported duration and easing. fx.pause() pauses the transition progress while fx.update() continues flame and particle motion. The effect does not update the Spine animation itself. Avoid double ticker updates.\n\nCall fx.configure({ centerX: 0.3, centerY: 0.7 }) to change the origin, and fx.setBounds(bounds) after moving/resizing the symbol. Call fx.setEnabled(false) to compare the original. Remove your ticker callback and call fx.destroy() when the symbol leaves the scene; destroy your own skeleton and atlas resources according to their ownership.\n\n## Duration, timeline, and 60 FPS frames\nThe author enters Duration (seconds) or Duration (frames @ 60 FPS). These are synchronized; seconds snap to the nearest whole frame, with a minimum of one frame. preset.settings.duration and preset.timing.durationSeconds are the canonical duration in seconds. preset.timing.durationFrames = durationSeconds * 60; preset.timing.fps is 60. For example, 90 frames = 1.5 seconds. Pass settings.duration unchanged into the effect.\n\nFrames are authoring units, not a counter of actual rendered frames. Use ticker.elapsedMS / 1000 with fx.update(); do not increment progress by a fixed 1/frameCount each callback. A 30 FPS phone and a 120 Hz desktop both complete a 90-frame preset in 1.5 seconds of active elapsed time, subject to the next available render frame.\n\nCustom timing: choose Timing curve = Custom in the editor; preset.settings.timeCurve contains the versioned FX-CORE-01 JSON curve (normalized fraction of duration on the X axis). The developer example and PNG bake run the same FxCurves evaluator through BurnTransition.mjs, including monotonic and Bezier constraints.\n\nThe effect progress is the mask position after the selected easing curve. Elapsed seconds and nominal frame position use the inverse curve, so 25% mask progress can correspond to more or less than 25% elapsed time. preset.reference.elapsedSeconds and frame record this position for the exported still.\n\n## Geometry, units, and appearance\nshape 0 = Linear, 1 = Circular, 2 = Organic patches. centerX and centerY are normalized inside the fixed reference box, with +X right and +Y down. The Circular mask measures actual renderer-space distance, so a non-square box produces a circle rather than an ellipse. Progress expands its radius from zero to the farthest box corner. With Edge irregularity > 0 the circle has a noisy burning perimeter; use roughness = 0 for a geometrically exact circle. Reverse direction burns from the outside inward.\n\nUse preset.reference.localBounds for the same selected skin/animation coordinate frame; do not replace the bounds each frame with a moving animated AABB. At progress 0 the source is unchanged; at 1 it has the exported burned appearance and original alpha. The center marker is an editor overlay, not part of the exported effect.\n\nFlame height, ember width, spark size and launch speed use logical renderer pixels. To reproduce the author's apparent size exactly, match preset.reference.bounds.w/h. If you intentionally resize the symbol and want proportional flames, scale these pixel parameters by your displayed size / reference size. DPR is independent; start with app resolution 1 on older phones. A single fixed author preset is exported; Auto quality selects Low on mobile and Balanced on typical desktops. Select a fixed quality in the lab when exact profile matching matters.\n\n## Phones manufactured in 2019–2020\nManufacturing year alone does not establish support or frame rate. The compatibility path is WebGL, including WebGL 1, with an updated browser and working GPU drivers. WebGPU is an enhancement and is never the only path. A third Canvas export is not included: Canvas does not execute these shaders and the Spine Canvas renderer has feature limitations. Devices without usable WebGL can display an application-provided unfiltered symbol/fallback message.\n\nLow profile: filter resolution 0.5, 3 flame samples, no halo samples, up to 96 active sparks, emission capped at 45/s, a bounded CPU sampling budget, no synchronous GPU pixel readbacks, and anti-aliasing disabled when the application helper selects Low. Balanced uses resolution 1 / 6 samples / 4 halo samples; High uses 1.5 / 9 / 8. Low preserves your parameters but applies documented cost caps. Sparks use attachment alpha, transformed region/mesh geometry, and Spine clipping.\n\nKeep atlases at 2048x2048 or below where practical; inspect MAX_TEXTURE_SIZE on WebGL and maxTextureDimension2D on WebGPU before loading. One RGBA 2048 page alone occupies about 16 MiB on the GPU; multiple pages, render targets, and other symbols add to this. Avoid applying one full-screen filter per dozens of simultaneously active symbols. Profile the intended number of symbols in the actual game.\n\nPhysical-device acceptance checklist: test representative Android 2019 and 2020 devices and the oldest supported iPhone/browser; test WebGL 1 explicitly; verify load, 0/50/100% progress, transparency/PMA, circular center at corners, resize, background/resume, context loss, cleanup, and sustained frame time/memory with the intended symbol count. This package is NOT a certification that every phone from those years reaches a fixed FPS.\n\n## Validation and backend differences\nGLSL and WGSL implement the same mask, parameters, deterministic lattice noise, premultiplied-alpha compositing, and quality constants. Small floating-point and sampling differences between devices/renderers are possible. Particle placement is stochastic. Compare the boundary and burned image rather than expecting identical random spark positions. The package does not contain a fabricated physical-mobile benchmark.\n\n## References\nhttps://pixijs.com/8.x/guides/components/filters\nhttps://pixijs.com/8.x/guides/components/application\nhttps://esotericsoftware.com/spine-pixi\nhttps://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API\n`;}
-async function buildPackage(target){if($('timingMessage').classList.contains('error'))throw new Error('Enter a valid duration before exporting.');if(!loadedAsset||!fx)throw new Error('Load a Spine asset before exporting.');const a=loadedAsset,p=preset(target),core="import './FxCurves.mjs';\nimport './FxSpacing.mjs';\n"+$('sharedCore').textContent+'\nexport const { createBurnTransition, createApplication, qualityName } = globalThis.SpineBurnFx;\n';const entries=[{name:'preset.json',data:JSON.stringify(p,null,2)},{name:'public/preset.json',data:JSON.stringify(p,null,2)},{name:'FxCurves.mjs',data:$('fxCurveCore').textContent+'\nexport const FxCurves = globalThis.FxCurves;\n'},{name:'FxSpacing.mjs',data:"import './FxCurves.mjs';\n"+$('fxSpacingCore').textContent+'\nexport const FxSpacing = globalThis.FxSpacing;\n'},{name:'BurnTransition.mjs',data:core},{name:'example.js',data:example(target)},{name:'README.md',data:readme(target)},{name:'index.html',data:'<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spine Burn — '+target+'<\/title><style>html,body{margin:0;width:100%;height:100%;background:#151820;overflow:hidden}canvas{display:block}<\/style><script type="module" src="/example.js"><\/script><\/html>'},{name:'package.json',data:JSON.stringify({name:'spine-burn-'+target,private:true,type:'module',scripts:{dev:'vite --host 0.0.0.0',build:'vite build'},dependencies:{'pixi.js':'8.22.0','@esotericsoftware/spine-pixi-v8':'4.2.120'},devDependencies:{vite:'7.1.12'}},null,2)},{name:'shaders/burn.vert.glsl',data:SpineBurnFx.GL_VERTEX},{name:'shaders/burn.frag.glsl',data:SpineBurnFx.GL_FRAGMENT.replace('precision highp float;','precision highp float;\n#define FIRE_STEPS '+SpineBurnFx.PROFILES[fx.profile].steps+'\n#define HALO_STEPS '+SpineBurnFx.PROFILES[fx.profile].halo+'\n#define HALO_DIVISOR '+Math.max(1,SpineBurnFx.PROFILES[fx.profile].halo)+'\n')},{name:'LICENSES.txt',data:$('runtimeLicenses').textContent},{name:'public/assets/'+safePath(a.skeletonName),data:a.skeleton},{name:'public/assets/'+safePath(a.atlasName),data:a.atlas}];if(target==='webgpu')entries.push({name:'shaders/burn.wgsl',data:SpineBurnFx.GPU_SHADER.replaceAll('FIRE_STEPS_VALUE',String(SpineBurnFx.PROFILES[fx.profile].steps)).replaceAll('HALO_STEPS_VALUE',String(SpineBurnFx.PROFILES[fx.profile].halo))});for(const page of atlas.pages){const pageName=safePath(page.name);let image=a.images.get(page.name);if(!image){const found=[...a.images].filter(([k])=>k.split('/').pop()===page.name.replace(/\\/g,'/').split('/').pop());if(found.length===1)image=found[0][1];}if(!image)throw new Error('Cannot export missing atlas image: '+page.name);entries.push({name:'public/assets/'+pageName,data:image});}const names=entries.map(x=>x.name);if(new Set(names).size!==names.length)throw new Error('Export filenames conflict. Rename the skeleton or atlas files and load them again.');return {blob:await zip(entries),preset:p,entries};}
+function example(target){return `import * as PIXI from 'pixi.js';\nimport * as SpineRuntime from '@esotericsoftware/spine-pixi-v8';\nimport { createApplication, createBurnTransition } from './BurnTransition.mjs';\nimport { createEmitterLayers } from './FxEmitterRuntime.mjs';\n\n// Keep bootstrap inside a function to avoid a top-level-await cycle in Vite chunks.\nasync function main() {\nconst preset = await (await fetch('./preset.json')).json();\nconst { app, backend, fallbackReason } = await createApplication(PIXI, {\n  resizeTo: window, backgroundAlpha: 0, resolution: 1, autoDensity: true\n}, '${target}', preset.settings.quality);\ndocument.body.appendChild(app.canvas);\nif (fallbackReason) console.info(fallbackReason);\n\nPIXI.Assets.add({ alias: 'skeleton', src: preset.asset.skeleton });\nPIXI.Assets.add({ alias: 'atlas', src: preset.asset.atlas });\nawait PIXI.Assets.load(['skeleton', 'atlas']);\nconst skeleton = SpineRuntime.Spine.from({ skeleton: 'skeleton', atlas: 'atlas', autoUpdate: false });\nif (preset.asset.skin) {\n  skeleton.skeleton.setSkinByName(preset.asset.skin);\n  skeleton.skeleton.setSlotsToSetupPose();\n}\nif (preset.asset.animation) skeleton.state.setAnimation(0, preset.asset.animation, true);\nskeleton.update(0);\nconst host = new PIXI.Container();\napp.stage.addChild(host);\nhost.addChild(skeleton);\n\n// Preserve the author's fixed reference bounds. Do not recompute them every animation frame.\nconst local = preset.reference.localBounds;\nlet fx, multi;\nfunction layout() {\n  const scale = Math.max(.01, Math.min((app.screen.width - 80) / local.w, (app.screen.height - 80) / local.h));\n  skeleton.scale.set(scale);\n  skeleton.position.set(app.screen.width / 2 - (local.x + local.w / 2) * scale,\n    app.screen.height / 2 - (local.y + local.h / 2) * scale);\n  const bounds = { x: skeleton.x + local.x * scale, y: skeleton.y + local.y * scale, w: local.w * scale, h: local.h * scale };\n  if (fx) fx.setBounds(bounds);\n  if (multi) multi.setBounds(bounds);\n  return bounds;\n}\nfx = createBurnTransition({ PIXI, spine: SpineRuntime, app, host, model: skeleton, settings: preset.settings, bounds: layout() });\n// Use preset.reference.progress to reproduce the exported still; start gameplay transitions at 0.\nfx.setProgress(preset.reference.progress);\nmulti=createEmitterLayers({PIXI,app,host,model:skeleton,settings:preset.settings.multiEmitters,bounds:layout()});\nlet multiClock=preset.reference.elapsedSeconds;multi.seek(multiClock);\nconst tick = ticker => {\n  const seconds = ticker.elapsedMS / 1000;\n  skeleton.update(preset.reference.animateSkeleton ? Math.min(seconds, .05) * preset.reference.animationSpeed : 0);\n  fx.update(seconds);\n  multiClock += seconds;multi.seek(multiClock);\n};\napp.ticker.add(tick);\nwindow.addEventListener('resize', layout);\n// Existing games: supply your current Spine instance and your own ticker; do not update it twice.\nwindow.burnDemo = { app, skeleton, fx, multi, backend,\n  play() { fx.reset(); fx.play(); },\n  setProgress(value) { fx.pause(); fx.setProgress(value); },\n  dispose() { window.removeEventListener('resize', layout); app.ticker.remove(tick); multi.destroy(); fx.destroy();\n    skeleton.destroy(); host.destroy(); app.destroy(true); }\n};\n}\nmain().catch(error => { console.error(error); document.body.textContent = error.message; });\n`;}
+function readme(target){return `# Spine Burn Transition — ${target==='webgpu'?'WebGPU preferred, with WebGL fallback':'WebGL / WebGL 1 compatibility'}\n\nThis package contains the exact shared effect module used by Spine Burn Lab and the settings selected at export time. All assets remain local. The exporter copies the supplied Spine files; it does not modify them.\n\n## Package contents\n- preset.json: every effect parameter, center, timing, quality, selected skin/animation, reference bounds and preview progress.\n- FxEmitters.mjs + FxEmitterRuntime.mjs: independent emitter/layer schemas and Pixi/Spine runtime with absolute-time, per-emitter seed/budget/anchoring and selective teardown.\n- FxSpacing.mjs: deterministic time scheduling, exact seeded spacing and adaptive arc-length paths.\n- FxCurves.mjs: reusable, validated versioned curve evaluator (linear, stepped and cubic Bezier; no dependencies).\n- BurnTransition.mjs: reusable PixiJS effect, GLSL + WGSL programs, alpha-aware and clipping-aware CPU spark emitter, and application initialization helper.\n- example.js + index.html + package.json: runnable integration example.\n- shaders/: readable shader sources; the runtime module contains the same source.\n- public/assets/: the selected skeleton, atlas, and all atlas pages.\n- LICENSES.txt: bundled runtime and Pixi notices.\n\n## Run the integration example\nRequires Node.js 20.19+ or 22.12+ on the developer machine, not on the target phone.\n\n1. Extract this ZIP to a directory.\n2. Run npm install.\n3. Run npm run dev.\n4. Open the printed localhost URL. The selected preview progress appears immediately.\n5. Call burnDemo.play() in the console to play a complete transition, or burnDemo.setProgress(0.5) to inspect it.\n\nThe WebGPU example needs HTTPS or a secure localhost context. For a phone on your network, serve the example with HTTPS; ordinary LAN HTTP does not expose WebGPU. The app helper falls back to WebGL if WebGPU is unavailable or initialization fails. WebGL does not require WebGPU support.\n\n## Integrate into an existing PixiJS game\nUse PixiJS 8.22.0 and @esotericsoftware/spine-pixi-v8 4.2.120 (Spine 4.2 exports). The createApplication helper refreshes Pixi 8.22’s shared default batch shader to match the active renderer texture limit when switching backends. This uses the version-specific DefaultBatcher._updateMaxTextures method; keep the exact pin or revalidate this initialization step before upgrading. Import createBurnTransition from BurnTransition.mjs. Pass PIXI, the Spine runtime namespace, your app, a Spine instance, preset.settings, and a fixed renderer-space bounds rectangle.\n\nPut the Spine instance inside an identity-transform Container directly under app.stage and pass that Container as host. Move/scale the Spine instance inside the host. The host may contain existing filters; the effect appends its filter and restores the prior filter list on destroy. The example shows this contract explicitly. Use one effect host per symbol.\n\nCall fx.update(elapsedSeconds) once per frame AFTER updating the skeleton pose. Use fx.setProgress(value) for external animation/tween control, or fx.reset(); fx.play() for the exported duration and easing. fx.pause() pauses the transition progress while fx.update() continues flame and particle motion. The effect does not update the Spine animation itself. Avoid double ticker updates.\n\nCall fx.configure({ centerX: 0.3, centerY: 0.7 }) to change the origin, and fx.setBounds(bounds) after moving/resizing the symbol. Call fx.setEnabled(false) to compare the original. Remove your ticker callback and call fx.destroy() when the symbol leaves the scene; destroy your own skeleton and atlas resources according to their ownership.\n\n## Duration, timeline, and 60 FPS frames\nThe author enters Duration (seconds) or Duration (frames @ 60 FPS). These are synchronized; seconds snap to the nearest whole frame, with a minimum of one frame. preset.settings.duration and preset.timing.durationSeconds are the canonical duration in seconds. preset.timing.durationFrames = durationSeconds * 60; preset.timing.fps is 60. For example, 90 frames = 1.5 seconds. Pass settings.duration unchanged into the effect.\n\nFrames are authoring units, not a counter of actual rendered frames. Use ticker.elapsedMS / 1000 with fx.update(); do not increment progress by a fixed 1/frameCount each callback. A 30 FPS phone and a 120 Hz desktop both complete a 90-frame preset in 1.5 seconds of active elapsed time, subject to the next available render frame.\n\nCustom timing: choose Timing curve = Custom in the editor; preset.settings.timeCurve contains the versioned FX-CORE-01 JSON curve (normalized fraction of duration on the X axis). The developer example and PNG bake run the same FxCurves evaluator through BurnTransition.mjs, including monotonic and Bezier constraints.\n\nThe effect progress is the mask position after the selected easing curve. Elapsed seconds and nominal frame position use the inverse curve, so 25% mask progress can correspond to more or less than 25% elapsed time. preset.reference.elapsedSeconds and frame record this position for the exported still.\n\n## Geometry, units, and appearance\nshape 0 = Linear, 1 = Circular, 2 = Organic patches. centerX and centerY are normalized inside the fixed reference box, with +X right and +Y down. The Circular mask measures actual renderer-space distance, so a non-square box produces a circle rather than an ellipse. Progress expands its radius from zero to the farthest box corner. With Edge irregularity > 0 the circle has a noisy burning perimeter; use roughness = 0 for a geometrically exact circle. Reverse direction burns from the outside inward.\n\nUse preset.reference.localBounds for the same selected skin/animation coordinate frame; do not replace the bounds each frame with a moving animated AABB. At progress 0 the source is unchanged; at 1 it has the exported burned appearance and original alpha. The center marker is an editor overlay, not part of the exported effect.\n\nFlame height, ember width, spark size and launch speed use logical renderer pixels. To reproduce the author's apparent size exactly, match preset.reference.bounds.w/h. If you intentionally resize the symbol and want proportional flames, scale these pixel parameters by your displayed size / reference size. DPR is independent; start with app resolution 1 on older phones. A single fixed author preset is exported; Auto quality selects Low on mobile and Balanced on typical desktops. Select a fixed quality in the lab when exact profile matching matters.\n\n## Phones manufactured in 2019–2020\nManufacturing year alone does not establish support or frame rate. The compatibility path is WebGL, including WebGL 1, with an updated browser and working GPU drivers. WebGPU is an enhancement and is never the only path. A third Canvas export is not included: Canvas does not execute these shaders and the Spine Canvas renderer has feature limitations. Devices without usable WebGL can display an application-provided unfiltered symbol/fallback message.\n\nLow profile: filter resolution 0.5, 3 flame samples, no halo samples, up to 96 active sparks, emission capped at 45/s, a bounded CPU sampling budget, no synchronous GPU pixel readbacks, and anti-aliasing disabled when the application helper selects Low. Balanced uses resolution 1 / 6 samples / 4 halo samples; High uses 1.5 / 9 / 8. Low preserves your parameters but applies documented cost caps. Sparks use attachment alpha, transformed region/mesh geometry, and Spine clipping.\n\nKeep atlases at 2048x2048 or below where practical; inspect MAX_TEXTURE_SIZE on WebGL and maxTextureDimension2D on WebGPU before loading. One RGBA 2048 page alone occupies about 16 MiB on the GPU; multiple pages, render targets, and other symbols add to this. Avoid applying one full-screen filter per dozens of simultaneously active symbols. Profile the intended number of symbols in the actual game.\n\nPhysical-device acceptance checklist: test representative Android 2019 and 2020 devices and the oldest supported iPhone/browser; test WebGL 1 explicitly; verify load, 0/50/100% progress, transparency/PMA, circular center at corners, resize, background/resume, context loss, cleanup, and sustained frame time/memory with the intended symbol count. This package is NOT a certification that every phone from those years reaches a fixed FPS.\n\n## Validation and backend differences\nGLSL and WGSL implement the same mask, parameters, deterministic lattice noise, premultiplied-alpha compositing, and quality constants. Small floating-point and sampling differences between devices/renderers are possible. Particle placement is stochastic. Compare the boundary and burned image rather than expecting identical random spark positions. The package does not contain a fabricated physical-mobile benchmark.\n\n## References\nhttps://pixijs.com/8.x/guides/components/filters\nhttps://pixijs.com/8.x/guides/components/application\nhttps://esotericsoftware.com/spine-pixi\nhttps://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API\n`;}
+async function buildPackage(target){if($('timingMessage').classList.contains('error'))throw new Error('Enter a valid duration before exporting.');if(!loadedAsset||!fx)throw new Error('Load a Spine asset before exporting.');const a=loadedAsset,p=preset(target),core="import './FxCurves.mjs';\nimport './FxSpacing.mjs';\n"+$('sharedCore').textContent+'\nexport const { createBurnTransition, createApplication, qualityName } = globalThis.SpineBurnFx;\n';const entries=[{name:'preset.json',data:JSON.stringify(p,null,2)},{name:'public/preset.json',data:JSON.stringify(p,null,2)},{name:'FxCurves.mjs',data:$('fxCurveCore').textContent+'\nexport const FxCurves = globalThis.FxCurves;\n'},{name:'FxSpacing.mjs',data:"import './FxCurves.mjs';\n"+$('fxSpacingCore').textContent+'\nexport const FxSpacing = globalThis.FxSpacing;\n'},{name:'FxEmitters.mjs',data:"import './FxCurves.mjs';\n"+$('fxEmitterCore').textContent+'\nexport const FxEmitters = globalThis.FxEmitters;\n'},{name:'FxEmitterRuntime.mjs',data:"import './FxEmitters.mjs';\n"+$('fxEmitterRuntime').textContent+'\nexport const createEmitterLayers = globalThis.FxEmitterRuntime.createEmitterLayers;\n'},{name:'BurnTransition.mjs',data:core},{name:'example.js',data:example(target)},{name:'README.md',data:readme(target)},{name:'index.html',data:'<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spine Burn — '+target+'<\/title><style>html,body{margin:0;width:100%;height:100%;background:#151820;overflow:hidden}canvas{display:block}<\/style><script type="module" src="/example.js"><\/script><\/html>'},{name:'package.json',data:JSON.stringify({name:'spine-burn-'+target,private:true,type:'module',scripts:{dev:'vite --host 0.0.0.0',build:'vite build'},dependencies:{'pixi.js':'8.22.0','@esotericsoftware/spine-pixi-v8':'4.2.120'},devDependencies:{vite:'7.1.12'}},null,2)},{name:'shaders/burn.vert.glsl',data:SpineBurnFx.GL_VERTEX},{name:'shaders/burn.frag.glsl',data:SpineBurnFx.GL_FRAGMENT.replace('precision highp float;','precision highp float;\n#define FIRE_STEPS '+SpineBurnFx.PROFILES[fx.profile].steps+'\n#define HALO_STEPS '+SpineBurnFx.PROFILES[fx.profile].halo+'\n#define HALO_DIVISOR '+Math.max(1,SpineBurnFx.PROFILES[fx.profile].halo)+'\n')},{name:'LICENSES.txt',data:$('runtimeLicenses').textContent},{name:'public/assets/'+safePath(a.skeletonName),data:a.skeleton},{name:'public/assets/'+safePath(a.atlasName),data:a.atlas}];if(target==='webgpu')entries.push({name:'shaders/burn.wgsl',data:SpineBurnFx.GPU_SHADER.replaceAll('FIRE_STEPS_VALUE',String(SpineBurnFx.PROFILES[fx.profile].steps)).replaceAll('HALO_STEPS_VALUE',String(SpineBurnFx.PROFILES[fx.profile].halo))});for(const page of atlas.pages){const pageName=safePath(page.name);let image=a.images.get(page.name);if(!image){const found=[...a.images].filter(([k])=>k.split('/').pop()===page.name.replace(/\\/g,'/').split('/').pop());if(found.length===1)image=found[0][1];}if(!image)throw new Error('Cannot export missing atlas image: '+page.name);entries.push({name:'public/assets/'+pageName,data:image});}const names=entries.map(x=>x.name);if(new Set(names).size!==names.length)throw new Error('Export filenames conflict. Rename the skeleton or atlas files and load them again.');return {blob:await zip(entries),preset:p,entries};}
 async function downloadPackage(target){const buttons=[$('exportWebGL'),$('exportWebGPU')];buttons.forEach(b=>b.disabled=true);try{const {blob}=await buildPackage(target);const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='Spine_Burn_'+(target==='webgpu'?'WebGPU':'WebGL')+'.zip';link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);setStatus('Exported '+target.toUpperCase()+' developer package with your preset and Spine assets.');}catch(e){setStatus('Export failed: '+e.message,true);}finally{buttons.forEach(b=>b.disabled=false);}}
 $('exportWebGL').onclick=()=>downloadPackage('webgl');$('exportWebGPU').onclick=()=>downloadPackage('webgpu');window.__burnExport={buildPackage,preset};
 })();

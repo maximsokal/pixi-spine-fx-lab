@@ -37,10 +37,13 @@
     "src/curve-editor.js",
     "src/spacing-core.js",
     "src/spacing-ui.js",
+    "src/emitter-core.js",
+    "src/emitter-runtime.js",
+    "src/emitter-ui.js",
     "src/effect-core.js",
     "src/export-ui.js"
   ],
-  "baselineHtmlSha256": "1575a6d5adf13b2e71d321551ef6f95880c1e608c00463155057e39c11abbae0",
+  "baselineHtmlSha256": "24d92fa92f0e8d5f3ee49e0e57a218cd19ee5abbd2f0f986fbfc0b5d4ff1c6a9",
   "exampleEffect": "Burn to grayscale with flame and sparks",
   "exports": [
     "WebGL developer ZIP",

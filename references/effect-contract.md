@@ -1,6 +1,6 @@
 # Shared effect contract
 
-Use one implementation in live preview, both developer ZIPs and isolated baking. For custom and reusable parameter curves, read the versioned [curve contract](contracts/curves.md) and reuse the same `FxCurves` evaluator across all three outputs. For seeded temporal event scheduling and spatial placement use [FX-CORE-02](contracts/spacing.md); it treats particle speed, emission interval, actual distance travelled and arc-length spacing as separate variables. Define a concrete, JSON-serializable settings type. The following is an interface design, not an already shipped universal adapter:
+Use one implementation in live preview, both developer ZIPs and isolated baking. For custom and reusable parameter curves, read the versioned [curve contract](contracts/curves.md) and reuse the same `FxCurves` evaluator across all three outputs. For seeded temporal event scheduling and spatial placement use [FX-CORE-02](contracts/spacing.md); it treats particle speed, emission interval, actual distance travelled and arc-length spacing as separate variables. For independently positioned/anchored effect layers, use the versioned [FX-CORE-03 emitter contract](contracts/emitters.md), its identity-transform host and selective ownership. Define a concrete, JSON-serializable settings type. The following is an interface design, not an already shipped universal adapter:
 
 ```ts
 interface EffectInstance {

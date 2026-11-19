@@ -37,7 +37,7 @@ def sample_data(root, manifest):
 def build(root):
     manifest = json.loads(text(local(root, 'template.json')))
     html = text(local(root, 'src/ui.html'))
-    for marker in ['<!-- OFFLINE_LIBRARIES -->', '<!-- CURVE_ENGINE -->', '<!-- CURVE_EDITOR -->', '<!-- SPACING_ENGINE -->', '<!-- SPACING_UI -->', '<!-- SHARED_EFFECT_CORE -->', '<!-- EXPORT_SCRIPT -->', '__SAMPLE_DATA__']:
+    for marker in ['<!-- OFFLINE_LIBRARIES -->', '<!-- CURVE_ENGINE -->', '<!-- CURVE_EDITOR -->', '<!-- SPACING_ENGINE -->', '<!-- SPACING_UI -->', '<!-- EMITTER_ENGINE -->', '<!-- EMITTER_RUNTIME -->', '<!-- EMITTER_UI -->', '<!-- SHARED_EFFECT_CORE -->', '<!-- EXPORT_SCRIPT -->', '__SAMPLE_DATA__']:
         if html.count(marker) != 1:
             raise ValueError('Expected exactly one assembly marker: ' + marker)
     pixi_notice = text(local(root, 'licenses/pixi.txt'))
@@ -50,10 +50,13 @@ def build(root):
     curve_editor = '<script id="fxCurveEditor">' + text(local(root, 'src/curve-editor.js')).replace('</', '<\\/') + '</script>'
     spacing_engine = '<script id="fxSpacingCore">' + text(local(root, 'src/spacing-core.js')).replace('</', '<\\/') + '</script>'
     spacing_ui = '<script id="fxSpacingUi">' + text(local(root, 'src/spacing-ui.js')).replace('</', '<\\/') + '</script>'
+    emitter_engine = '<script id="fxEmitterCore">' + text(local(root, 'src/emitter-core.js')).replace('</', '<\\/') + '</script>'
+    emitter_runtime = '<script id="fxEmitterRuntime">' + text(local(root, 'src/emitter-runtime.js')).replace('</', '<\\/') + '</script>'
+    emitter_ui = '<script id="fxEmitterUi">' + text(local(root, 'src/emitter-ui.js')).replace('</', '<\\/') + '</script>'
     shared = '<script id="sharedCore">' + text(local(root, 'src/effect-core.js')).replace('</', '<\\/') + '</script>'
     shared += '<script id="runtimeLicenses" type="text/plain">' + spine_notice + '\n' + pixi_notice + '</script>'
     exporter = '<script>' + text(local(root, 'src/export-ui.js')).replace('</', '<\\/') + '</script>'
-    return html.replace('<!-- OFFLINE_LIBRARIES -->', libraries).replace('<!-- CURVE_ENGINE -->', curve_engine).replace('<!-- CURVE_EDITOR -->', curve_editor).replace('<!-- SPACING_ENGINE -->', spacing_engine).replace('<!-- SPACING_UI -->', spacing_ui).replace('<!-- SHARED_EFFECT_CORE -->', shared).replace('<!-- EXPORT_SCRIPT -->', exporter).replace('__SAMPLE_DATA__', sample)
+    return html.replace('<!-- OFFLINE_LIBRARIES -->', libraries).replace('<!-- CURVE_ENGINE -->', curve_engine).replace('<!-- CURVE_EDITOR -->', curve_editor).replace('<!-- SPACING_ENGINE -->', spacing_engine).replace('<!-- SPACING_UI -->', spacing_ui).replace('<!-- EMITTER_ENGINE -->', emitter_engine).replace('<!-- EMITTER_RUNTIME -->', emitter_runtime).replace('<!-- EMITTER_UI -->', emitter_ui).replace('<!-- SHARED_EFFECT_CORE -->', shared).replace('<!-- EXPORT_SCRIPT -->', exporter).replace('__SAMPLE_DATA__', sample)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

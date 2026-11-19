@@ -36,12 +36,15 @@ main{grid-template-columns:minmax(0,1fr) 400px}.workspace{grid-template-rows:min
 <!-- CURVE_EDITOR -->
 <!-- SPACING_ENGINE -->
 <!-- SPACING_UI -->
+<!-- EMITTER_ENGINE -->
+<!-- EMITTER_RUNTIME -->
+<!-- EMITTER_UI -->
 <!-- SHARED_EFFECT_CORE -->
 <script id="sampleData" type="application/json">__SAMPLE_DATA__</script>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const defaults={quality:'auto',shape:0,angle:0,centerX:0.5,centerY:0.5,roughness:0.10,noiseScale:6,seed:8,softness:0.006,duration:3,easing:1,timeCurve:FxCurves.createPreset('easeInOut',{parameterKey:'transitionProgress',monotonic:true}),flameHeight:38,edgeWidth:5,flameBrightness:1.8,glow:0.8,turbulence:0.7,fireSpeed:1,flicker:0.35,fireColor:'#ff6b19',hotColor:'#ffe7a0',sparks:65,sparkSize:1.8,sparkSpeed:65,sparkSpread:65,sparkLife:1.1,gravity:-18,sparkColor:'#ffc278',desaturation:1,brightness:0.86,contrast:1.12,charWidth:0.035,charStrength:0.6,animationSpeed:1,zoom:1,sparkTrails:true,spacingEnabled:false,spacingCombine:'time',spacingTemporalMode:'uniform',spacingFrequencySource:'rate',spacingBaseRate:65,spacingInterval:.05,spacingBurstCount:3,spacingBurstDelay:.03,spacingMinInterval:0,spacingTimeJitter:0,spacingSpatialMode:'even',spacingBasePx:20,spacingMinPx:2,spacingMaxPx:80,spacingSpatialJitter:0,spacingTravelSpeedPx:120,spacingTeleportThresholdPx:512,spacingSeed:8,spacingPathFollow:'clamp',spacingAlignToTangent:true,spacingGuides:false,spacingRateCurve:null,spacingIntervalCurve:null,spacingDistanceCurve:null,spacingPath:{schemaVersion:1,closed:false,segments:[{p0:[96,256],p1:[180,104],p2:[332,408],p3:[416,256]}]}};
+const defaults={quality:'auto',shape:0,angle:0,centerX:0.5,centerY:0.5,roughness:0.10,noiseScale:6,seed:8,softness:0.006,duration:3,easing:1,timeCurve:FxCurves.createPreset('easeInOut',{parameterKey:'transitionProgress',monotonic:true}),flameHeight:38,edgeWidth:5,flameBrightness:1.8,glow:0.8,turbulence:0.7,fireSpeed:1,flicker:0.35,fireColor:'#ff6b19',hotColor:'#ffe7a0',sparks:65,sparkSize:1.8,sparkSpeed:65,sparkSpread:65,sparkLife:1.1,gravity:-18,sparkColor:'#ffc278',desaturation:1,brightness:0.86,contrast:1.12,charWidth:0.035,charStrength:0.6,animationSpeed:1,zoom:1,multiEmitters:FxEmitters.makeExplosionPreset(),sparkTrails:true,spacingEnabled:false,spacingCombine:'time',spacingTemporalMode:'uniform',spacingFrequencySource:'rate',spacingBaseRate:65,spacingInterval:.05,spacingBurstCount:3,spacingBurstDelay:.03,spacingMinInterval:0,spacingTimeJitter:0,spacingSpatialMode:'even',spacingBasePx:20,spacingMinPx:2,spacingMaxPx:80,spacingSpatialJitter:0,spacingTravelSpeedPx:120,spacingTeleportThresholdPx:512,spacingSeed:8,spacingPathFollow:'clamp',spacingAlignToTangent:true,spacingGuides:false,spacingRateCurve:null,spacingIntervalCurve:null,spacingDistanceCurve:null,spacingPath:{schemaVersion:1,closed:false,segments:[{p0:[96,256],p1:[180,104],p2:[332,408],p3:[416,256]}]}};
 const cfg={...defaults};
 const groups=[
 ['Transition',true,[['shape','Shape','select',[[0,'Linear'],[1,'Circular'],[2,'Organic patches']]],['angle','Direction angle',0,360,1,'°'],['centerX','Center X',0,1,0.01,'%'],['centerY','Center Y',0,1,0.01,'%'],['roughness','Edge irregularity',0,0.35,0.005,'%'],['noiseScale','Noise scale',1,30,0.5,''],['seed','Noise seed',0,99,1,''],['softness','Edge softness',0.001,0.08,0.001,'%'],['easing','Timing curve','select',[[0,'Linear'],[1,'Smooth'],[2,'Ease in'],[3,'Ease out'],[4,'Custom curve']]]]],
@@ -89,7 +92,7 @@ let curveEditor = null;
     }
   });
 }
-let fx,loadedAsset=null,backend='webgl',rendererBusy=false;
+let fx,multiFx=null,emitterUi=null,loadedAsset=null,backend='webgl',rendererBusy=false;
 let app,subject,model,filter,atlas,textureSources=[],maskRT,maskData=null,maskAge=1,emitterPoints=[],particles=[],progress=0.46,phase=0.46,playing=false,fxTime=0,frameBox={x:0,y:0,w:1,h:1},poseBox,spawnBudget=0,loading=false,loadSerial=0,elapsed=0,fps=60;
 const TIMELINE_FPS=60;
 let selectedSkeleton=null,selectedAtlas=null,selectedImages=new Map();
@@ -123,6 +126,94 @@ let spacingUi=null;
     isLocked:()=>bakeBusy||loading||rendererBusy,
     onChange:()=>{syncUniforms();updateSpacingGuides();}});
 }
+const emitterGuide=document.createElementNS('http://www.w3.org/2000/svg','svg');
+emitterGuide.id='fxEmitterGuide';emitterGuide.setAttribute('aria-label','Draggable FX emitter handles');
+emitterGuide.style.cssText='position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:4';
+$('cameraPlane').append(emitterGuide);
+{
+  const holder=document.createElement('div');
+  const spacing=$('fxSpacingPanel');
+  if(spacing)spacing.after(holder);else $('settings').append(holder);
+  emitterUi=FxEmitterUi.mount(holder,{
+    value:cfg.multiEmitters,
+    isLocked:()=>bakeBusy||loading||rendererBusy,
+    diagnostics:()=>multiFx?.diagnostics||[],
+    onChange(value){
+      cfg.multiEmitters=value;
+      if(multiFx)multiFx.configure(value);
+      updateEmitterHandles();
+    },
+    onSelect:()=>updateEmitterHandles()
+  });
+  $('fxEmitterPanel').addEventListener('toggle',updateEmitterHandles);
+}
+let emitterDrag=null;
+function updateEmitterHandles(){
+  const activeNodes=new Set();
+  if(!app||!model||!multiFx||!cfg.multiEmitters.enabled||!$('fxEmitterPanel').open){
+    emitterGuide.hidden=true;emitterGuide.replaceChildren();return;
+  }
+  emitterGuide.hidden=false;
+  const w=app.screen.width*previewScale,h=app.screen.height*previewScale;
+  emitterGuide.setAttribute('viewBox','0 0 '+w+' '+h);
+  emitterGuide.setAttribute('width',w);emitterGuide.setAttribute('height',h);
+  emitterGuide.style.width=w+'px';emitterGuide.style.height=h+'px';
+  const selected=emitterUi?.getSelected();
+  for(const emitter of cfg.multiEmitters.emitters){
+    if(!emitter.enabled||!emitter.visible)continue;
+    const point=multiFx.scenePositionForEmitter(emitter.id);
+    if(!point)continue;
+    const circle=[...emitterGuide.children].find(n=>n.getAttribute('data-kind')==='emitter'&&n.getAttribute('data-id')===emitter.id)||document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',point.x*previewScale);
+    circle.setAttribute('cy',point.y*previewScale);
+    circle.setAttribute('r',emitter.id===selected.emitterId?10:7);
+    circle.setAttribute('fill','#ffba74');circle.setAttribute('fill-opacity','.25');
+    circle.setAttribute('stroke','#ffc980');circle.setAttribute('stroke-width','2');
+    circle.setAttribute('data-id',emitter.id);circle.setAttribute('data-kind','emitter');
+    circle.style.cursor='move';circle.style.pointerEvents='all';
+    circle.setAttribute('aria-label','Drag emitter '+emitter.name);
+    if(circle.parentNode!==emitterGuide)emitterGuide.append(circle);
+    activeNodes.add(circle);
+    if(emitter.id!==selected.emitterId||!selected.layerId)continue;
+    const layer=multiFx.scenePositionForLayer(emitter.id,selected.layerId);
+    if(!layer)continue;
+    const rect=[...emitterGuide.children].find(n=>n.getAttribute('data-kind')==='layer'&&n.getAttribute('data-id')===selected.layerId)||document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',layer.x*previewScale-5);rect.setAttribute('y',layer.y*previewScale-5);
+    rect.setAttribute('width',10);rect.setAttribute('height',10);
+    rect.setAttribute('fill','#9ddcfc');rect.setAttribute('stroke','#14222b');
+    rect.setAttribute('data-id',selected.layerId);rect.setAttribute('data-kind','layer');
+    rect.style.cursor='move';rect.style.pointerEvents='all';
+    rect.setAttribute('aria-label','Drag selected layer position');
+    if(rect.parentNode!==emitterGuide)emitterGuide.append(rect);
+    activeNodes.add(rect);
+  }
+  for(const element of [...emitterGuide.children])if(!activeNodes.has(element))element.remove();
+}
+emitterGuide.addEventListener('pointerdown',event=>{
+  const target=event.target.closest('[data-kind]');
+  if(!target||bakeBusy||loading||rendererBusy)return;
+  event.preventDefault();
+  emitterDrag={kind:target.getAttribute('data-kind'),id:target.getAttribute('data-id')};
+  emitterGuide.setPointerCapture(event.pointerId);
+});
+emitterGuide.addEventListener('pointermove',event=>{
+  if(!emitterDrag||!emitterGuide.hasPointerCapture(event.pointerId)||!multiFx)return;
+  const bounds=$('viewport').getBoundingClientRect();
+  const point=previewToScene(event.clientX-bounds.left-$('viewport').clientLeft,
+    event.clientY-bounds.top-$('viewport').clientTop);
+  const selection=emitterUi.getSelected();
+  try{
+    if(emitterDrag.kind==='emitter'){
+      const local=multiFx.emitterOffsetFromScene(emitterDrag.id,point.x,point.y);
+      emitterUi.setFromScene('emitter',emitterDrag.id,local.x,local.y);
+    }else if(selection?.emitterId){
+      const local=multiFx.layerOffsetFromScene(selection.emitterId,emitterDrag.id,point.x,point.y);
+      emitterUi.setFromScene('layer',emitterDrag.id,local.x,local.y);
+    }
+  }catch(error){$('fxEmitterStatus').textContent=error.message;}
+});
+for(const type of ['pointerup','pointercancel','lostpointercapture'])
+  emitterGuide.addEventListener(type,()=>{emitterDrag=null;});
 function updateSpacingGuides(){
   spacingGuide.replaceChildren();
   if(!app||!cfg.spacingEnabled||!cfg.spacingGuides||!model){spacingGuide.hidden=true;return;}
@@ -161,9 +252,9 @@ function field(x,y){return SpineBurnFx.field({...cfg,reverse:$('reverse').checke
 function syncUniforms(){if(!fx)return;fx.configure({...cfg,reverse:$('reverse').checked});fx.setEnabled($('effect').checked);filter=fx.filter;filter.resolution=SpineBurnFx.PROFILES[fx.profile].resolution*previewScale;}
 function ease(t){return cfg.easing===4?FxCurves.evaluate(cfg.timeCurve,t):cfg.easing===1?t*t*(3-2*t):cfg.easing===2?t*t:cfg.easing===3?1-(1-t)*(1-t):t;}
 function inverseEase(v){if(v<=0)return 0;if(v>=1)return 1;let lo=0,hi=1;for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(ease(mid)<v)lo=mid;else hi=mid;}return (lo+hi)/2;}
-function setProgress(value){progress=Math.max(0,Math.min(1,value));$('progress').value=progress;$('progressValue').textContent=(progress*100).toFixed(1)+'%';maskAge=1;if(progress===0||progress===1){particles=[];spawnBudget=0;}if(fx)fx.setProgress(progress);updateTimeline();syncUniforms();updateCenterHandle();}
+function setProgress(value){progress=Math.max(0,Math.min(1,value));$('progress').value=progress;$('progressValue').textContent=(progress*100).toFixed(1)+'%';maskAge=1;if(progress===0||progress===1){particles=[];spawnBudget=0;}if(fx)fx.setProgress(progress);if(multiFx)multiFx.seek(inverseEase(progress)*cfg.duration);updateTimeline();syncUniforms();updateCenterHandle();updateEmitterHandles();}
 function setPlaying(value){playing=value;$('play').textContent=playing?'Pause transition':'Play transition';}
-function fit(){if(!app||!model||!poseBox)return;const w=app.screen.width,h=app.screen.height,viewW=bakeArea.width,viewH=bakeArea.height;const margin=Math.min(75,viewW*.12,viewH*.12);const scale=Math.max(.01,Math.min((viewW-margin*2)/poseBox.w,(viewH-margin*2)/poseBox.h)*cfg.zoom);model.scale.set(Math.max(.01,scale));model.position.set(w/2-(poseBox.x+poseBox.w/2)*scale,h/2-(poseBox.y+poseBox.h/2)*scale+15);frameBox={x:model.x+poseBox.x*scale,y:model.y+poseBox.y*scale,w:poseBox.w*scale,h:poseBox.h*scale};if(fx)fx.setBounds(frameBox);particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();updateSpacingGuides();}
+function fit(){if(!app||!model||!poseBox)return;const w=app.screen.width,h=app.screen.height,viewW=bakeArea.width,viewH=bakeArea.height;const margin=Math.min(75,viewW*.12,viewH*.12);const scale=Math.max(.01,Math.min((viewW-margin*2)/poseBox.w,(viewH-margin*2)/poseBox.h)*cfg.zoom);model.scale.set(Math.max(.01,scale));model.position.set(w/2-(poseBox.x+poseBox.w/2)*scale,h/2-(poseBox.y+poseBox.h/2)*scale+15);frameBox={x:model.x+poseBox.x*scale,y:model.y+poseBox.y*scale,w:poseBox.w*scale,h:poseBox.h*scale};if(fx)fx.setBounds(frameBox);particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();updateSpacingGuides();if(multiFx)multiFx.setBounds(frameBox);updateEmitterHandles();}
 function measurePose(){model.scale.set(1);model.position.set(0);model.update(0);const b=model.getLocalBounds();if(!(b.width>0&&b.height>0))throw new Error('The skeleton has no visible attachments in this skin.');poseBox={x:b.x,y:b.y,w:b.width,h:b.height};fit();}
 function updateAlphaMask(){if(fx){fx.refreshEmitter();emitterPoints=fx.emitterPoints;}}
 function updateParticles(dt){if(fx){fx.update(dt);particles=fx.particles;emitterPoints=fx.emitterPoints;}}
@@ -173,16 +264,16 @@ async function imageFromBlob(blob){const url=URL.createObjectURL(blob);try{const
 function readVersion(bytes){if(!bytes.length)throw new Error('The skeleton file is empty.');const input=new spine.BinaryInput(bytes);input.readInt32();input.readInt32();return input.readString();}
 async function installAsset(skeleton,atlasText,imageMap,name,binary=false,exportInfo=null){const serial=++loadSerial;loading=true;renderAssetSelection();$('loading').style.display='grid';$('loading').textContent='Loading Spine export…';setPlaying(false);let newAtlas,newModel,newSources=[];try{const data=binary?skeleton:JSON.parse(skeleton);const version=binary?readVersion(skeleton):data.skeleton?.spine;if(typeof version!=='string'||!version.startsWith('4.2.'))throw new Error('This preview requires Spine 4.2 exports. File version: '+(version||'unknown')+'.');newAtlas=new spine.TextureAtlas(atlasText);if(!newAtlas.pages.length)throw new Error('The atlas contains no texture pages.');for(const page of newAtlas.pages){const key=page.name.replace(/\\/g,'/');let blob=imageMap.get(key);if(!blob){const matches=[...imageMap.entries()].filter(([n])=>n.split('/').pop()===key.split('/').pop());if(matches.length===1)blob=matches[0][1];else if(matches.length>1)throw new Error('Ambiguous texture filename: '+page.name+'. Select the export folder files with unique page names.');}if(!blob)throw new Error('Missing atlas image: '+page.name+'. Select every image listed in the atlas.');const img=await imageFromBlob(blob);const source=new PIXI.ImageSource({resource:img,alphaMode:page.pma?'premultiplied-alpha':'premultiply-alpha-on-upload',autoGenerateMipmaps:false});newSources.push(source);page.setTexture(spine.SpineTexture.from(source));}
 const parser=binary?new spine.SkeletonBinary(new spine.AtlasAttachmentLoader(newAtlas)):new spine.SkeletonJson(new spine.AtlasAttachmentLoader(newAtlas));const skeletonData=parser.readSkeletonData(data);newModel=new spine.Spine({skeletonData,autoUpdate:false});if(skeletonData.skins.length&&!skeletonData.defaultSkin){newModel.skeleton.setSkin(skeletonData.skins[0]);newModel.skeleton.setSlotsToSetupPose();}newModel.update(0);const b=newModel.getLocalBounds();if(!(b.width>0&&b.height>0))throw new Error('The setup pose has no visible attachments. Export a skeleton with a visible default skin.');if(serial!==loadSerial){newModel.destroy();newAtlas.dispose();newSources.forEach(x=>x.destroy());return;}
-if(fx){fx.destroy();fx=null;}if(model){subject.removeChild(model);model.destroy();}if(atlas)atlas.dispose();textureSources.forEach(x=>x.destroy());atlas=newAtlas;textureSources=newSources;model=newModel;subject.addChild(model);$('animation').replaceChildren();const setup=document.createElement('option');setup.value='';setup.textContent='Setup pose';$('animation').append(setup);for(const anim of skeletonData.animations){const o=document.createElement('option');o.value=anim.name;o.textContent=anim.name;$('animation').append(o);}if(skeletonData.animations.length)$('animation').value=skeletonData.animations.some(x=>x.name==='idle')?'idle':skeletonData.animations[0].name;$('skin').replaceChildren();for(const skin of skeletonData.skins){const o=document.createElement('option');o.value=skin.name;o.textContent=skin.name;$('skin').append(o);}if(skeletonData.skins.length){$('skin').value=skeletonData.skins.some(x=>x.name==='default')?'default':skeletonData.skins[0].name;model.skeleton.setSkinByName($('skin').value);model.skeleton.setSlotsToSetupPose();}$('skin').disabled=!skeletonData.skins.length;setAnimation();loadedAsset=exportInfo||{skeletonName:binary?'skeleton.skel':'skeleton.json',atlasName:'skeleton.atlas',skeleton:new Blob([binary?skeleton:skeleton],{type:binary?'application/octet-stream':'application/json'}),atlas:new Blob([atlasText],{type:'application/octet-stream'}),images:new Map(imageMap)};loadedAsset.version=version;fx=SpineBurnFx.createBurnTransition({PIXI,spine,app,host:subject,model,settings:{...cfg,reverse:$('reverse').checked},bounds:frameBox});fx.setProgress(progress);filter=fx.filter;syncUniforms();updateCenterHandle();$('assetName').textContent=name;setStatus('Loaded '+name+' · Spine '+version+' · '+newAtlas.pages.length+' atlas page'+(newAtlas.pages.length===1?'':'s')+' · '+skeletonData.animations.length+' animations');particles=[];maskAge=1;}catch(e){if(newModel&&newModel!==model)newModel.destroy();if(newAtlas&&newAtlas!==atlas)newAtlas.dispose();newSources.filter(x=>!textureSources.includes(x)).forEach(x=>x.destroy());setStatus(e.message,true);throw e;}finally{if(serial===loadSerial){loading=false;renderAssetSelection();$('loading').style.display='none';}}}
+if(multiFx){multiFx.destroy();multiFx=null;}if(fx){fx.destroy();fx=null;}if(model){subject.removeChild(model);model.destroy();}if(atlas)atlas.dispose();textureSources.forEach(x=>x.destroy());atlas=newAtlas;textureSources=newSources;model=newModel;subject.addChild(model);$('animation').replaceChildren();const setup=document.createElement('option');setup.value='';setup.textContent='Setup pose';$('animation').append(setup);for(const anim of skeletonData.animations){const o=document.createElement('option');o.value=anim.name;o.textContent=anim.name;$('animation').append(o);}if(skeletonData.animations.length)$('animation').value=skeletonData.animations.some(x=>x.name==='idle')?'idle':skeletonData.animations[0].name;$('skin').replaceChildren();for(const skin of skeletonData.skins){const o=document.createElement('option');o.value=skin.name;o.textContent=skin.name;$('skin').append(o);}if(skeletonData.skins.length){$('skin').value=skeletonData.skins.some(x=>x.name==='default')?'default':skeletonData.skins[0].name;model.skeleton.setSkinByName($('skin').value);model.skeleton.setSlotsToSetupPose();}$('skin').disabled=!skeletonData.skins.length;setAnimation();loadedAsset=exportInfo||{skeletonName:binary?'skeleton.skel':'skeleton.json',atlasName:'skeleton.atlas',skeleton:new Blob([binary?skeleton:skeleton],{type:binary?'application/octet-stream':'application/json'}),atlas:new Blob([atlasText],{type:'application/octet-stream'}),images:new Map(imageMap)};loadedAsset.version=version;fx=SpineBurnFx.createBurnTransition({PIXI,spine,app,host:subject,model,settings:{...cfg,reverse:$('reverse').checked},bounds:frameBox});fx.setProgress(progress);multiFx=FxEmitterRuntime.createEmitterLayers({PIXI,app,host:subject,model,settings:cfg.multiEmitters,bounds:frameBox});multiFx.seek(inverseEase(progress)*cfg.duration);filter=fx.filter;syncUniforms();updateCenterHandle();updateEmitterHandles();$('assetName').textContent=name;setStatus('Loaded '+name+' · Spine '+version+' · '+newAtlas.pages.length+' atlas page'+(newAtlas.pages.length===1?'':'s')+' · '+skeletonData.animations.length+' animations');particles=[];maskAge=1;}catch(e){if(newModel&&newModel!==model)newModel.destroy();if(newAtlas&&newAtlas!==atlas)newAtlas.dispose();newSources.filter(x=>!textureSources.includes(x)).forEach(x=>x.destroy());setStatus(e.message,true);throw e;}finally{if(serial===loadSerial){loading=false;renderAssetSelection();$('loading').style.display='none';}}}
 async function loadFiles(files){if(loading||rendererBusy||bakeBusy){assetMessage('The preview is busy. Try again when it finishes.',true);return false;}const list=Array.from(files);const skeletons=list.filter(f=>/\.(json|skel)$/i.test(f.name)),atlases=list.filter(f=>/\.atlas$/i.test(f.name));if(skeletons.length!==1||atlases.length!==1){assetMessage('Select exactly one .json or .skel, one .atlas, and all atlas images. .spine editor projects must be exported first.',true);return false;}const images=new Map();for(const f of list.filter(f=>/\.(png|webp|jpe?g)$/i.test(f.name))){if(images.has(f.name)){assetMessage('Duplicate texture filename: '+f.name+'.',true);return false;}images.set(f.name,f);}selectedSkeleton=skeletons[0];selectedAtlas=atlases[0];selectedImages=new Map(images);renderAssetSelection();try{const skel=skeletons[0];await installAsset(/\.skel$/i.test(skel.name)?new Uint8Array(await skel.arrayBuffer()):await skel.text(),await atlases[0].text(),images,skel.name,/\.skel$/i.test(skel.name),{skeletonName:skel.name,atlasName:atlases[0].name,skeleton:skel,atlas:atlases[0],images:new Map(images)});assetMessage('Loaded '+skel.name+' into the preview.');return true;}catch(e){assetMessage(e.message,true);return false;}}
 async function loadSample(){if(loading||rendererBusy||bakeBusy)return;const data=JSON.parse($('sampleData').textContent);const images=new Map(Object.entries(data.images).map(([name,b64])=>[name,new Blob([Uint8Array.from(atob(b64),c=>c.charCodeAt(0))],{type:'image/png'})]));const skeletonText=JSON.stringify(data.skeleton);await installAsset(skeletonText,data.atlas,images,data.label+' · built-in sample',false,{skeletonName:data.skeletonName,atlasName:data.atlasName,skeleton:new Blob([skeletonText],{type:'application/json'}),atlas:new Blob([data.atlas],{type:'text/plain'}),images:new Map(images)});}
-$('load').onclick=()=>{$('assetPanel').open=true;$('assetPanel').scrollIntoView({block:'nearest'});$('skeletonFile').focus({preventScroll:true});};$('selectAll').onclick=()=>$('files').click();$('files').onchange=()=>{loadFiles($('files').files);$('files').value='';};$('sample').onclick=()=>loadSample().catch(()=>{});$('animation').onchange=setAnimation;$('skin').onchange=setSkin;$('background').onchange=()=>{$('viewport').classList.toggle('checker',$('background').value==='checker');$('viewport').style.backgroundColor=$('background').value==='checker'?'':$('background').value;};$('play').onclick=()=>{if(progress>=1){phase=0;setProgress(0);}else phase=inverseEase(progress);setPlaying(!playing);};$('reset').onclick=()=>{setPlaying(false);phase=0;setProgress(0);};$('finish').onclick=()=>{setPlaying(false);phase=1;setProgress(1);};$('progress').oninput=()=>{setPlaying(false);setProgress(Number($('progress').value));phase=inverseEase(progress);particles=[];};$('reverse').onchange=()=>{particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();};$('effect').onchange=()=>{particles=[];syncUniforms();};$('defaults').onclick=()=>{Object.assign(cfg,defaults);curveEditor?.setCurve(cfg.timeCurve);for(const [, ,fields]of groups)for(const [key,,a,,,unit]of fields){$(key).value=cfg[key];if($(key+'Value'))$(key+'Value').textContent=displayValue(cfg[key],unit);}$('reverse').checked=false;$('effect').checked=true;updateDurationInputs();fit();phase=inverseEase(progress);updateTimeline();spacingUi?.refresh();updateSpacingGuides();};
+$('load').onclick=()=>{$('assetPanel').open=true;$('assetPanel').scrollIntoView({block:'nearest'});$('skeletonFile').focus({preventScroll:true});};$('selectAll').onclick=()=>$('files').click();$('files').onchange=()=>{loadFiles($('files').files);$('files').value='';};$('sample').onclick=()=>loadSample().catch(()=>{});$('animation').onchange=setAnimation;$('skin').onchange=setSkin;$('background').onchange=()=>{$('viewport').classList.toggle('checker',$('background').value==='checker');$('viewport').style.backgroundColor=$('background').value==='checker'?'':$('background').value;};$('play').onclick=()=>{if(progress>=1){phase=0;setProgress(0);}else phase=inverseEase(progress);setPlaying(!playing);};$('reset').onclick=()=>{setPlaying(false);phase=0;setProgress(0);};$('finish').onclick=()=>{setPlaying(false);phase=1;setProgress(1);};$('progress').oninput=()=>{setPlaying(false);setProgress(Number($('progress').value));phase=inverseEase(progress);particles=[];};$('reverse').onchange=()=>{particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();};$('effect').onchange=()=>{particles=[];syncUniforms();};$('defaults').onclick=()=>{Object.assign(cfg,defaults);curveEditor?.setCurve(cfg.timeCurve);emitterUi?.refresh(cfg.multiEmitters);if(multiFx)multiFx.configure(cfg.multiEmitters);for(const [, ,fields]of groups)for(const [key,,a,,,unit]of fields){$(key).value=cfg[key];if($(key+'Value'))$(key+'Value').textContent=displayValue(cfg[key],unit);}$('reverse').checked=false;$('effect').checked=true;updateDurationInputs();fit();phase=inverseEase(progress);updateTimeline();spacingUi?.refresh();updateSpacingGuides();updateEmitterHandles();};
 let dragDepth=0;const viewport=$('viewport');viewport.addEventListener('dragenter',e=>{e.preventDefault();dragDepth++;viewport.classList.add('dragging');});viewport.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});viewport.addEventListener('dragleave',()=>{if(--dragDepth<=0){dragDepth=0;viewport.classList.remove('dragging');}});viewport.addEventListener('drop',e=>{e.preventDefault();dragDepth=0;viewport.classList.remove('dragging');loadFiles(e.dataTransfer.files);});window.addEventListener('dragover',e=>e.preventDefault());window.addEventListener('drop',e=>e.preventDefault());
 async function initRenderer(preferred='webgl'){
  const result=await SpineBurnFx.createApplication(PIXI,{backgroundAlpha:0,resolution:1,autoDensity:true,width:viewport.clientWidth,height:viewport.clientHeight},preferred,cfg.quality);app=result.app;backend=result.backend;$('cameraPlane').prepend(app.canvas);subject=new PIXI.Container();app.stage.addChild(subject);
- app.ticker.add(ticker=>{const realDt=Math.max(0,ticker.elapsedMS/1000),dt=Math.min(realDt,.05);fxTime+=realDt;if(model&&!loading)model.update($('animPlay').checked?dt*cfg.animationSpeed:0);if(playing){phase=Math.min(1,phase+realDt/cfg.duration);setProgress(ease(phase));if(phase>=1){if($('loop').checked){phase=0;setProgress(0);}else setPlaying(false);}}syncUniforms();updateParticles(realDt);elapsed+=dt;fps=fps*.95+(realDt>0?1/realDt:60)*.05;if(elapsed>.5){elapsed=0;$('stats').textContent=backend.toUpperCase()+' · '+(fx?.profile||SpineBurnFx.qualityName(cfg.quality))+' · '+Math.round(fps)+' FPS · '+particles.length+' sparks';}});return result;
+ app.ticker.add(ticker=>{const realDt=Math.max(0,ticker.elapsedMS/1000),dt=Math.min(realDt,.05);fxTime+=realDt;if(model&&!loading)model.update($('animPlay').checked?dt*cfg.animationSpeed:0);if(playing){phase=Math.min(1,phase+realDt/cfg.duration);setProgress(ease(phase));if(phase>=1){if($('loop').checked){phase=0;setProgress(0);}else setPlaying(false);}}syncUniforms();updateParticles(realDt);if(multiFx){multiFx.seek(phase*cfg.duration);if($('fxEmitterPanel').open)updateEmitterHandles();}elapsed+=dt;fps=fps*.95+(realDt>0?1/realDt:60)*.05;if(elapsed>.5){elapsed=0;$('stats').textContent=backend.toUpperCase()+' · '+(fx?.profile||SpineBurnFx.qualityName(cfg.quality))+' · '+Math.round(fps)+' FPS · '+particles.length+' sparks';}});return result;
 }
-async function switchRenderer(){if(loading||rendererBusy||bakeBusy)return;rendererBusy=true;setPlaying(false);const asset=loadedAsset,animation=$('animation').value,skin=$('skin').value,assetName=$('assetName').textContent;$('loading').style.display='grid';$('loading').textContent='Switching renderer…';try{app.stop();if(fx){fx.destroy();fx=null;}if(model){model.destroy();model=null;}app.destroy(true);if(atlas){atlas.dispose();atlas=null;}textureSources.forEach(x=>x.destroy());textureSources=[];const result=await initRenderer($('renderer').value);if(asset){await installAsset(/\.skel$/i.test(asset.skeletonName)?new Uint8Array(await asset.skeleton.arrayBuffer()):await asset.skeleton.text(),await asset.atlas.text(),asset.images,assetName,/\.skel$/i.test(asset.skeletonName),asset);if([...$('skin').options].some(x=>x.value===skin)){$('skin').value=skin;setSkin();}if([...$('animation').options].some(x=>x.value===animation)){$('animation').value=animation;setAnimation();}}if(result.fallbackReason)setStatus(result.fallbackReason+'. Your preset and asset are retained.');}catch(e){showFatal(e);}finally{rendererBusy=false;renderAssetSelection();layoutPreview();$('loading').style.display='none';}}
+async function switchRenderer(){if(loading||rendererBusy||bakeBusy)return;rendererBusy=true;setPlaying(false);const asset=loadedAsset,animation=$('animation').value,skin=$('skin').value,assetName=$('assetName').textContent;$('loading').style.display='grid';$('loading').textContent='Switching renderer…';try{app.stop();if(multiFx){multiFx.destroy();multiFx=null;}if(fx){fx.destroy();fx=null;}if(model){model.destroy();model=null;}app.destroy(true);if(atlas){atlas.dispose();atlas=null;}textureSources.forEach(x=>x.destroy());textureSources=[];const result=await initRenderer($('renderer').value);if(asset){await installAsset(/\.skel$/i.test(asset.skeletonName)?new Uint8Array(await asset.skeleton.arrayBuffer()):await asset.skeleton.text(),await asset.atlas.text(),asset.images,assetName,/\.skel$/i.test(asset.skeletonName),asset);if([...$('skin').options].some(x=>x.value===skin)){$('skin').value=skin;setSkin();}if([...$('animation').options].some(x=>x.value===animation)){$('animation').value=animation;setAnimation();}}if(result.fallbackReason)setStatus(result.fallbackReason+'. Your preset and asset are retained.');}catch(e){showFatal(e);}finally{rendererBusy=false;renderAssetSelection();layoutPreview();$('loading').style.display='none';}}
 $('renderer').onchange=switchRenderer;
 function updateCenterHandle(){const h=$('centerHandle');h.hidden=cfg.shape!==1||!model;if(!h.hidden){h.style.left=((frameBox.x+cfg.centerX*frameBox.w)*previewScale)+'px';h.style.top=((frameBox.y+cfg.centerY*frameBox.h)*previewScale)+'px';}}
 function moveCenter(e){const bounds=viewport.getBoundingClientRect(),point=previewToScene(e.clientX-bounds.left-viewport.clientLeft,e.clientY-bounds.top-viewport.clientTop);cfg.centerX=Math.max(0,Math.min(1,(point.x-frameBox.x)/frameBox.w));cfg.centerY=Math.max(0,Math.min(1,(point.y-frameBox.y)/frameBox.h));for(const k of ['centerX','centerY']){$(k).value=cfg[k];$(k+'Value').textContent=displayValue(cfg[k],'%');}syncUniforms();updateCenterHandle();}
@@ -372,7 +463,8 @@ async function bakeSequence() {
   const transform = { x: model.x - crop.x, y: model.y - crop.y, scaleX: model.scale.x, scaleY: model.scale.y };
   const bounds = { ...frameBox, x: frameBox.x - crop.x, y: frameBox.y - crop.y };
   const disabled = new Map([...document.querySelectorAll('button,input,select')].map(el => [el, el.disabled]));
-  let root, bakeModel, bakeFx, target, pngCanvas, gpuReadback;
+  let root, bakeModel, bakeFx, bakeMulti, target, pngCanvas, gpuReadback;
+  const emitterFrames=[];
   bakeBusy = true; bakeCancelled = false;
   disabled.forEach((_, el) => { el.disabled = true; });
   $('bakeCancel').disabled = false;
@@ -395,6 +487,8 @@ async function bakeSequence() {
     bakeFx = SpineBurnFx.createBurnTransition({ PIXI, spine, app: { stage: root, screen: crop }, host,
       model: bakeModel, bounds, settings, enabled: effectEnabled, coordinateOffset: { x: crop.x, y: crop.y },
       random: seededBakeRandom(settings.seed) });
+    bakeMulti = FxEmitterRuntime.createEmitterLayers({PIXI,app:{stage:root},host,model:bakeModel,
+      settings:settings.multiEmitters,bounds,worldOffset:{x:-crop.x,y:-crop.y}});
     target = PIXI.RenderTexture.create({ width: crop.width, height: crop.height, resolution: 1, antialias: false });
     if (backend === 'webgpu') gpuReadback = createGpuBakeReadback(target);
     const entries = [];
@@ -406,6 +500,11 @@ async function bakeSequence() {
       // The authoring clock and physics use fixed steps, independent of encoding time.
       bakeFx.setProgress(SpineBurnFx.ease(Math.min(1, seconds / settings.duration), settings.easing, settings.timeCurve));
       bakeFx.update(index === 0 ? 0 : 1 / BAKE_FPS);
+      const emitterFrame=bakeMulti.seek(seconds);
+      emitterFrames.push({seconds,cost:emitterFrame.cost,
+        visibleLayers:emitterFrame.visibleLayers,
+        positions:settings.multiEmitters.emitters.map(e=>({id:e.id,
+          position:bakeMulti.scenePositionForEmitter(e.id)}))});
       app.renderer.render({ container: root, target, clear: true, clearColor: [0, 0, 0, 0] });
       pngCanvas = gpuReadback ? await gpuReadback.read() : extractWebGlBakeCanvas(target);
       const png = await canvasPng(pngCanvas);
@@ -425,6 +524,8 @@ async function bakeSequence() {
       transparent: true, trimmed: false, renderer: backend, animation, skin, animationLoop: true,
       animationSpeed: settings.animationSpeed, effectEnabled, effectSettings: settings,
       capture: crop, referenceBounds: { ...frameBox }, modelTransform: transform, sparkRandomSeed: settings.seed,
+      emitters:{schemaVersion:1,enabled:settings.multiEmitters.enabled,
+        frames:emitterFrames,rendererSpace:'isolated crop-local scene coordinates'},
       spacing: bakeFx.spacingPlan ? {schemaVersion:1,enabled:true,mode:settings.spacingCombine,
         pathLengthPx:bakeFx.spacingPlan.pathLengthPx,capped:bakeFx.spacingPlan.capped,
         eventTimesSeconds:bakeFx.spacingPlan.events.map(e=>e.time),
@@ -455,6 +556,7 @@ async function bakeSequence() {
   } finally {
     gpuReadback?.destroy();
     if (pngCanvas) pngCanvas.width = pngCanvas.height = 1;
+    bakeMulti?.destroy();
     bakeFx?.destroy();
     root?.destroy({ children: true });
     target?.destroy(true);
