@@ -204,6 +204,13 @@ function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
     const color=node('input',{type:'color',id:'fxEmitterLayerColor'});
     color.value=layer.color;color.addEventListener('change',()=>changeLayer('color',color.value));
     controls.append(line('Layer color',color));
+    const lifetimeHost=node('div',{class:'fx-emitter-lifetime'});
+    controls.append(lifetimeHost);
+    FxColorUi.mount(lifetimeHost,{idPrefix:'fxLayerLife',kind:'lifetime',
+      value:layer.lifetime??FxColors.defaultLifetime(layer.color),
+      color:layer.color,defaultValue:FxColors.defaultLifetime(layer.color),isLocked,
+      onChange(value){changeLayer('lifetime',value);}});
+
     const issue=diagnostics?.()?.map(d=>d.emitterId+': '+d.message)||[];
     status.textContent=issue.length?issue.join(' · '):internalError;
   }

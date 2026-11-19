@@ -134,7 +134,7 @@ async function main(){
     const moduleText=items.get('BurnTransition.mjs').toString();
     assert.ok(moduleText.includes("import './FxCurves.mjs'"),'developer effect must import shared evaluator');
     const dir=path.join(output,'module-'+backend+'-'+target);fs.mkdirSync(dir,{recursive:true});
-    for(const n of ['FxCurves.mjs','BurnTransition.mjs',...(items.has('FxSpacing.mjs')?['FxSpacing.mjs']:[])])fs.writeFileSync(path.join(dir,n),items.get(n));
+    for(const n of ['FxCurves.mjs','BurnTransition.mjs',...(items.has('FxSpacing.mjs')?['FxSpacing.mjs']:[]),...(items.has('FxColors.mjs')?['FxColors.mjs']:[])])fs.writeFileSync(path.join(dir,n),items.get(n));
     const loaded=await import(pathToFileURL(path.join(dir,'BurnTransition.mjs')).href);
     const runtime=await import(pathToFileURL(path.join(dir,'FxCurves.mjs')).href);
     assert.equal(typeof loaded.createBurnTransition,'function');

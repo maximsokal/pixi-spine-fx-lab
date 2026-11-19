@@ -2,10 +2,11 @@
 (function (root, factory) {
   'use strict';
   const api=Object.freeze(factory(root.FxCurves||
-    (typeof require==='function'?require('./curve-core.js'):null)));
+    (typeof require==='function'?require('./curve-core.js'):null),
+    root.FxColors||(typeof require==='function'?require('./color-core.js'):null)));
   if(typeof module==='object'&&module.exports)module.exports=api;
   else root.FxEmitters=api;
-})(globalThis, function (Curves) {
+})(globalThis, function (Curves, Colors) {
   'use strict';
   const VERSION=1, MAX_EMITTERS=16, MAX_LAYERS=64, MAX_BUDGET=1400;
   const LAYER_TYPES=Object.freeze(['glow','rays','smoke','debris','sparks','trails','postprocess']);
@@ -41,7 +42,7 @@
     return {id:emitterId+'_'+type,name:type[0].toUpperCase()+type.slice(1),
       type,enabled:true,visible:true,x:0,y:0,rotation:0,scale:1,
       order,blend:type==='smoke'||type==='debris'?'normal':'add',
-      color,opacity,radius,count,budget:count};
+      color,opacity,radius,count,budget:count,lifetime:Colors.defaultLifetime(color)};
   }
   function newEmitter(i=0) {
     const eid='emitter'+(i+1);
@@ -102,7 +103,7 @@
       data.layers=e.layers.map(l=>{
         layerCount++;if(layerCount>MAX_LAYERS)fail('maximum 64 layers');
         keys(l,['id','name','type','enabled','visible','x','y','rotation','scale',
-          'order','blend','color','opacity','radius','count','budget'],'layer');
+          'order','blend','color','opacity','radius','count','budget','lifetime'],'layer');
         const lid=id(l.id,'layer id');
         if(layerIds.has(lid))fail('duplicate layer ID '+lid);layerIds.add(lid);
         if(!LAYER_TYPES.includes(l.type))fail('unknown layer type');
@@ -117,7 +118,8 @@
           order:integer(l.order,'layer order',-1000,1000),
           blend:l.blend,color:l.color,opacity:num(l.opacity,'layer opacity',0,1),
           radius:num(l.radius,'radius',.5,1024),count:integer(l.count,'count',1,128),
-          budget:integer(l.budget,'layer budget',0,MAX_BUDGET)};
+          budget:integer(l.budget,'layer budget',0,MAX_BUDGET),
+          lifetime:Colors.normalizeLifetime(l.lifetime??Colors.defaultLifetime(l.color))};
       });
       return data;
     });
@@ -178,7 +180,7 @@
       const r=R*(.3+.6*origin(i,'r'));
       put({shape:'circle',x:Math.cos(angle)*r*age+age*7,
         y:Math.sin(angle)*r*age-age*R*.6,
-        radius:(4+R*.16*(.25+age))*(.7+origin(i,'size')),alpha:opacity*(1-age)*.65});
+        radius:(4+R*.16*(.25+age))*(.7+origin(i,'size')),alpha:opacity*(1-age)*.65,lifeT:age});
     }
     if(l.type==='debris')for(let i=0;i<l.count&&result.length<max;i++){
       const angle=2*Math.PI*origin(i,'angle'),speed=R*(.4+origin(i,'speed'));
@@ -196,9 +198,30 @@
         const angle=2*Math.PI*origin(i,'a'),speed=R*(.35+origin(i,'speed')*.8);
         const x=Math.cos(angle)*speed*age,y=Math.sin(angle)*speed*age+R*.2*age*age;
         const alpha=opacity*(1-age);
-        if(l.type==='sparks')put({shape:'circle',x,y,radius:1.2+2.2*origin(i,'size'),alpha});
+        if(l.type==='sparks')put({shape:'circle',x,y,radius:1.2+2.2*origin(i,'size'),alpha,lifeT:age});
         else put({shape:'line',x1:x,y1:y,x2:x-Math.cos(angle)*Math.max(2,7*age),
-          y2:y-Math.sin(angle)*Math.max(2,7*age),width:1+origin(i,'width'),alpha});
+          y2:y-Math.sin(angle)*Math.max(2,7*age),width:1+origin(i,'width'),alpha,lifeT:age});
+      }
+    }
+    if(l.lifetime?.enabled){
+      // The authored envelope replaces the legacy implicit fade. The RGBA
+      // stop is kept straight here; Pixi owns premultiplication.
+      for(const primitive of result){
+        const age=clamp(primitive.lifeT??u,0,1);
+        const evaluated=Colors.sampleLifetime(l.lifetime,age,l.opacity);
+        primitive.alpha=evaluated.rgba[3];
+        primitive.color=Colors.hex(evaluated.rgba);
+        const size=evaluated.size;
+        const glow=(l.type==='glow'||l.type==='postprocess')?evaluated.glow:1;
+        if(size<=0||glow<=0)primitive.alpha=0;
+        if(primitive.radius!==undefined)primitive.radius*=size*glow;
+        if(primitive.width!==undefined)primitive.width*=size;
+        if(primitive.w!==undefined)primitive.w*=size;
+        if(primitive.h!==undefined)primitive.h*=size;
+        if(primitive.shape==='line'){
+          primitive.x2=primitive.x1+(primitive.x2-primitive.x1)*size;
+          primitive.y2=primitive.y1+(primitive.y2-primitive.y1)*size;
+        }
       }
     }
     return result;

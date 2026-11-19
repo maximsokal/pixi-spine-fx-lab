@@ -202,7 +202,7 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
         record.graphics.clear();
         if(!item||!ready)continue;
         const color=parseInt(l.color.slice(1),16);
-        for(const shape of item.primitives)drawPrimitive(record.graphics,shape,color);
+        for(const shape of item.primitives)drawPrimitive(record.graphics,shape,shape.color?parseInt(shape.color.slice(1),16):color);
       }
     }
     return {time,visibleLayers:[...byId.keys()],cost:snapshot.cost,diagnostics:diagnostics.slice()};
