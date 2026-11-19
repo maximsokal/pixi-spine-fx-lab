@@ -31,7 +31,7 @@ Choose an existing compatible filter, a custom filter, or a bounded composition 
 
 ## Preserve the shell; change the effect deliberately
 
-Read [the effect contract](references/effect-contract.md) and [controls and performance](references/controls-performance.md).
+Read [the effect contract](references/effect-contract.md) and [controls and performance](references/controls-performance.md). For an effect needing editable timing or value curves, load [the FX-CORE-01 curve contract](references/contracts/curves.md) on demand; do not bulk-load other core specifications.
 
 - Keep all UI, messages, controls, tooltips, export instructions and developer documentation in English.
 - Preserve staged JSON/SKEL + atlas + texture loading, multipage atlases, animation/skin selection, input errors, and the working sample.

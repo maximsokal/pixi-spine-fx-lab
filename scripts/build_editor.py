@@ -37,7 +37,7 @@ def sample_data(root, manifest):
 def build(root):
     manifest = json.loads(text(local(root, 'template.json')))
     html = text(local(root, 'src/ui.html'))
-    for marker in ['<!-- OFFLINE_LIBRARIES -->', '<!-- SHARED_EFFECT_CORE -->', '<!-- EXPORT_SCRIPT -->', '__SAMPLE_DATA__']:
+    for marker in ['<!-- OFFLINE_LIBRARIES -->', '<!-- CURVE_ENGINE -->', '<!-- CURVE_EDITOR -->', '<!-- SHARED_EFFECT_CORE -->', '<!-- EXPORT_SCRIPT -->', '__SAMPLE_DATA__']:
         if html.count(marker) != 1:
             raise ValueError('Expected exactly one assembly marker: ' + marker)
     pixi_notice = text(local(root, 'licenses/pixi.txt'))
@@ -46,10 +46,12 @@ def build(root):
     vendors = manifest.get('browserScripts', ['vendor/pixi-8.22.0.min.js', 'vendor/spine-pixi-v8-4.2.120.min.js'])
     libraries = notices + '\n'.join('<script>' + re.sub(r'</script', r'<\\/script', text(local(root, name)), flags=re.I) + '</script>' for name in vendors)
     sample = json.dumps(sample_data(root, manifest), separators=(',', ':')).replace('</', '<\\/')
+    curve_engine = '<script id="fxCurveCore">' + text(local(root, 'src/curve-core.js')).replace('</', '<\\/') + '</script>'
+    curve_editor = '<script id="fxCurveEditor">' + text(local(root, 'src/curve-editor.js')).replace('</', '<\\/') + '</script>'
     shared = '<script id="sharedCore">' + text(local(root, 'src/effect-core.js')).replace('</', '<\\/') + '</script>'
     shared += '<script id="runtimeLicenses" type="text/plain">' + spine_notice + '\n' + pixi_notice + '</script>'
     exporter = '<script>' + text(local(root, 'src/export-ui.js')).replace('</', '<\\/') + '</script>'
-    return html.replace('<!-- OFFLINE_LIBRARIES -->', libraries).replace('<!-- SHARED_EFFECT_CORE -->', shared).replace('<!-- EXPORT_SCRIPT -->', exporter).replace('__SAMPLE_DATA__', sample)
+    return html.replace('<!-- OFFLINE_LIBRARIES -->', libraries).replace('<!-- CURVE_ENGINE -->', curve_engine).replace('<!-- CURVE_EDITOR -->', curve_editor).replace('<!-- SHARED_EFFECT_CORE -->', shared).replace('<!-- EXPORT_SCRIPT -->', exporter).replace('__SAMPLE_DATA__', sample)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

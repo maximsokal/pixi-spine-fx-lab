@@ -2487,6 +2487,437 @@ fn mainFragment(
         finalColor.rgb = ((outColor.a - 1.0) * vDarkColor.a + 1.0 - outColor.rgb) * vDarkColor.rgb + outColor.rgb * vColor.rgb;
         `}},xi=class extends ke.Shader{constructor(t){const e=(0,ke.compileHighShaderGlProgram)({name:"dark-tint-batch",bits:[ke.colorBitGl,pi,(0,ke.generateTextureBatchBitGl)(t),ke.roundPixelsBitGl]}),s=(0,ke.compileHighShaderGpuProgram)({name:"dark-tint-batch",bits:[ke.colorBit,gi,(0,ke.generateTextureBatchBit)(t),ke.roundPixelsBit]});super({glProgram:e,gpuProgram:s,resources:{batchSamplers:(0,ke.getBatchSamplersUniformGroup)(t)}})}},js=null,bi=class dr extends ct.Batcher{static extension={type:[ct.ExtensionType.Batcher],name:"darkTint"};geometry=new mi;shader=js||(js=new xi(this.maxTextures));name=dr.extension.name;vertexSize=7;packAttributes(e,s,r,i,h){const o=h<<16|e.roundPixels&65535,n=e.transform,a=n.a,l=n.b,c=n.c,d=n.d,u=n.tx,m=n.ty,{positions:f,uvs:p}=e,b=e.color,w=(b>>24&255)/255,g=ct.Color.shared.setValue(e.darkColor).premultiply(w,!0).toPremultiplied(1,!1),x=e.attributeOffset,y=x+e.attributeSize;for(let v=x;v<y;v++){const C=v*2,S=f[C],k=f[C+1];s[i++]=a*S+c*k+u,s[i++]=d*k+l*S+m,s[i++]=p[C],s[i++]=p[C+1],r[i++]=b,r[i++]=g,r[i++]=o}}packQuadAttributes(e,s,r,i,h){const o=e.texture,n=e.transform,a=n.a,l=n.b,c=n.c,d=n.d,u=n.tx,m=n.ty,f=e.bounds,p=f.maxX,b=f.minX,w=f.maxY,g=f.minY,x=o.uvs,y=e.color,v=e.darkColor,C=h<<16|e.roundPixels&65535;s[i+0]=a*b+c*g+u,s[i+1]=d*g+l*b+m,s[i+2]=x.x0,s[i+3]=x.y0,r[i+4]=y,r[i+5]=v,r[i+6]=C,s[i+7]=a*p+c*g+u,s[i+8]=d*g+l*p+m,s[i+9]=x.x1,s[i+10]=x.y1,r[i+11]=y,r[i+12]=v,r[i+13]=C,s[i+14]=a*p+c*w+u,s[i+15]=d*w+l*p+m,s[i+16]=x.x2,s[i+17]=x.y2,r[i+18]=y,r[i+19]=v,r[i+20]=C,s[i+21]=a*b+c*w+u,s[i+22]=d*w+l*b+m,s[i+23]=x.x3,s[i+24]=x.y3,r[i+25]=y,r[i+26]=v,r[i+27]=C}};ct.extensions.add(bi);var wi=X.newFloatArray(8),yi=class bt{static QUAD_TRIANGLES=[0,1,2,2,3,0];static VERTEX_SIZE=8;ctx;triangleRendering=!1;debugRendering=!1;vertices=X.newFloatArray(8*1024);tempColor=new N;constructor(e){this.ctx=e}draw(e){this.triangleRendering?this.drawTriangles(e):this.drawImages(e)}drawImages(e){let s=this.ctx,r=this.tempColor,i=e.color,h=e.drawOrder;this.debugRendering&&(s.strokeStyle="green");for(let o=0,n=h.length;o<n;o++){let a=h[o],l=a.bone;if(!l.active)continue;let c=a.getAttachment();if(!(c instanceof W))continue;c.computeWorldVertices(a,wi,0,2);let d=c.region,u=d.texture.getImage(),m=a.color,f=c.color;r.set(i.r*m.r*f.r,i.g*m.g*f.g,i.b*m.b*f.b,i.a*m.a*f.a),s.save(),s.transform(l.a,l.c,l.b,l.d,l.worldX,l.worldY),s.translate(c.offset[0],c.offset[1]),s.rotate(c.rotation*Math.PI/180);let p=c.width/d.originalWidth;s.scale(p*c.scaleX,p*c.scaleY);let b=d.width,w=d.height;if(s.translate(b/2,w/2),c.region.degrees==90){let g=b;b=w,w=g,s.rotate(-Math.PI/2)}s.scale(1,-1),s.translate(-b/2,-w/2),s.globalAlpha=r.a,s.drawImage(u,u.width*d.u,u.height*d.v,b,w,0,0,b,w),this.debugRendering&&s.strokeRect(0,0,b,w),s.restore()}}drawTriangles(e){let s=this.ctx,r=this.tempColor,i=e.color,h=e.drawOrder,o=null,n=this.vertices,a=null;for(let c=0,d=h.length;c<d;c++){let u=h[c],m=u.getAttachment(),f,p;if(m instanceof W){let b=m;n=this.computeRegionVertices(u,b,!1),a=bt.QUAD_TRIANGLES,f=b.region.texture.getImage()}else if(m instanceof pe){let b=m;n=this.computeMeshVertices(u,b,!1),a=b.triangles,f=b.region.texture.getImage()}else continue;if(f){u.data.blendMode!=o&&(o=u.data.blendMode);let b=u.color,w=m.color;r.set(i.r*b.r*w.r,i.g*b.g*w.g,i.b*b.b*w.b,i.a*b.a*w.a),s.globalAlpha=r.a;for(var l=0;l<a.length;l+=3){let g=a[l]*8,x=a[l+1]*8,y=a[l+2]*8,v=n[g],C=n[g+1],S=n[g+6],k=n[g+7],T=n[x],Y=n[x+1],M=n[x+6],F=n[x+7],B=n[y],I=n[y+1],P=n[y+6],L=n[y+7];this.drawTriangle(f,v,C,S,k,T,Y,M,F,B,I,P,L),this.debugRendering&&(s.strokeStyle="green",s.beginPath(),s.moveTo(v,C),s.lineTo(T,Y),s.lineTo(B,I),s.lineTo(v,C),s.stroke())}}}this.ctx.globalAlpha=1}drawTriangle(e,s,r,i,h,o,n,a,l,c,d,u,m){let f=this.ctx;const p=e.width-1,b=e.height-1;i*=p,h*=b,a*=p,l*=b,u*=p,m*=b,f.beginPath(),f.moveTo(s,r),f.lineTo(o,n),f.lineTo(c,d),f.closePath(),o-=s,n-=r,c-=s,d-=r,a-=i,l-=h,u-=i,m-=h;let w=a*m-u*l;if(w==0)return;w=1/w;const g=(m*o-l*c)*w,x=(m*n-l*d)*w,y=(a*c-u*o)*w,v=(a*d-u*n)*w,C=s-g*i-y*h,S=r-x*i-v*h;f.save(),f.transform(g,x,y,v,C,S),f.clip(),f.drawImage(e,0,0),f.restore()}computeRegionVertices(e,s,r){let i=e.bone.skeleton.color,h=e.color,o=s.color,n=i.a*h.a*o.a,a=r?n:1,l=this.tempColor;l.set(i.r*h.r*o.r*a,i.g*h.g*o.g*a,i.b*h.b*o.b*a,n),s.computeWorldVertices(e,this.vertices,0,bt.VERTEX_SIZE);let c=this.vertices,d=s.uvs;return c[W.C1R]=l.r,c[W.C1G]=l.g,c[W.C1B]=l.b,c[W.C1A]=l.a,c[W.U1]=d[0],c[W.V1]=d[1],c[W.C2R]=l.r,c[W.C2G]=l.g,c[W.C2B]=l.b,c[W.C2A]=l.a,c[W.U2]=d[2],c[W.V2]=d[3],c[W.C3R]=l.r,c[W.C3G]=l.g,c[W.C3B]=l.b,c[W.C3A]=l.a,c[W.U3]=d[4],c[W.V3]=d[5],c[W.C4R]=l.r,c[W.C4G]=l.g,c[W.C4B]=l.b,c[W.C4A]=l.a,c[W.U4]=d[6],c[W.V4]=d[7],c}computeMeshVertices(e,s,r){let i=e.bone.skeleton.color,h=e.color,o=s.color,n=i.a*h.a*o.a,a=r?n:1,l=this.tempColor;l.set(i.r*h.r*o.r*a,i.g*h.g*o.g*a,i.b*h.b*o.b*a,n);let c=s.worldVerticesLength/2,d=this.vertices;d.length<s.worldVerticesLength&&(this.vertices=d=X.newFloatArray(s.worldVerticesLength)),s.computeWorldVertices(e,0,s.worldVerticesLength,d,0,bt.VERTEX_SIZE);let u=s.uvs;for(let m=0,f=0,p=2;m<c;m++)d[p++]=l.r,d[p++]=l.g,d[p++]=l.b,d[p++]=l.a,d[p++]=u[f++],d[p++]=u[f++],p+=2;return d}},Ve=Te("pixi.js"),vi=class{indexOffset=0;attributeOffset=0;indexSize;attributeSize;batcherName="darkTint";topology="triangle-list";packAsQuad=!1;renderable;positions;indices;uvs;roundPixels;data;blendMode;darkTint;texture;transform;_textureId;_attributeStart;_indexStart;_batcher;_batch;get color(){const t=this.data.color,e=this.renderable.groupColor,s=this.renderable.groupAlpha;let r;const i=t.a*s*255;if(e!==16777215){const h=e>>16&255,o=e>>8&255,n=e&255,a=t.r*n,l=t.g*o,c=t.b*h;r=i<<24|c<<16|l<<8|a}else r=i<<24|t.b*255<<16|t.g*255<<8|t.r*255;return r}get darkColor(){const t=this.data.darkColor;return t.b*255<<16|t.g*255<<8|t.r*255}get groupTransform(){return this.renderable.groupTransform}setData(t,e,s,r){if(this.renderable=t,this.transform=t.groupTransform,this.data=e,e.clipped){const i=e.clippedData;this.indexSize=i.indicesCount,this.attributeSize=i.vertexCount,this.positions=i.vertices,this.indices=i.indices,this.uvs=i.uvs}else this.indexSize=e.indices.length,this.attributeSize=e.vertices.length/2,this.positions=e.vertices,this.indices=e.indices,this.uvs=e.uvs;this.texture=e.texture,this.roundPixels=r,this.blendMode=s,this.batcherName=e.darkTint?"darkTint":"default"}},Ci={0:"normal",1:"add",2:"multiply",3:"screen"},Js=class{static extension={type:[Ve.ExtensionType.WebGLPipes,Ve.ExtensionType.WebGPUPipes,Ve.ExtensionType.CanvasPipes],name:"spine"};renderer;canvasSkeletonRenderer;gpuSpineData={};_destroyRenderableBound=this.destroyRenderable.bind(this);constructor(t){this.renderer=t}validateRenderable(t){if(this.renderer.type===Ve.RendererType.CANVAS||(t._validateAndTransformAttachments(),t.spineAttachmentsDirty))return!0;if(t.spineTexturesDirty){const e=t.skeleton.drawOrder,s=this.gpuSpineData[t.uid];if(!s)return!1;for(let r=0,i=e.length;r<i;r++){const h=e[r],o=h.getAttachment();if(o instanceof W||o instanceof pe){const n=t._getCachedData(h,o),a=s.slotBatches[n.id],l=n.texture;if(l!==a?.texture&&!a?._batcher.checkAndUpdateTexture(a,l))return!0}}}return!1}execute(t){if(this.renderer.type===Ve.RendererType.CANVAS){const e=this.renderer,s=(t.groupColorAlpha>>>24&255)/255,r=e.canvasContext,i=r.activeContext;i.save(),this.canvasSkeletonRenderer||(this.canvasSkeletonRenderer=new yi(i),this.canvasSkeletonRenderer.triangleRendering=!0),r.setContextTransform(t.groupTransform,(e._roundPixels|t._roundPixels)===1);const h=t.skeleton.color.a;t.skeleton.color.a*=s,this.canvasSkeletonRenderer.draw(t.skeleton),t.skeleton.color.a=h,i.restore()}}addRenderable(t,e){if(this.renderer.type===Ve.RendererType.CANVAS){this.renderer.renderPipes.batch.break(e),e.add(t);return}const s=this._getSpineData(t),r=this.renderer.renderPipes.batch,i=t.skeleton.drawOrder,h=this.renderer._roundPixels|t._roundPixels;t._validateAndTransformAttachments(),t.spineAttachmentsDirty=!1,t.spineTexturesDirty=!1;for(let o=0,n=i.length;o<n;o++){const a=i[o],l=a.getAttachment(),c=Ci[a.data.blendMode];let d=!1;if(l instanceof W||l instanceof pe){const m=t._getCachedData(a,l),f=s.slotBatches[m.id]||=new vi;f.setData(t,m,c,h),d=m.skipRender,d||r.addToBatch(f,e)}const u=t._slotsObject[a.data.name];if(u){const m=u.container;m.includeInBuild=!0,m.collectRenderables(e,this.renderer,null),m.includeInBuild=!1}}}updateRenderable(t){const e=this.gpuSpineData[t.uid];if(!e)return;t._validateAndTransformAttachments(),t.spineAttachmentsDirty=!1,t.spineTexturesDirty=!1;const s=t.skeleton.drawOrder;for(let r=0,i=s.length;r<i;r++){const h=s[r],o=h.getAttachment();if(o instanceof W||o instanceof pe){const n=t._getCachedData(h,o);if(!n.skipRender){const a=e.slotBatches[n.id];a?._batcher?.updateElement(a)}}}}destroyRenderable(t){this.gpuSpineData[t.uid]=null,t.off("destroyed",this._destroyRenderableBound)}destroy(){this.gpuSpineData=null,this.renderer=null,this.canvasSkeletonRenderer=null}_getSpineData(t){return this.gpuSpineData[t.uid]||this._initMeshData(t)}_initMeshData(t){return this.gpuSpineData[t.uid]={slotBatches:{}},t.on("destroyed",this._destroyRenderableBound),this.gpuSpineData[t.uid]}};Ve.extensions.add(Js);var de=Te("pixi.js"),dt=new Je;qe.yDown=!0;var Ge=new ht,Si=class{constructor(t,e,s,r){this.x=t,this.y=e,this.width=s,this.height=r}calculateBounds(){return{x:this.x,y:this.y,width:this.width,height:this.height}}},Ai=class{constructor(t=!1){this.clipping=t}calculateBounds(t){if(!t.skeleton)return{x:0,y:0,width:0,height:0};const e=new qe(t.skeleton.data);e.setToSetupPose(),e.updateWorldTransform(me.update);const s=e.getBoundsRect(this.clipping?new ht:void 0);return s.width==Number.NEGATIVE_INFINITY?{x:0,y:0,width:0,height:0}:s}},ki=class{constructor(t,e=[],s=.05,r=!1){this.animation=t,this.skins=e,this.timeStep=s,this.clipping=r}calculateBounds(t){if(!t.skeleton||!t.state)return{x:0,y:0,width:0,height:0};const e=new Qt(t.state.data),s=new qe(t.skeleton.data),r=this.clipping?new ht:void 0,i=s.data;if(this.skins.length>0){let o=new et("custom-skin");for(const n of this.skins){const a=i.findSkin(n);a!=null&&o.addSkin(a)}s.setSkin(o)}s.setToSetupPose();const h=this.animation!=null?i.findAnimation(this.animation):null;if(h==null){s.updateWorldTransform(me.update);const o=s.getBoundsRect(r);return o.width==Number.NEGATIVE_INFINITY?{x:0,y:0,width:0,height:0}:o}else{let o=Number.POSITIVE_INFINITY,n=Number.POSITIVE_INFINITY,a=Number.NEGATIVE_INFINITY,l=Number.NEGATIVE_INFINITY;e.clearTracks(),e.setAnimationWith(0,h,!1);const c=Math.max(h.duration/this.timeStep,1);for(let u=0;u<c;u++){const m=u>0?this.timeStep:0;e.update(m),e.apply(s),s.update(m),s.updateWorldTransform(me.update);const f=s.getBoundsRect(r);o=Math.min(o,f.x),n=Math.min(n,f.y),a=Math.max(a,f.x+f.width),l=Math.max(l,f.y+f.height)}const d={x:o,y:n,width:a-o,height:l-n};return d.width==Number.NEGATIVE_INFINITY?{x:0,y:0,width:0,height:0}:d}}},Ks=new Oe(()=>new de.Graphics),Ti=class Ss extends de.ViewContainer{batched=!0;buildId=0;renderPipeId="spine";_didSpineUpdate=!1;beforeUpdateWorldTransforms=()=>{};afterUpdateWorldTransforms=()=>{};skeleton;state;skeletonBounds;darkTint=!1;_debug=void 0;_slotsObject=Object.create(null);clippingSlotToPixiMasks=Object.create(null);getSlotFromRef(e){let s;if(typeof e=="number"?s=this.skeleton.slots[e]:typeof e=="string"?s=this.skeleton.findSlot(e):s=e,!s)throw new Error(`No slot found with the given slot reference: ${e}`);return s}spineAttachmentsDirty=!0;spineTexturesDirty=!0;_lastAttachments=[];_stateChanged=!0;attachmentCacheData=[];get debug(){return this._debug}set debug(e){this._debug&&this._debug.unregisterSpine(this),e&&e.registerSpine(this),this._debug=e}_autoUpdate=!1;_ticker=de.Ticker.shared;get autoUpdate(){return this._autoUpdate}set autoUpdate(e){e&&!this._autoUpdate?this._ticker.add(this.internalUpdate,this):!e&&this._autoUpdate&&this._ticker.remove(this.internalUpdate,this),this._autoUpdate=e}get ticker(){return this._ticker}set ticker(e){e=e??de.Ticker.shared,this._ticker!==e&&(this._autoUpdate&&(this._ticker.remove(this.internalUpdate,this),e.add(this.internalUpdate,this)),this._ticker=e)}_boundsProvider;get boundsProvider(){return this._boundsProvider}set boundsProvider(e){this._boundsProvider=e,e&&(this._boundsDirty=!1),this.updateBounds()}hasNeverUpdated=!0;constructor(e){e instanceof Ze&&(e={skeletonData:e}),super({}),this.allowChildren=!0;const s=e instanceof Ze?e:e.skeletonData;this.skeleton=new qe(s),this.state=new Qt(new Bs(s)),e?.ticker&&(this._ticker=e.ticker),this.autoUpdate=e?.autoUpdate??!0,this.darkTint=e?.darkTint===void 0?this.skeleton.slots.some(i=>!!i.data.darkColor):e?.darkTint;const r=this.skeleton.slots;for(let i=0;i<r.length;i++)this.attachmentCacheData[i]=Object.create(null);this._boundsProvider=e.boundsProvider}update(e){this.internalUpdate(0,e)}internalUpdate(e,s){this._updateAndApplyState(s??this._ticker.deltaMS/1e3)}get bounds(){return this._boundsDirty&&this.updateBounds(),this._bounds}setBonePosition(e,s){const r=e;if(typeof e=="string"&&(e=this.skeleton.findBone(e)),!e)throw Error(`Cant set bone position, bone ${String(r)} not found`);if(dt.set(s.x,s.y),e.parent){const i=e.parent.worldToLocal(dt);e.x=i.x,e.y=-i.y}else e.x=dt.x,e.y=dt.y}getBonePosition(e,s){const r=e;return typeof e=="string"&&(e=this.skeleton.findBone(e)),e?(s||(s={x:0,y:0}),s.x=e.worldX,s.y=e.worldY,s):(console.error(`Cant set bone position! Bone ${String(r)} not found`),s)}_updateAndApplyState(e){this.hasNeverUpdated=!1,this.state.update(e),this.skeleton.update(e);const{skeleton:s}=this;this.state.apply(s),this.beforeUpdateWorldTransforms(this),s.updateWorldTransform(me.update),this.afterUpdateWorldTransforms(this),this.updateSlotObjects(),this._stateChanged=!0,this.onViewUpdate()}_validateAndTransformAttachments(){this._stateChanged&&(this._stateChanged=!1,this.validateAttachments(),this.transformAttachments())}validateAttachments(){const e=this.skeleton.drawOrder,s=this._lastAttachments;let r=0,i=!1;for(let h=0;h<e.length;h++){const n=e[h].getAttachment();n&&(n!==s[r]&&(i=!0,s[r]=n),r++)}r!==s.length&&(i=!0,s.length=r),this.spineAttachmentsDirty||=i}currentClippingSlot;updateAndSetPixiMask(e,s){const r=e.attachment;if(r&&r instanceof Le){const o=this.clippingSlotToPixiMasks[e.data.name]||={slot:e,vertices:new Array};o.maskComputed=!1,this.currentClippingSlot=o;return}let i=this.currentClippingSlot,h=this._slotsObject[e.data.name];if(i&&h){let o=i.mask;if(o||(o=Ks.obtain(),i.mask=o,this.addChild(o)),!i.maskComputed){let n=i.slot,a=n.attachment;i.maskComputed=!0;const l=a.worldVerticesLength,c=i.vertices;a.computeWorldVertices(n,0,l,c,0,2),o.clear().poly(c).stroke({width:0}).fill({alpha:.25})}h.container.mask=o}else h?.container.mask&&(h.container.mask=null);if(i&&i.slot.attachment.endSlot==e.data&&(this.currentClippingSlot=void 0),s){for(const o in this.clippingSlotToPixiMasks){const n=this.clippingSlotToPixiMasks[o];(!(n.slot.attachment instanceof Le)||!n.maskComputed)&&n.mask&&(this.removeChild(n.mask),Ks.free(n.mask),n.mask=void 0)}this.currentClippingSlot=void 0}}transformAttachments(){const e=this.skeleton.drawOrder;for(let s=0;s<e.length;s++){const r=e[s];this.updateAndSetPixiMask(r,s===e.length-1);const i=r.getAttachment();if(i){if(i instanceof pe||i instanceof W){const h=this._getCachedData(r,i);i instanceof W?i.computeWorldVertices(r,h.vertices,0,2):i.computeWorldVertices(r,0,i.worldVerticesLength,h.vertices,0,2),h.uvs.length<i.uvs.length&&(h.uvs=new Float32Array(i.uvs.length)),(0,de.fastCopy)(i.uvs.buffer,h.uvs.buffer);const n=r.bone.skeleton.color,a=r.color,l=i.color,c=n.a*a.a*l.a;if(h.color.set(n.r*a.r*l.r,n.g*a.g*l.g,n.b*a.b*l.b,c),this.alpha===0||c===0)h.skipRender||(this.spineAttachmentsDirty=!0),h.skipRender=!0;else{h.skipRender&&(this.spineAttachmentsDirty=!0),h.skipRender=h.clipped=!1,r.darkColor&&h.darkColor.setFromColor(r.darkColor);const d=i.region?.texture.texture||de.Texture.EMPTY;h.texture!==d&&(h.texture=d,this.spineTexturesDirty=!0),Ge.isClipping()&&this.updateClippingData(h)}}else if(i instanceof Le){Ge.clipStart(r,i);continue}}Ge.clipEndWithSlot(r)}Ge.clipEnd()}updateClippingData(e){e.clipped=!0,Ge.clipTrianglesUnpacked(e.vertices,e.indices,e.indices.length,e.uvs);const{clippedVertices:s,clippedUVs:r,clippedTriangles:i}=Ge,h=s.length/2,o=i.length;e.clippedData||(e.clippedData={vertices:new Float32Array(h*2),uvs:new Float32Array(h*2),vertexCount:h,indices:new Uint16Array(o),indicesCount:o},this.spineAttachmentsDirty=!0);const n=e.clippedData,a=n.vertexCount!==h||o!==n.indicesCount;e.skipRender=h===0,a&&(this.spineAttachmentsDirty=!0,n.vertexCount<h&&(n.vertices=new Float32Array(h*2),n.uvs=new Float32Array(h*2)),n.indices.length<o&&(n.indices=new Uint16Array(o)));const{vertices:l,uvs:c,indices:d}=n;for(let u=0;u<h;u++)l[u*2]=s[u*2],l[u*2+1]=s[u*2+1],c[u*2]=r[u*2],c[u*2+1]=r[u*2+1];n.vertexCount=h;for(let u=0;u<o;u++)d[u]!==i[u]&&(this.spineAttachmentsDirty=!0,d[u]=i[u]);n.indicesCount=o}updateSlotObjects(){for(const e in this._slotsObject){const s=this._slotsObject[e];s&&this.updateSlotObject(s)}}updateSlotObject(e){const{slot:s,container:r}=e,i=e.followAttachmentTimeline?!!s.attachment:!0,h=this.skeleton.color.a*s.color.a;if(r.visible=this.skeleton.drawOrder.includes(s)&&i&&this.alpha>0&&h>0,r.visible){let o=s.bone;const n=r.localTransform;n.a=o.a,n.b=o.c,n.c=-o.b,n.d=-o.d,n.tx=o.worldX,n.ty=o.worldY,r.setFromMatrix(n),r.alpha=h,e.followSlotColor&&(r.tint=255*this.skeleton.color.r*s.color.r<<16|255*this.skeleton.color.g*s.color.g<<8|255*this.skeleton.color.b*s.color.b)}}_getCachedData(e,s){return this.attachmentCacheData[e.data.index][s.name]||this.initCachedData(e,s)}initCachedData(e,s){let r;const i=s.region?.texture.texture;return s instanceof W?(r=new Float32Array(8),this.attachmentCacheData[e.data.index][s.name]={id:`${e.data.index}-${s.name}`,vertices:r,clipped:!1,indices:[0,1,2,0,2,3],uvs:new Float32Array(s.uvs.length),color:new N(1,1,1,1),darkColor:new N(0,0,0,0),darkTint:this.darkTint,skipRender:!i,texture:i??de.Texture.EMPTY}):(r=new Float32Array(s.worldVerticesLength),this.attachmentCacheData[e.data.index][s.name]={id:`${e.data.index}-${s.name}`,vertices:r,clipped:!1,indices:s.triangles,uvs:new Float32Array(s.uvs.length),color:new N(1,1,1,1),darkColor:new N(0,0,0,0),darkTint:this.darkTint,skipRender:!i,texture:i??de.Texture.EMPTY}),this.attachmentCacheData[e.data.index][s.name]}onViewUpdate(){if(this._didViewChangeTick++,this._boundsProvider||(this._boundsDirty=!0),this.didViewUpdate)return;this.didViewUpdate=!0;const e=this.renderGroup||this.parentRenderGroup;e&&e.onChildViewUpdate(this),this.debug?.renderDebug(this)}addSlotObject(e,s,r){e=this.getSlotFromRef(e);for(const h in this._slotsObject)this._slotsObject[h]?.container===s&&this.removeSlotObject(this._slotsObject[h].slot);this.removeSlotObject(e),s.includeInBuild=!1,this.addChild(s);const i={container:s,slot:e,followAttachmentTimeline:r?.followAttachmentTimeline||!1,followSlotColor:r?.followSlotColor||!1};this._slotsObject[e.data.name]=i,this.updateSlotObject(i)}removeSlotObject(e){let s;if(e instanceof de.Container){for(const r in this._slotsObject)if(this._slotsObject[r]?.container===e){this._slotsObject[r]=null,s=e;break}}else{const r=this.getSlotFromRef(e);s=this._slotsObject[r.data.name]?.container,this._slotsObject[r.data.name]=null}s&&(this.removeChild(s),s.includeInBuild=!0)}removeSlotObjects(){Object.entries(this._slotsObject).forEach(([e,s])=>{s&&s.container.removeFromParent(),delete this._slotsObject[e]})}getSlotObject(e){return e=this.getSlotFromRef(e),this._slotsObject[e.data.name]?.container}updateBounds(){this._boundsDirty=!1,this.skeletonBounds||=new gs;const e=this.skeletonBounds;if(e.update(this.skeleton,!0),this._boundsProvider){const s=this._boundsProvider.calculateBounds(this),r=this._bounds;r.clear(),r.x=s.x,r.y=s.y,r.width=s.width,r.height=s.height}else if(e.minX===1/0){this.hasNeverUpdated&&(this._updateAndApplyState(0),this._boundsDirty=!1),this._validateAndTransformAttachments();const s=this.skeleton.drawOrder,r=this._bounds;r.clear();for(let i=0;i<s.length;i++){const h=s[i],o=h.getAttachment();if(o&&(o instanceof W||o instanceof pe)){const n=this._getCachedData(h,o);r.addVertexData(n.vertices,0,n.vertices.length)}}}else this._bounds.minX=e.minX,this._bounds.minY=e.minY,this._bounds.maxX=e.maxX,this._bounds.maxY=e.maxY}addBounds(e){e.addBounds(this.bounds)}destroy(e=!1){super.destroy(e),this._ticker.remove(this.internalUpdate,this),this._ticker=null,this.state.clearListeners(),this.debug=void 0,this.skeleton=null,this.state=null,this._slotsObject=null,this._lastAttachments.length=0,this.attachmentCacheData=null}skeletonToPixiWorldCoordinates(e){this.worldTransform.apply(e,e)}pixiWorldCoordinatesToSkeleton(e){this.worldTransform.applyInverse(e,e)}pixiWorldCoordinatesToBone(e,s){this.pixiWorldCoordinatesToSkeleton(e),s.parent?s.parent.worldToLocal(e):s.worldToLocal(e)}static from({skeleton:e,atlas:s,scale:r=1,darkTint:i,autoUpdate:h=!0,boundsProvider:o,ticker:n}){const a=`${e}-${s}-${r}`;if(de.Cache.has(a))return new Ss({skeletonData:de.Cache.get(a),darkTint:i,autoUpdate:h,boundsProvider:o,ticker:n});const l=de.Assets.get(e),c=de.Assets.get(s),d=new Ds(c),u=l instanceof Uint8Array?new zs(d):new Hs(d);u.scale=r;const m=u.readSkeletonData(l);return de.Cache.set(a,m),new Ss({skeletonData:m,darkTint:i,autoUpdate:h,boundsProvider:o,ticker:n})}},he=Te("pixi.js"),Ii=class{registeredSpines=new Map;drawMeshHull=!0;drawMeshTriangles=!0;drawBones=!0;drawPaths=!0;drawBoundingBoxes=!0;drawClipping=!0;drawRegionAttachments=!0;drawEvents=!0;lineWidth=1;regionAttachmentsColor=30975;meshHullColor=30975;meshTrianglesColor=16763904;clippingPolygonColor=16711935;boundingBoxesRectColor=65280;boundingBoxesPolygonColor=65280;boundingBoxesCircleColor=65280;pathsCurveColor=16711680;pathsLineColor=16711935;skeletonXYColor=16711680;bonesColor=61132;eventFontSize=24;eventFontColor=0;registerSpine(t){if(this.registeredSpines.has(t)){console.warn("SpineDebugRenderer.registerSpine() - this spine is already registered!",t);return}const e={parentDebugContainer:new he.Container,bones:new he.Container,skeletonXY:new he.Graphics,regionAttachmentsShape:new he.Graphics,meshTrianglesLine:new he.Graphics,meshHullLine:new he.Graphics,clippingPolygon:new he.Graphics,boundingBoxesRect:new he.Graphics,boundingBoxesCircle:new he.Graphics,boundingBoxesPolygon:new he.Graphics,pathsCurve:new he.Graphics,pathsLine:new he.Graphics,eventText:new he.Container,eventCallback:{event:(s,r)=>{if(this.drawEvents){const i=Math.abs(t.scale.x||t.scale.y||1),h=new he.Text({text:r.data.name,style:{fontSize:this.eventFontSize/i,fill:this.eventFontColor,fontFamily:"monospace"}});h.scale.x=Math.sign(t.scale.x),h.anchor.set(.5),e.eventText.addChild(h),setTimeout(()=>{h.destroyed||h.destroy()},250)}}}};e.parentDebugContainer.addChild(e.bones),e.parentDebugContainer.addChild(e.skeletonXY),e.parentDebugContainer.addChild(e.regionAttachmentsShape),e.parentDebugContainer.addChild(e.meshTrianglesLine),e.parentDebugContainer.addChild(e.meshHullLine),e.parentDebugContainer.addChild(e.clippingPolygon),e.parentDebugContainer.addChild(e.boundingBoxesRect),e.parentDebugContainer.addChild(e.boundingBoxesCircle),e.parentDebugContainer.addChild(e.boundingBoxesPolygon),e.parentDebugContainer.addChild(e.pathsCurve),e.parentDebugContainer.addChild(e.pathsLine),e.parentDebugContainer.addChild(e.eventText),e.parentDebugContainer.zIndex=9999999,e.parentDebugContainer.accessibleChildren=!1,e.parentDebugContainer.eventMode="none",e.parentDebugContainer.interactiveChildren=!1,t.addChild(e.parentDebugContainer),t.state.addListener(e.eventCallback),this.registeredSpines.set(t,e)}renderDebug(t){this.registeredSpines.has(t)||this.registerSpine(t);const e=this.registeredSpines.get(t);if(!e)return;t.addChild(e.parentDebugContainer),e.skeletonXY.clear(),e.regionAttachmentsShape.clear(),e.meshTrianglesLine.clear(),e.meshHullLine.clear(),e.clippingPolygon.clear(),e.boundingBoxesRect.clear(),e.boundingBoxesCircle.clear(),e.boundingBoxesPolygon.clear(),e.pathsCurve.clear(),e.pathsLine.clear();for(let i=e.bones.children.length;i>0;i--)e.bones.children[i-1].destroy({children:!0,texture:!0,textureSource:!0});const s=Math.abs(t.scale.x||t.scale.y||1),r=this.lineWidth/s;if(this.drawBones&&this.drawBonesFunc(t,e,r,s),this.drawPaths&&this.drawPathsFunc(t,e,r),this.drawBoundingBoxes&&this.drawBoundingBoxesFunc(t,e,r),this.drawClipping&&this.drawClippingFunc(t,e,r),(this.drawMeshHull||this.drawMeshTriangles)&&this.drawMeshHullAndMeshTriangles(t,e,r),this.drawRegionAttachments&&this.drawRegionAttachmentsFunc(t,e,r),this.drawEvents)for(const i of e.eventText.children)i.alpha-=.05,i.y-=2}drawBonesFunc(t,e,s,r){const i=t.skeleton,h=i.x,o=i.y,n=i.bones;e.skeletonXY.strokeStyle={width:s,color:this.skeletonXYColor};for(let l=0,c=n.length;l<c;l++){const d=n[l],u=d.data.length,m=h+d.worldX,f=o+d.worldY,p=h+u*d.a+d.worldX,b=o+u*d.b+d.worldY;if(d.data.name==="root"||d.data.parent===null)continue;const w=Math.abs(m-p),g=Math.abs(f-b),x=Math.pow(w,2),y=g,v=Math.pow(g,2),C=Math.sqrt(x+v),S=Math.pow(C,2),k=Math.PI/180,T=Math.acos((S+v-x)/(2*y*C))||0;if(C===0)continue;const Y=new he.Graphics;e.bones.addChild(Y);const M=C/50/r;Y.context.poly([0,0,0-M,C-M*3,0,C-M,0+M,C-M*3]).fill(this.bonesColor),Y.x=m,Y.y=f,Y.pivot.y=C;let F=0;m<p&&f<b?F=-T+180*k:m>p&&f<b?F=180*k+T:m>p&&f>b?F=-T:m<p&&f>b?F=T:f===b&&m<p?F=90*k:f===b&&m>p?F=-90*k:m===p&&f<b?F=180*k:m===p&&f>b&&(F=0),Y.rotation=F,Y.circle(0,C,M*1.2).fill({color:0,alpha:.6}).stroke({width:s+M/2.4,color:this.bonesColor})}const a=s*3;e.skeletonXY.context.moveTo(h-a,o-a).lineTo(h+a,o+a).moveTo(h+a,o-a).lineTo(h-a,o+a).stroke()}drawRegionAttachmentsFunc(t,e,s){const i=t.skeleton.slots;for(let h=0,o=i.length;h<o;h++){const n=i[h],a=n.getAttachment();if(a===null||!(a instanceof W))continue;const l=a,c=new Float32Array(8);l.computeWorldVertices(n,c,0,2),e.regionAttachmentsShape.poly(Array.from(c.slice(0,8)))}e.regionAttachmentsShape.stroke({color:this.regionAttachmentsColor,width:s})}drawMeshHullAndMeshTriangles(t,e,s){const i=t.skeleton.slots;for(let h=0,o=i.length;h<o;h++){const n=i[h];if(!n.bone.active)continue;const a=n.getAttachment();if(a===null||!(a instanceof pe))continue;const l=a,c=new Float32Array(l.worldVerticesLength),d=l.triangles;let u=l.hullLength;if(l.computeWorldVertices(n,0,l.worldVerticesLength,c,0,2),this.drawMeshTriangles)for(let m=0,f=d.length;m<f;m+=3){const p=d[m]*2,b=d[m+1]*2,w=d[m+2]*2;e.meshTrianglesLine.context.moveTo(c[p],c[p+1]).lineTo(c[b],c[b+1]).lineTo(c[w],c[w+1])}if(this.drawMeshHull&&u>0){u=(u>>1)*2;let m=c[u-2],f=c[u-1];for(let p=0,b=u;p<b;p+=2){const w=c[p],g=c[p+1];e.meshHullLine.context.moveTo(w,g).lineTo(m,f),m=w,f=g}}}e.meshHullLine.stroke({width:s,color:this.meshHullColor}),e.meshTrianglesLine.stroke({width:s,color:this.meshTrianglesColor})}drawClippingFunc(t,e,s){const i=t.skeleton.slots;for(let h=0,o=i.length;h<o;h++){const n=i[h];if(!n.bone.active)continue;const a=n.getAttachment();if(a===null||!(a instanceof Le))continue;const l=a,c=l.worldVerticesLength,d=new Float32Array(c);l.computeWorldVertices(n,0,c,d,0,2),e.clippingPolygon.poly(Array.from(d))}e.clippingPolygon.stroke({width:s,color:this.clippingPolygonColor,alpha:1})}drawBoundingBoxesFunc(t,e,s){const r=new gs;r.update(t.skeleton,!0),r.minX!==1/0&&e.boundingBoxesRect.rect(r.minX,r.minY,r.getWidth(),r.getHeight()).stroke({width:s,color:this.boundingBoxesRectColor});const i=r.polygons,h=(o,n,a)=>{if(a<3)throw new Error("Polygon must contain at least 3 vertices");const l=[],c=s*2;for(let d=0,u=o.length;d<u;d+=2){const m=o[d],f=o[d+1];e.boundingBoxesCircle.beginFill(this.boundingBoxesCircleColor),e.boundingBoxesCircle.drawCircle(m,f,c),e.boundingBoxesCircle.fill(0),e.boundingBoxesCircle.circle(m,f,c).fill({color:this.boundingBoxesCircleColor}),l.push(m,f)}e.boundingBoxesPolygon.poly(l).fill({color:this.boundingBoxesPolygonColor,alpha:.1}).stroke({width:s,color:this.boundingBoxesPolygonColor})};for(let o=0,n=i.length;o<n;o++){const a=i[o];h(a,0,a.length)}}drawPathsFunc(t,e,s){const i=t.skeleton.slots;for(let h=0,o=i.length;h<o;h++){const n=i[h];if(!n.bone.active)continue;const a=n.getAttachment();if(a===null||!(a instanceof Ue))continue;const l=a;let c=l.worldVerticesLength;const d=new Float32Array(c);l.computeWorldVertices(n,0,c,d,0,2);let u=d[2],m=d[3],f=0,p=0;if(l.closed){const b=d[0],w=d[1],g=d[c-2],x=d[c-1];f=d[c-4],p=d[c-3],e.pathsCurve.moveTo(u,m),e.pathsCurve.bezierCurveTo(b,w,g,x,f,p),e.pathsLine.moveTo(u,m),e.pathsLine.lineTo(b,w),e.pathsLine.moveTo(f,p),e.pathsLine.lineTo(g,x)}c-=4;for(let b=4;b<c;b+=6){const w=d[b],g=d[b+1],x=d[b+2],y=d[b+3];f=d[b+4],p=d[b+5],e.pathsCurve.moveTo(u,m),e.pathsCurve.bezierCurveTo(w,g,x,y,f,p),e.pathsLine.moveTo(u,m),e.pathsLine.lineTo(w,g),e.pathsLine.moveTo(f,p),e.pathsLine.lineTo(x,y),u=f,m=p}}e.pathsCurve.stroke({width:s,color:this.pathsCurveColor}),e.pathsLine.stroke({width:s,color:this.pathsLineColor})}unregisterSpine(t){this.registeredSpines.has(t)||console.warn("SpineDebugRenderer.unregisterSpine() - spine is not registered, can't unregister!",t);const e=this.registeredSpines.get(t);e&&(t.state.removeListener(e.eventCallback),e.parentDebugContainer.destroy({textureSource:!0,children:!0,texture:!0}),this.registeredSpines.delete(t))}};return xr(As)})();
 </script>
+<script id="fxCurveCore">// FX-CORE-01 — a DOM-free, versioned curve contract. Source of truth for
+// the offline editor, isolated PNG bake and both developer packages.
+(function (root, create) {
+  const api = Object.freeze(create());
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.FxCurves = api;
+})(globalThis, function () {
+  'use strict';
+  const VERSION = 1, MAX_KEYS = 64;
+  const DOMAINS = ['effectTime', 'emitterTime', 'particleAge', 'pathPosition'];
+  const INTERPOLATION = ['linear', 'stepped', 'bezier'];
+  const UNIT_BY_DOMAIN = {
+    effectTime: ['seconds', 'normalized-duration'],
+    emitterTime: ['seconds', 'normalized-duration'],
+    particleAge: ['seconds', 'normalized-lifetime'],
+    pathPosition: ['pixels', 'normalized-path']
+  };
+  const finite = value => typeof value === 'number' && Number.isFinite(value);
+  const within = (value, min, max) => Math.max(min, Math.min(max, value));
+  function fail(message) { throw new TypeError('Invalid FX curve: ' + message); }
+  function checkKeys(value, allowed, label) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) fail(label + ' must be an object');
+    for (const name of Object.keys(value)) if (!allowed.includes(name)) fail('unknown ' + label + ' property: ' + name);
+  }
+  function vec(value, label) {
+    if (!Array.isArray(value) || value.length !== 2 || !value.every(finite)) fail(label + ' must be a finite [x,y]');
+    return value.slice();
+  }
+  function normalize(input) {
+    checkKeys(input, ['schemaVersion', 'parameterKey', 'domain', 'inputUnit', 'valueUnit',
+      'inputRange', 'valueRange', 'defaultValue', 'clamp', 'monotonic', 'keys'], 'curve');
+    if (input.schemaVersion !== VERSION) fail('unsupported schemaVersion');
+    if (typeof input.parameterKey !== 'string' || !/^[a-zA-Z][a-zA-Z0-9_.-]{0,79}$/.test(input.parameterKey))
+      fail('parameterKey must be a stable identifier');
+    if (!DOMAINS.includes(input.domain)) fail('unknown domain');
+    if (!UNIT_BY_DOMAIN[input.domain].includes(input.inputUnit)) fail('incompatible inputUnit for domain');
+    if (typeof input.valueUnit !== 'string' || !/^[\w%/.-]{1,32}$/.test(input.valueUnit)) fail('invalid valueUnit');
+    const inputRange = vec(input.inputRange, 'inputRange'), valueRange = vec(input.valueRange, 'valueRange');
+    if (!(inputRange[1] > inputRange[0]) || !(valueRange[1] > valueRange[0])) fail('invalid range');
+    if (input.inputUnit.startsWith('normalized-') && (inputRange[0] !== 0 || inputRange[1] !== 1))
+      fail('normalized input must span [0,1]');
+    if (!finite(input.defaultValue) || input.defaultValue < valueRange[0] || input.defaultValue > valueRange[1])
+      fail('defaultValue is outside valueRange');
+    if (!['hold', 'default'].includes(input.clamp)) fail('clamp must be hold or default');
+    if (typeof input.monotonic !== 'boolean') fail('monotonic must be boolean');
+    if (!Array.isArray(input.keys) || input.keys.length < 2 || input.keys.length > MAX_KEYS)
+      fail('curve needs 2–64 keys');
+    const ids = new Set();
+    const keys = input.keys.map((k, index) => {
+      checkKeys(k, ['id', 'x', 'y', 'mode', 'in', 'out'], 'key');
+      if (typeof k.id !== 'string' || !/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(k.id) || ids.has(k.id))
+        fail('key IDs must be distinct stable identifiers');
+      ids.add(k.id);
+      if (!finite(k.x) || !finite(k.y)) fail('nonfinite key coordinate');
+      if (k.x < inputRange[0] || k.x > inputRange[1] ||
+          k.y < valueRange[0] || k.y > valueRange[1]) fail('key outside range');
+      if (!INTERPOLATION.includes(k.mode)) fail('unsupported interpolation');
+      if (index && !(k.x > input.keys[index - 1].x)) fail('keys must have strictly increasing x');
+      const key = { id: k.id, x: k.x, y: k.y, mode: k.mode };
+      if (k.in !== undefined && k.in !== null) key.in = vec(k.in, k.id + '.in');
+      if (k.out !== undefined && k.out !== null) key.out = vec(k.out, k.id + '.out');
+      return key;
+    });
+    if (keys[0].x !== inputRange[0] || keys[keys.length - 1].x !== inputRange[1])
+      fail('keys must cover the input range exactly');
+    if (input.parameterKey === 'transitionProgress' && (keys[0].y !== 0 || keys[keys.length - 1].y !== 1))
+      fail('transitionProgress must begin at 0 and finish at 1');
+    for (let i = 0; i < keys.length - 1; i++) {
+      const a = keys[i], b = keys[i + 1];
+      if (input.monotonic && a.y > b.y) fail('time-warp keys must be nondecreasing');
+      if (a.mode === 'bezier') {
+        if (!a.out || !b.in) fail('bezier segments require outgoing/incoming handles');
+        if (a.out[0] < a.x || a.out[0] > b.x || b.in[0] < a.x ||
+            b.in[0] > b.x || a.out[0] > b.in[0])
+          fail('Bezier x handles must be ordered inside their segment');
+        for (const val of [a.out[1], b.in[1]])
+          if (val < valueRange[0] || val > valueRange[1]) fail('Bezier y handle out of range');
+        if (input.monotonic && !(a.y <= a.out[1] && a.out[1] <= b.in[1] && b.in[1] <= b.y))
+          fail('time-warp Bezier handles must be nondecreasing');
+      }
+    }
+    return {
+      schemaVersion: VERSION, parameterKey: input.parameterKey, domain: input.domain,
+      inputUnit: input.inputUnit, valueUnit: input.valueUnit, inputRange, valueRange,
+      defaultValue: input.defaultValue, clamp: input.clamp,
+      monotonic: input.monotonic, keys
+    };
+  }
+  function bezier(a, b, c, d, t) {
+    const u = 1 - t;
+    return u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d;
+  }
+  function evaluate(input, x) {
+    const c = normalize(input);
+    if (!finite(x)) fail('evaluation position must be finite');
+    const keys = c.keys, first = keys[0], last = keys[keys.length - 1];
+    if (x <= first.x) return c.clamp === 'hold' ? first.y : c.defaultValue;
+    if (x >= last.x) return c.clamp === 'hold' ? last.y : c.defaultValue;
+    let lo = 0, hi = keys.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (keys[mid].x <= x) lo = mid; else hi = mid;
+    }
+    const a = keys[lo], b = keys[lo + 1];
+    if (a.mode === 'stepped') return a.y;
+    const t = (x - a.x) / (b.x - a.x);
+    if (a.mode === 'linear') return a.y + (b.y - a.y) * t;
+    let left = 0, right = 1;
+    for (let i = 0; i < 36; i++) {
+      const mid = (left + right) / 2;
+      if (bezier(a.x, a.out[0], b.in[0], b.x, mid) < x) left = mid;
+      else right = mid;
+    }
+    const value = bezier(a.y, a.out[1], b.in[1], b.y, (left + right) / 2);
+    return within(value, c.valueRange[0], c.valueRange[1]);
+  }
+  const K = (id, x, y, mode = 'linear', incoming, outgoing) => {
+    const key = { id, x, y, mode };
+    if (incoming) key.in = incoming;
+    if (outgoing) key.out = outgoing;
+    return key;
+  };
+  const PRESETS = Object.freeze(['linear', 'easeIn', 'easeOut', 'easeInOut',
+    'fastAttack', 'slowDecay', 'pulse', 'burst']);
+  function createPreset(name, options = {}) {
+    if (!PRESETS.includes(name)) fail('unknown preset: ' + name);
+    const specs = {
+      linear: [K('start', 0, 0), K('end', 1, 1)],
+      easeIn: [K('start', 0, 0, 'bezier', null, [.42, 0]), K('end', 1, 1, 'linear', [1, 1])],
+      easeOut: [K('start', 0, 0, 'bezier', null, [0, 0]), K('end', 1, 1, 'linear', [.58, 1])],
+      easeInOut: [K('start', 0, 0, 'bezier', null, [.42, 0]), K('end', 1, 1, 'linear', [.58, 1])],
+      fastAttack: [K('start', 0, 0, 'bezier', null, [.04, .75]), K('end', 1, 1, 'linear', [.55, 1])],
+      slowDecay: [K('start', 0, 1, 'bezier', null, [.18, .98]), K('end', 1, 0, 'linear', [.77, .02])],
+      pulse: [K('start', 0, 0), K('peak', .5, 1), K('end', 1, 0)],
+      burst: [K('start', 0, 0, 'stepped'), K('burst', .12, 1, 'stepped'),
+        K('decay', .35, .6), K('end', 1, 0)]
+    };
+    const increasing = !['slowDecay', 'pulse', 'burst'].includes(name);
+    const monotonic = options.monotonic === undefined ? increasing : options.monotonic;
+    const inputRange = options.inputRange || [0, 1], valueRange = options.valueRange || [0, 1];
+    const mapX = x => inputRange[0] + x * (inputRange[1] - inputRange[0]);
+    const mapY = y => valueRange[0] + y * (valueRange[1] - valueRange[0]);
+    const keys = specs[name].map(k => {
+      const next = { id: k.id, x: mapX(k.x), y: mapY(k.y), mode: k.mode };
+      if (k.in) next.in = [mapX(k.in[0]), mapY(k.in[1])];
+      if (k.out) next.out = [mapX(k.out[0]), mapY(k.out[1])];
+      return next;
+    });
+    return normalize({
+      schemaVersion: VERSION,
+      parameterKey: options.parameterKey || 'value',
+      domain: options.domain || 'effectTime',
+      inputUnit: options.inputUnit || 'normalized-duration',
+      valueUnit: options.valueUnit || 'normalized',
+      inputRange, valueRange,
+      defaultValue: options.defaultValue ?? valueRange[0],
+      clamp: options.clamp || 'hold', monotonic, keys
+    });
+  }
+  function serialize(curve) { return JSON.stringify(normalize(curve)); }
+  function deserialize(json) {
+    if (typeof json !== 'string') fail('serialized curve must be JSON text');
+    let parsed;
+    try { parsed = JSON.parse(json); } catch { fail('invalid JSON'); }
+    return normalize(parsed);
+  }
+  function sample(curve, positions) {
+    if (!Array.isArray(positions)) fail('positions must be an array');
+    return positions.map(p => evaluate(curve, p));
+  }
+  return { VERSION, PRESETS, normalize, evaluate, createPreset, serialize, deserialize, sample };
+});
+</script>
+<script id="fxCurveEditor">// FX-CORE-01: reusable SVG curve authoring UI; only the pure schema is exported.
+(function (root) {
+  'use strict';
+  const C = root.FxCurves;
+  const NS = 'http://www.w3.org/2000/svg';
+  const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+  function node(tag,props={},label='') {
+    const el=document.createElement(tag);
+    for(const [k,v] of Object.entries(props)) el.setAttribute(k,String(v));
+    if(label)el.textContent=label;
+    return el;
+  }
+  function svgNode(tag,attrs={}) {
+    const el=document.createElementNS(NS,tag);
+    for(const [k,v] of Object.entries(attrs))el.setAttribute(k,String(v));
+    return el;
+  }
+  function mount(element,{curve,onChange,onScrub,getFrameCount,isLocked}) {
+    if (!document.getElementById('fxCurveStyles')) {
+      const style = node('style',{id:'fxCurveStyles'});
+      style.textContent = '.fx-curve-editor{display:grid;gap:9px}' +
+        '.fx-curve-tools{display:flex;align-items:center;flex-wrap:wrap;gap:5px}' +
+        '.fx-curve-tools button,.fx-curve-tools select{font-size:11px;padding:5px 7px}' +
+        '.fx-curve-snap{display:flex;align-items:center;gap:4px;font-size:11px}' +
+        '.fx-curve-editor svg{width:100%;height:auto;max-height:240px;min-height:125px;background:#111920;border:1px solid #3c4652;border-radius:7px;cursor:crosshair}' +
+        '.fx-curve-editor svg circle[data-kind]{cursor:move}' +
+        '.fx-curve-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}' +
+        '.fx-curve-fields label{display:flex;flex-direction:column;font-size:11px;color:#b5bfcb;min-width:0}' +
+        '.fx-curve-fields input,.fx-curve-fields select{width:100%;min-width:0;box-sizing:border-box;font-size:12px;color:#f1f2f5;background:#141b23;border:1px solid #555e6a;border-radius:4px;padding:4px}' +
+        '#fxCurveStatus{font-size:11px;color:#ffbb72;min-height:16px;overflow-wrap:anywhere}';
+      document.head.append(style);
+    }
+    let current=C.normalize(curve), selected=current.keys[0].id, drag=null, counter=0, presetName='easeInOut';
+    let frameSnap=true;
+    const rootEl=node('div',{class:'fx-curve-editor'});
+    const toolbar=node('div',{class:'fx-curve-tools'});
+    const presets=node('select',{id:'fxCurvePreset','aria-label':'Curve preset'});
+    function populatePresets(){
+      const names=[['Linear','linear'],['Ease In','easeIn'],['Ease Out','easeOut'],
+        ['Ease In/Out','easeInOut'],['Fast Attack','fastAttack'],['Slow Decay','slowDecay'],
+        ['Pulse','pulse'],['Burst','burst']];
+      presets.replaceChildren();
+      for(const [label,value] of names){
+        if(current.monotonic && ['slowDecay','pulse','burst'].includes(value))continue;
+        presets.append(node('option',{value},label));
+      }
+      if(![...presets.options].some(o=>o.value===presetName))presetName='linear';
+      presets.value=presetName;
+    }
+    populatePresets();toolbar.append(presets);
+    const buttons = {};
+    for(const [key,label] of [['add','Add key'],['copy','Copy key'],['delete','Delete key'],['reset','Reset']]){
+      buttons[key]=node('button',{type:'button',id:'fxCurve'+key[0].toUpperCase()+key.slice(1)},label);
+      toolbar.append(buttons[key]);
+    }
+    const snapLabel=node('label',{class:'fx-curve-snap'}), snap=node('input',{type:'checkbox',id:'fxCurveSnap'});
+    snap.checked=true;snapLabel.append(snap,document.createTextNode('Snap to frame'));toolbar.append(snapLabel);
+    const svg=svgNode('svg',{id:'fxCurveGraph',viewBox:'0 0 320 200',
+      role:'img','aria-label':'Editable FX curve. Drag keys and Bezier handles. Click empty space to scrub.'});
+    svg.style.touchAction='none';
+    const edit=node('div',{class:'fx-curve-fields'}), controls={};
+    function field(key,label,step) {
+      const wrapper=node('label',{},label), input=node('input',{type:'number',id:'fxCurve'+key,step,required:'true'});
+      wrapper.append(input);edit.append(wrapper);controls[key]=input;
+    }
+    field('Frame',current.domain==='pathPosition'?'Position / distance':'Frame @ 60 FPS',1);field('Value','Value',.001);
+    const modeLabel=node('label',{},'Outgoing segment');
+    const mode=node('select',{id:'fxCurveMode','aria-label':'Outgoing segment interpolation'});
+    for(const item of ['linear','stepped','bezier'])mode.append(node('option',{value:item},item));
+    modeLabel.append(mode);edit.append(modeLabel);
+    for(const key of ['InX','InY','OutX','OutY'])field(key,key, .001);
+    const status=node('output',{id:'fxCurveStatus',role:'status','aria-live':'polite'},current.inputUnit+' · '+current.domain+' · '+current.valueUnit);
+    rootEl.append(toolbar,svg,edit,status);element.replaceChildren(rootEl);
+    const frames=()=>Math.max(1,Number(getFrameCount())||60);
+    const xRange=()=>current.inputRange, yRange=()=>current.valueRange;
+    const toFraction=x=>(x-xRange()[0])/(xRange()[1]-xRange()[0]);
+    const fromFraction=t=>xRange()[0]+t*(xRange()[1]-xRange()[0]);
+    const inFrames=x=>current.inputUnit==='seconds'?Math.round(x*60):
+      current.inputUnit==='pixels'?x:Math.round(toFraction(x)*frames());
+    const fromFrames=n=>current.inputUnit==='seconds'?n/60:
+      current.inputUnit==='pixels'?n:fromFraction(n/frames());
+    const snapX=x=>frameSnap?fromFrames(inFrames(x)):x;
+    const gridStep=()=>current.inputUnit==='seconds'?1/60:
+      current.inputUnit==='pixels'?1:(xRange()[1]-xRange()[0])/frames();
+    const X=x=>18+284*toFraction(x);
+    const Y=y=>184-168*(y-yRange()[0])/(yRange()[1]-yRange()[0]);
+    const index=()=>current.keys.findIndex(k=>k.id===selected);
+    const clone=()=>JSON.parse(JSON.stringify(current));
+    const unique=()=>{let id;do{id='key'+(++counter)}while(current.keys.some(k=>k.id===id));return id;};
+    function sanitize(data) {
+      for(let i=0;i<data.keys.length-1;i++){
+        const a=data.keys[i],b=data.keys[i+1];
+        if(a.mode!=='bezier')continue;
+        if(!a.out)a.out=[a.x+(b.x-a.x)/3,a.y+(b.y-a.y)/3];
+        if(!b.in)b.in=[a.x+2*(b.x-a.x)/3,a.y+2*(b.y-a.y)/3];
+        a.out[0]=clamp(a.out[0],a.x,b.x);
+        b.in[0]=clamp(b.in[0],a.out[0],b.x);
+        a.out[1]=clamp(a.out[1],data.valueRange[0],data.valueRange[1]);
+        b.in[1]=clamp(b.in[1],data.valueRange[0],data.valueRange[1]);
+        if(data.monotonic){
+          a.out[1]=clamp(a.out[1],a.y,b.y);
+          b.in[1]=clamp(b.in[1],a.out[1],b.y);
+        }
+      }
+      return data;
+    }
+    function commit(data) {
+      if(isLocked?.())return false;
+      try {
+        const next=C.normalize(sanitize(data));
+        current=next;onChange(next);status.textContent='Curve updated · '+current.keys.length+' keys';draw();return true;
+      } catch(e){status.textContent=e.message;return false;}
+    }
+    function draw() {
+      svg.replaceChildren();
+      for(let i=0;i<=4;i++){
+        svg.append(svgNode('line',{x1:18,y1:Y(yRange()[0]+i/4*(yRange()[1]-yRange()[0])),x2:302,y2:Y(yRange()[0]+i/4*(yRange()[1]-yRange()[0])),stroke:'#40505b','stroke-width':.8}));
+        svg.append(svgNode('line',{x1:X(fromFraction(i/4)),y1:16,x2:X(fromFraction(i/4)),y2:184,stroke:'#40505b','stroke-width':.8}));
+      }
+      let points='';
+      for(let i=0;i<=192;i++){const x=fromFraction(i/192);points+=(i?' ':'')+X(x).toFixed(2)+','+Y(C.evaluate(current,x)).toFixed(2);}
+      svg.append(svgNode('polyline',{points,stroke:'#ffa650','stroke-width':2.5,fill:'none'}));
+      for(const k of current.keys){
+        if(k.id===selected){
+          for(const [kind,v] of [['in',k.in],['out',k.out]]){
+            if(!v || (kind==='in'&&index()===0) || (kind==='out'&&index()===current.keys.length-1))continue;
+            svg.append(svgNode('line',{x1:X(k.x),y1:Y(k.y),x2:X(v[0]),y2:Y(v[1]),stroke:'#8fa6b5','stroke-width':1.2}));
+            svg.append(svgNode('circle',{cx:X(v[0]),cy:Y(v[1]),r:5,fill:'#aaddff',stroke:'#18232c',
+              'data-id':k.id,'data-kind':kind,'aria-label':kind+' handle '+k.id}));
+          }
+        }
+      }
+      for(const k of current.keys)svg.append(svgNode('circle',{cx:X(k.x),cy:Y(k.y),r:k.id===selected?7:5,
+        fill:k.id===selected?'#fff1b0':'#ff9c44',stroke:'#1a222a','stroke-width':1.8,
+        'data-id':k.id,'data-kind':'key','aria-label':'curve key '+k.id}));
+      const k=current.keys[index()]||current.keys[0];
+      controls.Frame.value=String(inFrames(k.x));controls.Value.value=String(k.y);
+      mode.value=k.mode;mode.disabled=index()===current.keys.length-1;
+      for(const [name,pair] of [['In',k.in],['Out',k.out]]){
+        controls[name+'X'].disabled=!pair;
+        controls[name+'Y'].disabled=!pair;
+        controls[name+'X'].value=pair?String(pair[0]):'';
+        controls[name+'Y'].value=pair?String(pair[1]):'';
+      }
+      buttons.delete.disabled=current.keys.length<=2||index()===0||index()===current.keys.length-1;
+      buttons.copy.disabled=current.keys.length>=64;
+      buttons.add.disabled=current.keys.length>=64;
+    }
+    function move(id,kind,x,y){
+      const data=clone(),at=data.keys.findIndex(k=>k.id===id);
+      if(at<0)return;
+      const k=data.keys[at];
+      if(kind==='key'){
+        const left=at?data.keys[at-1]:null,right=at+1<data.keys.length?data.keys[at+1]:null;
+        const nx=(!left||!right)?k.x:clamp(snapX(x),left.x+1e-6,right.x-1e-6);
+        const ny=(!left||!right)?k.y:clamp(y,data.monotonic?left.y:yRange()[0],data.monotonic?right.y:yRange()[1]);
+        const dx=nx-k.x,dy=ny-k.y;
+        k.x=nx;k.y=ny;
+        for(const h of ['in','out'])if(k[h]){k[h][0]+=dx;k[h][1]+=dy;}
+      }else if(k[kind]){
+        k[kind]=[clamp(x,xRange()[0],xRange()[1]),clamp(y,yRange()[0],yRange()[1])];
+      }
+      commit(data);
+    }
+    function locate(event){
+      const matrix=svg.getScreenCTM();
+      if(!matrix)return null;
+      const p=new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse());
+      return [fromFraction(clamp((p.x-18)/284,0,1)),yRange()[0]+clamp((184-p.y)/168,0,1)*(yRange()[1]-yRange()[0])];
+    }
+    svg.addEventListener('pointerdown',e=>{
+      if(isLocked?.())return;
+      const pos=locate(e);if(!pos)return;
+      const target=e.target.closest('[data-kind]');
+      if(target){selected=target.getAttribute('data-id');
+        drag={id:selected,kind:target.getAttribute('data-kind')};svg.setPointerCapture(e.pointerId);draw();
+      }else{onScrub(snapX(pos[0]));status.textContent='Scrub frame '+Math.round(pos[0]*frames());}
+    });
+    svg.addEventListener('pointermove',e=>{if(drag&&!isLocked?.()){const pos=locate(e);if(pos)move(drag.id,drag.kind,pos[0],pos[1]);}});
+    const finish=()=>{drag=null;};
+    svg.addEventListener('pointerup',finish);svg.addEventListener('pointercancel',finish);
+    snap.addEventListener('change',()=>{frameSnap=snap.checked;});
+    const presetConfig=()=>({parameterKey:current.parameterKey,domain:current.domain,
+      inputUnit:current.inputUnit,valueUnit:current.valueUnit,monotonic:current.monotonic,
+      inputRange:current.inputRange,valueRange:current.valueRange,
+      defaultValue:current.defaultValue,clamp:current.clamp});
+    presets.onchange=()=>{
+      presetName=presets.value;
+      const data=C.createPreset(presetName,presetConfig());
+      selected='start';commit(data);
+    };
+    buttons.reset.onclick=()=>{selected='start';commit(C.createPreset(presetName,presetConfig()));};
+    buttons.add.onclick=()=>{
+      if(current.keys.length>=64)return;
+      let at=current.keys.findIndex(k=>k.id===selected);
+      if(at<0||at===current.keys.length-1)at=current.keys.length-2;
+      const data=clone(),a=data.keys[at],b=data.keys[at+1],x=snapX((a.x+b.x)/2);
+      if(!(x>a.x&&x<b.x))return void(status.textContent='No room to insert another frame key.');
+      const y=C.evaluate(current,x),newKey={id:unique(),x,y,mode:a.mode};
+      if(a.mode==='bezier'){
+        const split=(p,q,t)=>p+(q-p)*t;
+        let lo=0,hi=1;
+        for(let i=0;i<36;i++){const t=(lo+hi)/2,
+          xx=(1-t)**3*a.x+3*(1-t)**2*t*a.out[0]+3*(1-t)*t*t*b.in[0]+t**3*b.x;
+          if(xx<x)lo=t;else hi=t;}
+        const t=(lo+hi)/2,lerp=(p,q)=>[split(p[0],q[0],t),split(p[1],q[1],t)];
+        const q0=lerp([a.x,a.y],a.out),q1=lerp(a.out,b.in),q2=lerp(b.in,[b.x,b.y]);
+        const r0=lerp(q0,q1),r1=lerp(q1,q2);
+        a.out=q0;newKey.in=r0;newKey.out=r1;b.in=q2;
+      }
+      data.keys.splice(at+1,0,newKey);selected=newKey.id;commit(data);
+    };
+    buttons.copy.onclick=()=>{
+      const at=index(),a=current.keys[at],b=current.keys[at+1];
+      if(!b)return void(status.textContent='Select a key before the final key to copy.');
+      const x=snapX(a.x+gridStep());if(x<=a.x||x>=b.x)return void(status.textContent='No free frame after selected key.');
+      const data=clone(),copy={id:unique(),x,y:a.y,mode:'linear'};
+      data.keys.splice(at+1,0,copy);selected=copy.id;commit(data);
+    };
+    buttons.delete.onclick=()=>{
+      const at=index();if(at<=0||at>=current.keys.length-1)return;
+      const data=clone();data.keys.splice(at,1);selected=data.keys[at-1].id;
+      // Adjacent Bezier segments receive safe, distinct handles.
+      data.keys[at-1].mode='linear';commit(data);
+    };
+    function inputValue(){
+      const at=index(),data=clone(),k=data.keys[at];
+      const frame=Number(controls.Frame.value),y=Number(controls.Value.value);
+      if(!controls.Frame.value.trim()||!controls.Value.value.trim()||!Number.isFinite(frame)||!Number.isFinite(y)||!Number.isInteger(frame)){
+        status.textContent='Frame and value must be finite numbers.';return;
+      }
+      move(k.id,'key',fromFrames(frame),y);
+    }
+    controls.Frame.addEventListener('change',inputValue);
+    controls.Value.addEventListener('change',inputValue);
+    mode.onchange=()=>{
+      const at=index(),data=clone();if(at>=data.keys.length-1)return;
+      data.keys[at].mode=mode.value;commit(data);
+    };
+    for(const [name,kind,axis] of [['InX','in',0],['InY','in',1],['OutX','out',0],['OutY','out',1]]){
+      controls[name].addEventListener('change',()=>{
+        const value=Number(controls[name].value);
+        if(!controls[name].value.trim()||!Number.isFinite(value)){status.textContent='Handle must be finite.';return;}
+        const data=clone(),k=data.keys[index()];
+        if(!k[kind])return;
+        k[kind][axis]=axis===0?clamp(value,xRange()[0],xRange()[1]):clamp(value,yRange()[0],yRange()[1]);commit(data);
+      });
+    }
+    draw();
+    return {
+      setCurve(curve) {current=C.normalize(curve);selected=current.keys[0].id;populatePresets();draw();},
+      refresh() {draw();},
+      getCurve() {return C.normalize(current);}
+    };
+  }
+  root.FxCurveEditor=Object.freeze({mount});
+})(globalThis);
+</script>
 <script id="sharedCore">/* Shared Spine burn transition. PixiJS 8.22.0, Spine 4.2.120. No DOM controls or network requests. */
 (function(global){
 'use strict';
@@ -2500,7 +2931,7 @@ function hash(x,y){let n=x*17+y*131;n=n-Math.floor(n/289)*289;let m=(n*34+1)*n;r
 function noise(x,y){const ix=Math.floor(x),iy=Math.floor(y);let fx=x-ix,fy=y-iy;fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);return (hash(ix,iy)*(1-fx)+hash(ix+1,iy)*fx)*(1-fy)+(hash(ix,iy+1)*(1-fx)+hash(ix+1,iy+1)*fx)*fy;}
 function fbm(x,y){let n=0,a=.57;for(let i=0;i<4;i++){n+=noise(x,y)*a;x=x*2.03+4.1;y=y*2.03+2.7;a*=.5;}return n/1.06875;}
 function field(cfg,rect,x,y){let v;if(cfg.shape===0){const a=cfg.angle*Math.PI/180,dx=Math.cos(a),dy=Math.sin(a);v=((x-.5)*dx+(y-.5)*dy)/(Math.abs(dx)+Math.abs(dy))+.5;}else if(cfg.shape===1){v=Math.hypot((x-cfg.centerX)*rect.w,(y-cfg.centerY)*rect.h)/Math.hypot(Math.max(cfg.centerX,1-cfg.centerX)*rect.w,Math.max(cfg.centerY,1-cfg.centerY)*rect.h);}else v=fbm(x*cfg.noiseScale+cfg.seed,y*cfg.noiseScale+cfg.seed);if(cfg.shape<2)v+=cfg.roughness*(fbm(x*cfg.noiseScale+cfg.seed,y*cfg.noiseScale+cfg.seed)-.5)*2;v=(v+cfg.roughness)/(1+2*cfg.roughness);return cfg.reverse?1-v:v;}
-function ease(t,kind){return kind===1?t*t*(3-2*t):kind===2?t*t:kind===3?1-(1-t)*(1-t):t;}
+function ease(t,kind,curve){return kind===4?global.FxCurves.evaluate(curve,t):kind===1?t*t*(3-2*t):kind===2?t*t:kind===3?1-(1-t)*(1-t):t;}
 async function createApplication(PIXI,options={},preferred='webgl',quality='auto'){
  const low=qualityName(quality)==='low';let fallbackReason='';
  // Pixi 8.22 caches the default batch shader across applications. Keep its
@@ -2527,10 +2958,10 @@ function createBurnTransition({PIXI,spine:spineRuntime,app,host,model,settings,b
  const band=Math.max(.012,cfg.edgeWidth/Math.max(rect.w,rect.h)*1.6);
  for(let i=0;i<profile.attempts&&triangles.length&&points.length<80;i++){const pick=random()*total;let lo=0,hi=triangles.length-1;while(lo<hi){const mid=(lo+hi)>>1;if(triangles[mid].end<pick)lo=mid+1;else hi=mid;}const t=triangles[lo];let a=random(),b=random();if(a+b>1){a=1-a;b=1-b;}const c=1-a-b,p=t.p;const x=p[0][0]*a+p[1][0]*b+p[2][0]*c,y=p[0][1]*a+p[1][1]*b+p[2][1]*c;const v=field(cfg,rect,(x-rect.x)/rect.w,(y-rect.y)/rect.h);if(Math.abs(v-progress)>band)continue;const u=p[0][2]*a+p[1][2]*b+p[2][2]*c,w=p[0][3]*a+p[1][3]*b+p[2][3]*c;const ix=Math.max(0,Math.min(t.image.w-1,Math.floor(u*t.image.w))),iy=Math.max(0,Math.min(t.image.h-1,Math.floor(w*t.image.h)));if(t.image.alpha[iy*t.image.w+ix]*t.opacity>60)points.push([x,y]);}
  }
- function update(realDt){if(dead)return;realDt=Math.max(0,Number(realDt)||0);const dt=Math.min(realDt,.05);time+=realDt;if(playing){phase=Math.min(1,phase+realDt/cfg.duration);setProgress(ease(phase,cfg.easing));if(phase>=1)playing=false;}sync();const active=enabled&&progress>0&&progress<1;
+ function update(realDt){if(dead)return;realDt=Math.max(0,Number(realDt)||0);const dt=Math.min(realDt,.05);time+=realDt;if(playing){phase=Math.min(1,phase+realDt/cfg.duration);setProgress(ease(phase,cfg.easing,cfg.timeCurve));if(phase>=1)playing=false;}sync();const active=enabled&&progress>0&&progress<1;
  if(active&&cfg.sparks>0){maskAge+=dt;if(maskAge>=profile.interval){maskAge=0;refreshEmitter();}spawnBudget=Math.min(20,spawnBudget+dt*Math.min(cfg.sparks,profile.emissionCap));while(spawnBudget>=1&&points.length&&particles.length<profile.maxSparks){spawnBudget--;const point=points[Math.floor(random()*points.length)],angle=-Math.PI/2+(random()-.5)*cfg.sparkSpread*Math.PI/180,speed=cfg.sparkSpeed*(.45+random()*.75);particles.push({x:point[0],y:point[1],vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,size:cfg.sparkSize*(.5+random()),life:cfg.sparkLife*(.6+random()*.65),age:0});}}else spawnBudget=0;
  graphics.clear();particles=particles.filter(p=>p.age<p.life);if(!enabled){particles=[];return;}const color=parseInt(cfg.sparkColor.slice(1),16);for(const p of particles){p.age+=dt;p.vy+=cfg.gravity*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;const alpha=Math.max(0,1-p.age/p.life);graphics.circle(p.x,p.y,p.size).fill({color,alpha});if(profileName!=='low')graphics.moveTo(p.x,p.y).lineTo(p.x-p.vx*.025,p.y-p.vy*.025).stroke({color,width:Math.max(.6,p.size*.55),alpha:alpha*.6});}}
- function play(){let lo=0,hi=1;if(progress>=1)setProgress(0);for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(ease(mid,cfg.easing)<progress)lo=mid;else hi=mid;}phase=(lo+hi)/2;playing=true;}
+ function play(){let lo=0,hi=1;if(progress>=1)setProgress(0);for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(ease(mid,cfg.easing,cfg.timeCurve)<progress)lo=mid;else hi=mid;}phase=(lo+hi)/2;playing=true;}
  function destroy(){if(dead)return;dead=true;host.filters=previousFilters;host.filterArea=previousArea;graphics.destroy();filter.destroy();particles=[];points=[];triangles=[];}
  sync();return {configure,setBounds,setProgress,update,play,pause(){playing=false;},reset(){playing=false;setProgress(0);},destroy,setEnabled(value){if(enabled===!!value)return;enabled=!!value;particles=[];sync();},field(x,y){return field(cfg,rect,x,y);},get progress(){return progress;},get filter(){return filter;},get particles(){return particles;},get emitterPoints(){return points;},get settings(){return {...cfg};},get profile(){return profileName;},get playing(){return playing;},refreshEmitter};
 }
@@ -2590,10 +3021,10 @@ THE SOFTWARE.
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const defaults={quality:'auto',shape:0,angle:0,centerX:0.5,centerY:0.5,roughness:0.10,noiseScale:6,seed:8,softness:0.006,duration:3,easing:1,flameHeight:38,edgeWidth:5,flameBrightness:1.8,glow:0.8,turbulence:0.7,fireSpeed:1,flicker:0.35,fireColor:'#ff6b19',hotColor:'#ffe7a0',sparks:65,sparkSize:1.8,sparkSpeed:65,sparkSpread:65,sparkLife:1.1,gravity:-18,sparkColor:'#ffc278',desaturation:1,brightness:0.86,contrast:1.12,charWidth:0.035,charStrength:0.6,animationSpeed:1,zoom:1};
+const defaults={quality:'auto',shape:0,angle:0,centerX:0.5,centerY:0.5,roughness:0.10,noiseScale:6,seed:8,softness:0.006,duration:3,easing:1,timeCurve:FxCurves.createPreset('easeInOut',{parameterKey:'transitionProgress',monotonic:true}),flameHeight:38,edgeWidth:5,flameBrightness:1.8,glow:0.8,turbulence:0.7,fireSpeed:1,flicker:0.35,fireColor:'#ff6b19',hotColor:'#ffe7a0',sparks:65,sparkSize:1.8,sparkSpeed:65,sparkSpread:65,sparkLife:1.1,gravity:-18,sparkColor:'#ffc278',desaturation:1,brightness:0.86,contrast:1.12,charWidth:0.035,charStrength:0.6,animationSpeed:1,zoom:1};
 const cfg={...defaults};
 const groups=[
-['Transition',true,[['shape','Shape','select',[[0,'Linear'],[1,'Circular'],[2,'Organic patches']]],['angle','Direction angle',0,360,1,'°'],['centerX','Center X',0,1,0.01,'%'],['centerY','Center Y',0,1,0.01,'%'],['roughness','Edge irregularity',0,0.35,0.005,'%'],['noiseScale','Noise scale',1,30,0.5,''],['seed','Noise seed',0,99,1,''],['softness','Edge softness',0.001,0.08,0.001,'%'],['easing','Timing curve','select',[[0,'Linear'],[1,'Smooth'],[2,'Ease in'],[3,'Ease out']]]]],
+['Transition',true,[['shape','Shape','select',[[0,'Linear'],[1,'Circular'],[2,'Organic patches']]],['angle','Direction angle',0,360,1,'°'],['centerX','Center X',0,1,0.01,'%'],['centerY','Center Y',0,1,0.01,'%'],['roughness','Edge irregularity',0,0.35,0.005,'%'],['noiseScale','Noise scale',1,30,0.5,''],['seed','Noise seed',0,99,1,''],['softness','Edge softness',0.001,0.08,0.001,'%'],['easing','Timing curve','select',[[0,'Linear'],[1,'Smooth'],[2,'Ease in'],[3,'Ease out'],[4,'Custom curve']]]]],
 ['Flame & glow',true,[['flameHeight','Flame height',0,100,1,'px'],['edgeWidth','Ember width',0.5,20,0.5,'px'],['flameBrightness','Flame intensity',0,4,0.05,''],['glow','Glow strength',0,2,0.05,''],['turbulence','Flame turbulence',0,1.5,0.05,''],['fireSpeed','Flame motion speed',0,4,0.05,'×'],['flicker','Flicker',0,1,0.05,''],['fireColor','Flame color','color'],['hotColor','Ember color','color']]],
 ['Sparks',false,[['sparks','Emission rate',0,400,1,'/s'],['sparkSize','Spark size',0.5,6,0.1,'px'],['sparkSpeed','Launch speed',0,250,1,'px/s'],['sparkSpread','Launch spread',0,180,1,'°'],['sparkLife','Lifetime',0.1,4,0.1,'s'],['gravity','Gravity',-150,300,1,'px/s²'],['sparkColor','Spark color','color']]],
 ['Burned appearance',false,[['desaturation','Desaturation',0,1,0.01,'%'],['brightness','Brightness',0,1.5,0.01,''],['contrast','Contrast',0.5,2,0.01,''],['charWidth','Charred band width',0,0.15,0.005,'%'],['charStrength','Charring strength',0,1,0.01,'%']]],
@@ -2601,6 +3032,43 @@ const groups=[
 ['Skeleton',false,[['animationSpeed','Animation speed',0,3,0.05,'×'],['zoom','Skeleton scale',0.25,2,0.05,'×']]]];
 function displayValue(v,unit){if(unit==='%')return Number((v*100).toFixed(1))+'%';return Number(v).toFixed(unit==='°'||unit==='/s'||unit==='px/s'||unit==='px/s²'?0:((Number.isInteger(v))?0:2))+unit;}
 for(const [title,open,fields] of groups){const details=document.createElement('details');details.open=open;const summary=document.createElement('summary');summary.textContent=title;details.append(summary);const section=document.createElement('div');section.className='section';for(const row of fields){const [key,label,a,b,step,unit]=row;const wrap=document.createElement('label');wrap.className=a==='color'?'color':'control';wrap.htmlFor=key;const text=document.createElement('span');text.textContent=label;wrap.append(text);let input;if(a==='select'){input=document.createElement('select');for(const [value,name] of b){const opt=document.createElement('option');opt.value=value;opt.textContent=name;input.append(opt);}}else{input=document.createElement('input');input.type=a==='color'?'color':'range';if(a!=='color'){input.min=a;input.max=b;input.step=step;const out=document.createElement('output');out.id=key+'Value';out.textContent=displayValue(cfg[key],unit);wrap.append(out);}}input.id=key;input.value=cfg[key];input.addEventListener('input',()=>{cfg[key]=a==='color'||key==='quality'?input.value:Number(input.value);if($(key+'Value'))$(key+'Value').textContent=displayValue(cfg[key],unit);if(key==='zoom')fit();if(key==='easing'){phase=inverseEase(progress);updateTimeline();}syncUniforms();updateCenterHandle();if(['shape','angle','centerX','centerY','roughness','noiseScale','seed'].includes(key)){particles=[];maskAge=1;}});wrap.append(input);section.append(wrap);}details.append(section);$('settings').append(details);}
+let curveEditor = null;
+{
+  const panel = document.createElement('details');
+  panel.id = 'fxCurvePanel';
+  const heading = document.createElement('summary');
+  heading.textContent = 'Custom timing curve';
+  const section = document.createElement('div');
+  section.className = 'section';
+  const help = document.createElement('p');
+  help.className = 'mini';
+  help.textContent = 'Edit keys and Bezier handles. The horizontal axis is the fraction of effect duration; snapping uses 60 FPS authoring frames. Editing selects the Custom timing curve.';
+  const root = document.createElement('div');
+  root.id = 'fxCurveRoot';
+  section.append(help, root);
+  panel.append(heading, section);
+  const transition = [...$('settings').children].find(d =>
+    d.querySelector('summary')?.textContent === 'Transition');
+  if (transition) transition.after(panel); else $('settings').append(panel);
+  curveEditor = FxCurveEditor.mount(root, {
+    curve: cfg.timeCurve,
+    getFrameCount: () => Math.round(cfg.duration * 60),
+    isLocked: () => bakeBusy || loading || rendererBusy,
+    onChange(value) {
+      const currentPhase = phase;
+      cfg.timeCurve = FxCurves.normalize(value);
+      cfg.easing = 4;
+      $('easing').value = '4';
+      panel.open = true;
+      setProgress(ease(currentPhase));
+    },
+    onScrub(time) {
+      setPlaying(false);
+      phase = time;
+      setProgress(ease(phase));
+    }
+  });
+}
 let fx,loadedAsset=null,backend='webgl',rendererBusy=false;
 let app,subject,model,filter,atlas,textureSources=[],maskRT,maskData=null,maskAge=1,emitterPoints=[],particles=[],progress=0.46,phase=0.46,playing=false,fxTime=0,frameBox={x:0,y:0,w:1,h:1},poseBox,spawnBudget=0,loading=false,loadSerial=0,elapsed=0,fps=60;
 const TIMELINE_FPS=60;
@@ -2616,7 +3084,7 @@ function durationFrames(){return Math.round(cfg.duration*TIMELINE_FPS);}
 function formatSeconds(value){return value.toFixed(cfg.duration<.1?3:2);}
 function updateDurationInputs(){const frames=durationFrames();$('duration').value=Number((frames/TIMELINE_FPS).toFixed(9));$('durationFrames').value=frames;$('timingMessage').textContent='Seconds snap to the nearest frame. 60 frames = 1 second.';$('timingMessage').classList.remove('error');}
 function updateTimeline(){const timePhase=inverseEase(progress),frames=durationFrames();$('elapsedValue').textContent='Elapsed: '+formatSeconds(timePhase*cfg.duration)+' / '+formatSeconds(cfg.duration)+' s';$('frameValue').textContent='Frame: '+Math.round(timePhase*frames)+' / '+frames;const scale=$('timeScale'),key=frames+':'+cfg.easing;if(scale.dataset.key!==key){scale.dataset.key=key;scale.replaceChildren();for(const t of (frames<2?[0,1]:[0,.5,1])){const tick=document.createElement('span');tick.className='time-tick';tick.style.left=(ease(t)*100)+'%';tick.textContent=formatSeconds(t*cfg.duration)+'s · '+Math.round(t*frames)+'f';scale.append(tick);}}}
-function applyDuration(value,unit,commit=true){const number=Number(value),frames=unit==='frames'?number:Math.round(number*TIMELINE_FPS);if(value.trim()===''||!Number.isFinite(number)||number<=0||!Number.isSafeInteger(frames)||frames<1){$('timingMessage').textContent=unit==='frames'?'Enter a positive whole number of frames.':'Enter a duration of at least one frame (1/60 second).';$('timingMessage').classList.add('error');return;}cfg.duration=frames/TIMELINE_FPS;phase=inverseEase(progress);if(commit)updateDurationInputs();else{if(unit==='seconds')$('durationFrames').value=frames;else $('duration').value=Number(cfg.duration.toFixed(9));$('timingMessage').textContent='Seconds snap to the nearest frame. 60 frames = 1 second.';$('timingMessage').classList.remove('error');}updateTimeline();syncUniforms();updateBakeDuration();}
+function applyDuration(value,unit,commit=true){const number=Number(value),frames=unit==='frames'?number:Math.round(number*TIMELINE_FPS);if(value.trim()===''||!Number.isFinite(number)||number<=0||!Number.isSafeInteger(frames)||frames<1){$('timingMessage').textContent=unit==='frames'?'Enter a positive whole number of frames.':'Enter a duration of at least one frame (1/60 second).';$('timingMessage').classList.add('error');return;}cfg.duration=frames/TIMELINE_FPS;phase=inverseEase(progress);if(commit)updateDurationInputs();else{if(unit==='seconds')$('durationFrames').value=frames;else $('duration').value=Number(cfg.duration.toFixed(9));$('timingMessage').textContent='Seconds snap to the nearest frame. 60 frames = 1 second.';$('timingMessage').classList.remove('error');}updateTimeline();curveEditor?.refresh();syncUniforms();updateBakeDuration();}
 $('duration').oninput=()=>applyDuration($('duration').value,'seconds',false);$('durationFrames').oninput=()=>applyDuration($('durationFrames').value,'frames',false);
 $('duration').onchange=()=>applyDuration($('duration').value,'seconds');$('durationFrames').onchange=()=>applyDuration($('durationFrames').value,'frames');
 // Commit on Enter without requiring a mouse click.
@@ -2627,7 +3095,7 @@ function setStatus(text,error=false){$('status').textContent=text;$('status').cl
 function showFatal(error){$('fatal').style.display='block';$('fatal').textContent='Preview could not start: '+error.message+'. Enable hardware acceleration and open this file in desktop Chrome or Edge.';$('loading').style.display='none';setStatus(error.message,true);}
 function field(x,y){return SpineBurnFx.field({...cfg,reverse:$('reverse').checked},frameBox,x,y);}
 function syncUniforms(){if(!fx)return;fx.configure({...cfg,reverse:$('reverse').checked});fx.setEnabled($('effect').checked);filter=fx.filter;filter.resolution=SpineBurnFx.PROFILES[fx.profile].resolution*previewScale;}
-function ease(t){return cfg.easing===1?t*t*(3-2*t):cfg.easing===2?t*t:cfg.easing===3?1-(1-t)*(1-t):t;}
+function ease(t){return cfg.easing===4?FxCurves.evaluate(cfg.timeCurve,t):cfg.easing===1?t*t*(3-2*t):cfg.easing===2?t*t:cfg.easing===3?1-(1-t)*(1-t):t;}
 function inverseEase(v){if(v<=0)return 0;if(v>=1)return 1;let lo=0,hi=1;for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(ease(mid)<v)lo=mid;else hi=mid;}return (lo+hi)/2;}
 function setProgress(value){progress=Math.max(0,Math.min(1,value));$('progress').value=progress;$('progressValue').textContent=(progress*100).toFixed(1)+'%';maskAge=1;if(progress===0||progress===1){particles=[];spawnBudget=0;}if(fx)fx.setProgress(progress);updateTimeline();syncUniforms();updateCenterHandle();}
 function setPlaying(value){playing=value;$('play').textContent=playing?'Pause transition':'Play transition';}
@@ -2644,7 +3112,7 @@ const parser=binary?new spine.SkeletonBinary(new spine.AtlasAttachmentLoader(new
 if(fx){fx.destroy();fx=null;}if(model){subject.removeChild(model);model.destroy();}if(atlas)atlas.dispose();textureSources.forEach(x=>x.destroy());atlas=newAtlas;textureSources=newSources;model=newModel;subject.addChild(model);$('animation').replaceChildren();const setup=document.createElement('option');setup.value='';setup.textContent='Setup pose';$('animation').append(setup);for(const anim of skeletonData.animations){const o=document.createElement('option');o.value=anim.name;o.textContent=anim.name;$('animation').append(o);}if(skeletonData.animations.length)$('animation').value=skeletonData.animations.some(x=>x.name==='idle')?'idle':skeletonData.animations[0].name;$('skin').replaceChildren();for(const skin of skeletonData.skins){const o=document.createElement('option');o.value=skin.name;o.textContent=skin.name;$('skin').append(o);}if(skeletonData.skins.length){$('skin').value=skeletonData.skins.some(x=>x.name==='default')?'default':skeletonData.skins[0].name;model.skeleton.setSkinByName($('skin').value);model.skeleton.setSlotsToSetupPose();}$('skin').disabled=!skeletonData.skins.length;setAnimation();loadedAsset=exportInfo||{skeletonName:binary?'skeleton.skel':'skeleton.json',atlasName:'skeleton.atlas',skeleton:new Blob([binary?skeleton:skeleton],{type:binary?'application/octet-stream':'application/json'}),atlas:new Blob([atlasText],{type:'application/octet-stream'}),images:new Map(imageMap)};loadedAsset.version=version;fx=SpineBurnFx.createBurnTransition({PIXI,spine,app,host:subject,model,settings:{...cfg,reverse:$('reverse').checked},bounds:frameBox});fx.setProgress(progress);filter=fx.filter;syncUniforms();updateCenterHandle();$('assetName').textContent=name;setStatus('Loaded '+name+' · Spine '+version+' · '+newAtlas.pages.length+' atlas page'+(newAtlas.pages.length===1?'':'s')+' · '+skeletonData.animations.length+' animations');particles=[];maskAge=1;}catch(e){if(newModel&&newModel!==model)newModel.destroy();if(newAtlas&&newAtlas!==atlas)newAtlas.dispose();newSources.filter(x=>!textureSources.includes(x)).forEach(x=>x.destroy());setStatus(e.message,true);throw e;}finally{if(serial===loadSerial){loading=false;renderAssetSelection();$('loading').style.display='none';}}}
 async function loadFiles(files){if(loading||rendererBusy||bakeBusy){assetMessage('The preview is busy. Try again when it finishes.',true);return false;}const list=Array.from(files);const skeletons=list.filter(f=>/\.(json|skel)$/i.test(f.name)),atlases=list.filter(f=>/\.atlas$/i.test(f.name));if(skeletons.length!==1||atlases.length!==1){assetMessage('Select exactly one .json or .skel, one .atlas, and all atlas images. .spine editor projects must be exported first.',true);return false;}const images=new Map();for(const f of list.filter(f=>/\.(png|webp|jpe?g)$/i.test(f.name))){if(images.has(f.name)){assetMessage('Duplicate texture filename: '+f.name+'.',true);return false;}images.set(f.name,f);}selectedSkeleton=skeletons[0];selectedAtlas=atlases[0];selectedImages=new Map(images);renderAssetSelection();try{const skel=skeletons[0];await installAsset(/\.skel$/i.test(skel.name)?new Uint8Array(await skel.arrayBuffer()):await skel.text(),await atlases[0].text(),images,skel.name,/\.skel$/i.test(skel.name),{skeletonName:skel.name,atlasName:atlases[0].name,skeleton:skel,atlas:atlases[0],images:new Map(images)});assetMessage('Loaded '+skel.name+' into the preview.');return true;}catch(e){assetMessage(e.message,true);return false;}}
 async function loadSample(){if(loading||rendererBusy||bakeBusy)return;const data=JSON.parse($('sampleData').textContent);const images=new Map(Object.entries(data.images).map(([name,b64])=>[name,new Blob([Uint8Array.from(atob(b64),c=>c.charCodeAt(0))],{type:'image/png'})]));const skeletonText=JSON.stringify(data.skeleton);await installAsset(skeletonText,data.atlas,images,data.label+' · built-in sample',false,{skeletonName:data.skeletonName,atlasName:data.atlasName,skeleton:new Blob([skeletonText],{type:'application/json'}),atlas:new Blob([data.atlas],{type:'text/plain'}),images:new Map(images)});}
-$('load').onclick=()=>{$('assetPanel').open=true;$('assetPanel').scrollIntoView({block:'nearest'});$('skeletonFile').focus({preventScroll:true});};$('selectAll').onclick=()=>$('files').click();$('files').onchange=()=>{loadFiles($('files').files);$('files').value='';};$('sample').onclick=()=>loadSample().catch(()=>{});$('animation').onchange=setAnimation;$('skin').onchange=setSkin;$('background').onchange=()=>{$('viewport').classList.toggle('checker',$('background').value==='checker');$('viewport').style.backgroundColor=$('background').value==='checker'?'':$('background').value;};$('play').onclick=()=>{if(progress>=1){phase=0;setProgress(0);}else phase=inverseEase(progress);setPlaying(!playing);};$('reset').onclick=()=>{setPlaying(false);phase=0;setProgress(0);};$('finish').onclick=()=>{setPlaying(false);phase=1;setProgress(1);};$('progress').oninput=()=>{setPlaying(false);setProgress(Number($('progress').value));phase=inverseEase(progress);particles=[];};$('reverse').onchange=()=>{particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();};$('effect').onchange=()=>{particles=[];syncUniforms();};$('defaults').onclick=()=>{Object.assign(cfg,defaults);for(const [, ,fields]of groups)for(const [key,,a,,,unit]of fields){$(key).value=cfg[key];if($(key+'Value'))$(key+'Value').textContent=displayValue(cfg[key],unit);}$('reverse').checked=false;$('effect').checked=true;updateDurationInputs();fit();phase=inverseEase(progress);updateTimeline();};
+$('load').onclick=()=>{$('assetPanel').open=true;$('assetPanel').scrollIntoView({block:'nearest'});$('skeletonFile').focus({preventScroll:true});};$('selectAll').onclick=()=>$('files').click();$('files').onchange=()=>{loadFiles($('files').files);$('files').value='';};$('sample').onclick=()=>loadSample().catch(()=>{});$('animation').onchange=setAnimation;$('skin').onchange=setSkin;$('background').onchange=()=>{$('viewport').classList.toggle('checker',$('background').value==='checker');$('viewport').style.backgroundColor=$('background').value==='checker'?'':$('background').value;};$('play').onclick=()=>{if(progress>=1){phase=0;setProgress(0);}else phase=inverseEase(progress);setPlaying(!playing);};$('reset').onclick=()=>{setPlaying(false);phase=0;setProgress(0);};$('finish').onclick=()=>{setPlaying(false);phase=1;setProgress(1);};$('progress').oninput=()=>{setPlaying(false);setProgress(Number($('progress').value));phase=inverseEase(progress);particles=[];};$('reverse').onchange=()=>{particles=[];maskAge=1;syncUniforms();updateCenterHandle();updateBakeOverlay();};$('effect').onchange=()=>{particles=[];syncUniforms();};$('defaults').onclick=()=>{Object.assign(cfg,defaults);curveEditor?.setCurve(cfg.timeCurve);for(const [, ,fields]of groups)for(const [key,,a,,,unit]of fields){$(key).value=cfg[key];if($(key+'Value'))$(key+'Value').textContent=displayValue(cfg[key],unit);}$('reverse').checked=false;$('effect').checked=true;updateDurationInputs();fit();phase=inverseEase(progress);updateTimeline();};
 let dragDepth=0;const viewport=$('viewport');viewport.addEventListener('dragenter',e=>{e.preventDefault();dragDepth++;viewport.classList.add('dragging');});viewport.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});viewport.addEventListener('dragleave',()=>{if(--dragDepth<=0){dragDepth=0;viewport.classList.remove('dragging');}});viewport.addEventListener('drop',e=>{e.preventDefault();dragDepth=0;viewport.classList.remove('dragging');loadFiles(e.dataTransfer.files);});window.addEventListener('dragover',e=>e.preventDefault());window.addEventListener('drop',e=>e.preventDefault());
 async function initRenderer(preferred='webgl'){
  const result=await SpineBurnFx.createApplication(PIXI,{backgroundAlpha:0,resolution:1,autoDensity:true,width:viewport.clientWidth,height:viewport.clientHeight},preferred,cfg.quality);app=result.app;backend=result.backend;$('cameraPlane').prepend(app.canvas);subject=new PIXI.Container();app.stage.addChild(subject);
@@ -2872,7 +3340,7 @@ async function bakeSequence() {
       const seconds = index / BAKE_FPS;
       if (index > 0) bakeModel.update(settings.animationSpeed / BAKE_FPS);
       // The authoring clock and physics use fixed steps, independent of encoding time.
-      bakeFx.setProgress(SpineBurnFx.ease(Math.min(1, seconds / settings.duration), settings.easing));
+      bakeFx.setProgress(SpineBurnFx.ease(Math.min(1, seconds / settings.duration), settings.easing, settings.timeCurve));
       bakeFx.update(index === 0 ? 0 : 1 / BAKE_FPS);
       app.renderer.render({ container: root, target, clear: true, clearColor: [0, 0, 0, 0] });
       pngCanvas = gpuReadback ? await gpuReadback.read() : extractWebGlBakeCanvas(target);
@@ -3044,8 +3512,8 @@ sequenceZip=zip;
 function safePath(name){const normalized=name.replace(/\\/g,'/');if(normalized.startsWith('/')||normalized.split('/').some(p=>p==='..'||p===''||p==='.')||/^[A-Za-z]:/.test(normalized))throw new Error('The atlas contains an unsupported export path: '+name);return normalized;}
 function preset(target){const a=loadedAsset;return {schemaVersion:1,name:'Spine burn transition',rendererPreference:target,fallbackRenderer:'webgl',settings:{...cfg,reverse:$('reverse').checked},timing:{durationSeconds:cfg.duration,durationFrames:durationFrames(),fps:TIMELINE_FPS,clock:'elapsed-seconds'},asset:{skeleton:'assets/'+a.skeletonName,atlas:'assets/'+a.atlasName,spineVersion:a.version,animation:$('animation').value,skin:$('skin').value},reference:{progress,elapsedSeconds:inverseEase(progress)*cfg.duration,frame:Math.round(inverseEase(progress)*durationFrames()),quality:fx.profile,viewport:{width:app.screen.width,height:app.screen.height},bounds:{...frameBox},localBounds:{...poseBox},animationSpeed:cfg.animationSpeed,animateSkeleton:$('animPlay').checked},units:{center:'Normalized within fixed symbol bounds: X right, Y down, 0..1',progress:'0 = original; 1 = fully burned',flameAndSparks:'Logical renderer pixels, not device pixels'},compatibility:{pixi:'8.22.0',spineRuntime:'4.2.120',minimumGpuPath:'WebGL 1',physicalDeviceCertification:false}};}
 function example(target){return `import * as PIXI from 'pixi.js';\nimport * as SpineRuntime from '@esotericsoftware/spine-pixi-v8';\nimport { createApplication, createBurnTransition } from './BurnTransition.mjs';\n\n// Keep bootstrap inside a function to avoid a top-level-await cycle in Vite chunks.\nasync function main() {\nconst preset = await (await fetch('./preset.json')).json();\nconst { app, backend, fallbackReason } = await createApplication(PIXI, {\n  resizeTo: window, backgroundAlpha: 0, resolution: 1, autoDensity: true\n}, '${target}', preset.settings.quality);\ndocument.body.appendChild(app.canvas);\nif (fallbackReason) console.info(fallbackReason);\n\nPIXI.Assets.add({ alias: 'skeleton', src: preset.asset.skeleton });\nPIXI.Assets.add({ alias: 'atlas', src: preset.asset.atlas });\nawait PIXI.Assets.load(['skeleton', 'atlas']);\nconst skeleton = SpineRuntime.Spine.from({ skeleton: 'skeleton', atlas: 'atlas', autoUpdate: false });\nif (preset.asset.skin) {\n  skeleton.skeleton.setSkinByName(preset.asset.skin);\n  skeleton.skeleton.setSlotsToSetupPose();\n}\nif (preset.asset.animation) skeleton.state.setAnimation(0, preset.asset.animation, true);\nskeleton.update(0);\nconst host = new PIXI.Container();\napp.stage.addChild(host);\nhost.addChild(skeleton);\n\n// Preserve the author's fixed reference bounds. Do not recompute them every animation frame.\nconst local = preset.reference.localBounds;\nlet fx;\nfunction layout() {\n  const scale = Math.max(.01, Math.min((app.screen.width - 80) / local.w, (app.screen.height - 80) / local.h));\n  skeleton.scale.set(scale);\n  skeleton.position.set(app.screen.width / 2 - (local.x + local.w / 2) * scale,\n    app.screen.height / 2 - (local.y + local.h / 2) * scale);\n  const bounds = { x: skeleton.x + local.x * scale, y: skeleton.y + local.y * scale, w: local.w * scale, h: local.h * scale };\n  if (fx) fx.setBounds(bounds);\n  return bounds;\n}\nfx = createBurnTransition({ PIXI, spine: SpineRuntime, app, host, model: skeleton, settings: preset.settings, bounds: layout() });\n// Use preset.reference.progress to reproduce the exported still; start gameplay transitions at 0.\nfx.setProgress(preset.reference.progress);\nconst tick = ticker => {\n  const seconds = ticker.elapsedMS / 1000;\n  skeleton.update(preset.reference.animateSkeleton ? Math.min(seconds, .05) * preset.reference.animationSpeed : 0);\n  fx.update(seconds);\n};\napp.ticker.add(tick);\nwindow.addEventListener('resize', layout);\n// Existing games: supply your current Spine instance and your own ticker; do not update it twice.\nwindow.burnDemo = { app, skeleton, fx, backend,\n  play() { fx.reset(); fx.play(); },\n  setProgress(value) { fx.pause(); fx.setProgress(value); },\n  dispose() { window.removeEventListener('resize', layout); app.ticker.remove(tick); fx.destroy();\n    skeleton.destroy(); host.destroy(); app.destroy(true); }\n};\n}\nmain().catch(error => { console.error(error); document.body.textContent = error.message; });\n`;} 
-function readme(target){return `# Spine Burn Transition — ${target==='webgpu'?'WebGPU preferred, with WebGL fallback':'WebGL / WebGL 1 compatibility'}\n\nThis package contains the exact shared effect module used by Spine Burn Lab and the settings selected at export time. All assets remain local. The exporter copies the supplied Spine files; it does not modify them.\n\n## Package contents\n- preset.json: every effect parameter, center, timing, quality, selected skin/animation, reference bounds and preview progress.\n- BurnTransition.mjs: reusable PixiJS effect, GLSL + WGSL programs, alpha-aware and clipping-aware CPU spark emitter, and application initialization helper.\n- example.js + index.html + package.json: runnable integration example.\n- shaders/: readable shader sources; the runtime module contains the same source.\n- public/assets/: the selected skeleton, atlas, and all atlas pages.\n- LICENSES.txt: bundled runtime and Pixi notices.\n\n## Run the integration example\nRequires Node.js 20.19+ or 22.12+ on the developer machine, not on the target phone.\n\n1. Extract this ZIP to a directory.\n2. Run npm install.\n3. Run npm run dev.\n4. Open the printed localhost URL. The selected preview progress appears immediately.\n5. Call burnDemo.play() in the console to play a complete transition, or burnDemo.setProgress(0.5) to inspect it.\n\nThe WebGPU example needs HTTPS or a secure localhost context. For a phone on your network, serve the example with HTTPS; ordinary LAN HTTP does not expose WebGPU. The app helper falls back to WebGL if WebGPU is unavailable or initialization fails. WebGL does not require WebGPU support.\n\n## Integrate into an existing PixiJS game\nUse PixiJS 8.22.0 and @esotericsoftware/spine-pixi-v8 4.2.120 (Spine 4.2 exports). The createApplication helper refreshes Pixi 8.22’s shared default batch shader to match the active renderer texture limit when switching backends. This uses the version-specific DefaultBatcher._updateMaxTextures method; keep the exact pin or revalidate this initialization step before upgrading. Import createBurnTransition from BurnTransition.mjs. Pass PIXI, the Spine runtime namespace, your app, a Spine instance, preset.settings, and a fixed renderer-space bounds rectangle.\n\nPut the Spine instance inside an identity-transform Container directly under app.stage and pass that Container as host. Move/scale the Spine instance inside the host. The host may contain existing filters; the effect appends its filter and restores the prior filter list on destroy. The example shows this contract explicitly. Use one effect host per symbol.\n\nCall fx.update(elapsedSeconds) once per frame AFTER updating the skeleton pose. Use fx.setProgress(value) for external animation/tween control, or fx.reset(); fx.play() for the exported duration and easing. fx.pause() pauses the transition progress while fx.update() continues flame and particle motion. The effect does not update the Spine animation itself. Avoid double ticker updates.\n\nCall fx.configure({ centerX: 0.3, centerY: 0.7 }) to change the origin, and fx.setBounds(bounds) after moving/resizing the symbol. Call fx.setEnabled(false) to compare the original. Remove your ticker callback and call fx.destroy() when the symbol leaves the scene; destroy your own skeleton and atlas resources according to their ownership.\n\n## Duration, timeline, and 60 FPS frames\nThe author enters Duration (seconds) or Duration (frames @ 60 FPS). These are synchronized; seconds snap to the nearest whole frame, with a minimum of one frame. preset.settings.duration and preset.timing.durationSeconds are the canonical duration in seconds. preset.timing.durationFrames = durationSeconds * 60; preset.timing.fps is 60. For example, 90 frames = 1.5 seconds. Pass settings.duration unchanged into the effect.\n\nFrames are authoring units, not a counter of actual rendered frames. Use ticker.elapsedMS / 1000 with fx.update(); do not increment progress by a fixed 1/frameCount each callback. A 30 FPS phone and a 120 Hz desktop both complete a 90-frame preset in 1.5 seconds of active elapsed time, subject to the next available render frame.\n\nThe effect progress is the mask position after the selected easing curve. Elapsed seconds and nominal frame position use the inverse curve, so 25% mask progress can correspond to more or less than 25% elapsed time. preset.reference.elapsedSeconds and frame record this position for the exported still.\n\n## Geometry, units, and appearance\nshape 0 = Linear, 1 = Circular, 2 = Organic patches. centerX and centerY are normalized inside the fixed reference box, with +X right and +Y down. The Circular mask measures actual renderer-space distance, so a non-square box produces a circle rather than an ellipse. Progress expands its radius from zero to the farthest box corner. With Edge irregularity > 0 the circle has a noisy burning perimeter; use roughness = 0 for a geometrically exact circle. Reverse direction burns from the outside inward.\n\nUse preset.reference.localBounds for the same selected skin/animation coordinate frame; do not replace the bounds each frame with a moving animated AABB. At progress 0 the source is unchanged; at 1 it has the exported burned appearance and original alpha. The center marker is an editor overlay, not part of the exported effect.\n\nFlame height, ember width, spark size and launch speed use logical renderer pixels. To reproduce the author's apparent size exactly, match preset.reference.bounds.w/h. If you intentionally resize the symbol and want proportional flames, scale these pixel parameters by your displayed size / reference size. DPR is independent; start with app resolution 1 on older phones. A single fixed author preset is exported; Auto quality selects Low on mobile and Balanced on typical desktops. Select a fixed quality in the lab when exact profile matching matters.\n\n## Phones manufactured in 2019–2020\nManufacturing year alone does not establish support or frame rate. The compatibility path is WebGL, including WebGL 1, with an updated browser and working GPU drivers. WebGPU is an enhancement and is never the only path. A third Canvas export is not included: Canvas does not execute these shaders and the Spine Canvas renderer has feature limitations. Devices without usable WebGL can display an application-provided unfiltered symbol/fallback message.\n\nLow profile: filter resolution 0.5, 3 flame samples, no halo samples, up to 96 active sparks, emission capped at 45/s, a bounded CPU sampling budget, no synchronous GPU pixel readbacks, and anti-aliasing disabled when the application helper selects Low. Balanced uses resolution 1 / 6 samples / 4 halo samples; High uses 1.5 / 9 / 8. Low preserves your parameters but applies documented cost caps. Sparks use attachment alpha, transformed region/mesh geometry, and Spine clipping.\n\nKeep atlases at 2048x2048 or below where practical; inspect MAX_TEXTURE_SIZE on WebGL and maxTextureDimension2D on WebGPU before loading. One RGBA 2048 page alone occupies about 16 MiB on the GPU; multiple pages, render targets, and other symbols add to this. Avoid applying one full-screen filter per dozens of simultaneously active symbols. Profile the intended number of symbols in the actual game.\n\nPhysical-device acceptance checklist: test representative Android 2019 and 2020 devices and the oldest supported iPhone/browser; test WebGL 1 explicitly; verify load, 0/50/100% progress, transparency/PMA, circular center at corners, resize, background/resume, context loss, cleanup, and sustained frame time/memory with the intended symbol count. This package is NOT a certification that every phone from those years reaches a fixed FPS.\n\n## Validation and backend differences\nGLSL and WGSL implement the same mask, parameters, deterministic lattice noise, premultiplied-alpha compositing, and quality constants. Small floating-point and sampling differences between devices/renderers are possible. Particle placement is stochastic. Compare the boundary and burned image rather than expecting identical random spark positions. The package does not contain a fabricated physical-mobile benchmark.\n\n## References\nhttps://pixijs.com/8.x/guides/components/filters\nhttps://pixijs.com/8.x/guides/components/application\nhttps://esotericsoftware.com/spine-pixi\nhttps://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API\n`;}
-async function buildPackage(target){if($('timingMessage').classList.contains('error'))throw new Error('Enter a valid duration before exporting.');if(!loadedAsset||!fx)throw new Error('Load a Spine asset before exporting.');const a=loadedAsset,p=preset(target),core=$('sharedCore').textContent+'\nexport const { createBurnTransition, createApplication, qualityName } = globalThis.SpineBurnFx;\n';const entries=[{name:'preset.json',data:JSON.stringify(p,null,2)},{name:'public/preset.json',data:JSON.stringify(p,null,2)},{name:'BurnTransition.mjs',data:core},{name:'example.js',data:example(target)},{name:'README.md',data:readme(target)},{name:'index.html',data:'<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spine Burn — '+target+'<\/title><style>html,body{margin:0;width:100%;height:100%;background:#151820;overflow:hidden}canvas{display:block}<\/style><script type="module" src="/example.js"><\/script><\/html>'},{name:'package.json',data:JSON.stringify({name:'spine-burn-'+target,private:true,type:'module',scripts:{dev:'vite --host 0.0.0.0',build:'vite build'},dependencies:{'pixi.js':'8.22.0','@esotericsoftware/spine-pixi-v8':'4.2.120'},devDependencies:{vite:'7.1.12'}},null,2)},{name:'shaders/burn.vert.glsl',data:SpineBurnFx.GL_VERTEX},{name:'shaders/burn.frag.glsl',data:SpineBurnFx.GL_FRAGMENT.replace('precision highp float;','precision highp float;\n#define FIRE_STEPS '+SpineBurnFx.PROFILES[fx.profile].steps+'\n#define HALO_STEPS '+SpineBurnFx.PROFILES[fx.profile].halo+'\n#define HALO_DIVISOR '+Math.max(1,SpineBurnFx.PROFILES[fx.profile].halo)+'\n')},{name:'LICENSES.txt',data:$('runtimeLicenses').textContent},{name:'public/assets/'+safePath(a.skeletonName),data:a.skeleton},{name:'public/assets/'+safePath(a.atlasName),data:a.atlas}];if(target==='webgpu')entries.push({name:'shaders/burn.wgsl',data:SpineBurnFx.GPU_SHADER.replaceAll('FIRE_STEPS_VALUE',String(SpineBurnFx.PROFILES[fx.profile].steps)).replaceAll('HALO_STEPS_VALUE',String(SpineBurnFx.PROFILES[fx.profile].halo))});for(const page of atlas.pages){const pageName=safePath(page.name);let image=a.images.get(page.name);if(!image){const found=[...a.images].filter(([k])=>k.split('/').pop()===page.name.replace(/\\/g,'/').split('/').pop());if(found.length===1)image=found[0][1];}if(!image)throw new Error('Cannot export missing atlas image: '+page.name);entries.push({name:'public/assets/'+pageName,data:image});}const names=entries.map(x=>x.name);if(new Set(names).size!==names.length)throw new Error('Export filenames conflict. Rename the skeleton or atlas files and load them again.');return {blob:await zip(entries),preset:p,entries};}
+function readme(target){return `# Spine Burn Transition — ${target==='webgpu'?'WebGPU preferred, with WebGL fallback':'WebGL / WebGL 1 compatibility'}\n\nThis package contains the exact shared effect module used by Spine Burn Lab and the settings selected at export time. All assets remain local. The exporter copies the supplied Spine files; it does not modify them.\n\n## Package contents\n- preset.json: every effect parameter, center, timing, quality, selected skin/animation, reference bounds and preview progress.\n- FxCurves.mjs: reusable, validated versioned curve evaluator (linear, stepped and cubic Bezier; no dependencies).\n- BurnTransition.mjs: reusable PixiJS effect, GLSL + WGSL programs, alpha-aware and clipping-aware CPU spark emitter, and application initialization helper.\n- example.js + index.html + package.json: runnable integration example.\n- shaders/: readable shader sources; the runtime module contains the same source.\n- public/assets/: the selected skeleton, atlas, and all atlas pages.\n- LICENSES.txt: bundled runtime and Pixi notices.\n\n## Run the integration example\nRequires Node.js 20.19+ or 22.12+ on the developer machine, not on the target phone.\n\n1. Extract this ZIP to a directory.\n2. Run npm install.\n3. Run npm run dev.\n4. Open the printed localhost URL. The selected preview progress appears immediately.\n5. Call burnDemo.play() in the console to play a complete transition, or burnDemo.setProgress(0.5) to inspect it.\n\nThe WebGPU example needs HTTPS or a secure localhost context. For a phone on your network, serve the example with HTTPS; ordinary LAN HTTP does not expose WebGPU. The app helper falls back to WebGL if WebGPU is unavailable or initialization fails. WebGL does not require WebGPU support.\n\n## Integrate into an existing PixiJS game\nUse PixiJS 8.22.0 and @esotericsoftware/spine-pixi-v8 4.2.120 (Spine 4.2 exports). The createApplication helper refreshes Pixi 8.22’s shared default batch shader to match the active renderer texture limit when switching backends. This uses the version-specific DefaultBatcher._updateMaxTextures method; keep the exact pin or revalidate this initialization step before upgrading. Import createBurnTransition from BurnTransition.mjs. Pass PIXI, the Spine runtime namespace, your app, a Spine instance, preset.settings, and a fixed renderer-space bounds rectangle.\n\nPut the Spine instance inside an identity-transform Container directly under app.stage and pass that Container as host. Move/scale the Spine instance inside the host. The host may contain existing filters; the effect appends its filter and restores the prior filter list on destroy. The example shows this contract explicitly. Use one effect host per symbol.\n\nCall fx.update(elapsedSeconds) once per frame AFTER updating the skeleton pose. Use fx.setProgress(value) for external animation/tween control, or fx.reset(); fx.play() for the exported duration and easing. fx.pause() pauses the transition progress while fx.update() continues flame and particle motion. The effect does not update the Spine animation itself. Avoid double ticker updates.\n\nCall fx.configure({ centerX: 0.3, centerY: 0.7 }) to change the origin, and fx.setBounds(bounds) after moving/resizing the symbol. Call fx.setEnabled(false) to compare the original. Remove your ticker callback and call fx.destroy() when the symbol leaves the scene; destroy your own skeleton and atlas resources according to their ownership.\n\n## Duration, timeline, and 60 FPS frames\nThe author enters Duration (seconds) or Duration (frames @ 60 FPS). These are synchronized; seconds snap to the nearest whole frame, with a minimum of one frame. preset.settings.duration and preset.timing.durationSeconds are the canonical duration in seconds. preset.timing.durationFrames = durationSeconds * 60; preset.timing.fps is 60. For example, 90 frames = 1.5 seconds. Pass settings.duration unchanged into the effect.\n\nFrames are authoring units, not a counter of actual rendered frames. Use ticker.elapsedMS / 1000 with fx.update(); do not increment progress by a fixed 1/frameCount each callback. A 30 FPS phone and a 120 Hz desktop both complete a 90-frame preset in 1.5 seconds of active elapsed time, subject to the next available render frame.\n\nCustom timing: choose Timing curve = Custom in the editor; preset.settings.timeCurve contains the versioned FX-CORE-01 JSON curve (normalized fraction of duration on the X axis). The developer example and PNG bake run the same FxCurves evaluator through BurnTransition.mjs, including monotonic and Bezier constraints.\n\nThe effect progress is the mask position after the selected easing curve. Elapsed seconds and nominal frame position use the inverse curve, so 25% mask progress can correspond to more or less than 25% elapsed time. preset.reference.elapsedSeconds and frame record this position for the exported still.\n\n## Geometry, units, and appearance\nshape 0 = Linear, 1 = Circular, 2 = Organic patches. centerX and centerY are normalized inside the fixed reference box, with +X right and +Y down. The Circular mask measures actual renderer-space distance, so a non-square box produces a circle rather than an ellipse. Progress expands its radius from zero to the farthest box corner. With Edge irregularity > 0 the circle has a noisy burning perimeter; use roughness = 0 for a geometrically exact circle. Reverse direction burns from the outside inward.\n\nUse preset.reference.localBounds for the same selected skin/animation coordinate frame; do not replace the bounds each frame with a moving animated AABB. At progress 0 the source is unchanged; at 1 it has the exported burned appearance and original alpha. The center marker is an editor overlay, not part of the exported effect.\n\nFlame height, ember width, spark size and launch speed use logical renderer pixels. To reproduce the author's apparent size exactly, match preset.reference.bounds.w/h. If you intentionally resize the symbol and want proportional flames, scale these pixel parameters by your displayed size / reference size. DPR is independent; start with app resolution 1 on older phones. A single fixed author preset is exported; Auto quality selects Low on mobile and Balanced on typical desktops. Select a fixed quality in the lab when exact profile matching matters.\n\n## Phones manufactured in 2019–2020\nManufacturing year alone does not establish support or frame rate. The compatibility path is WebGL, including WebGL 1, with an updated browser and working GPU drivers. WebGPU is an enhancement and is never the only path. A third Canvas export is not included: Canvas does not execute these shaders and the Spine Canvas renderer has feature limitations. Devices without usable WebGL can display an application-provided unfiltered symbol/fallback message.\n\nLow profile: filter resolution 0.5, 3 flame samples, no halo samples, up to 96 active sparks, emission capped at 45/s, a bounded CPU sampling budget, no synchronous GPU pixel readbacks, and anti-aliasing disabled when the application helper selects Low. Balanced uses resolution 1 / 6 samples / 4 halo samples; High uses 1.5 / 9 / 8. Low preserves your parameters but applies documented cost caps. Sparks use attachment alpha, transformed region/mesh geometry, and Spine clipping.\n\nKeep atlases at 2048x2048 or below where practical; inspect MAX_TEXTURE_SIZE on WebGL and maxTextureDimension2D on WebGPU before loading. One RGBA 2048 page alone occupies about 16 MiB on the GPU; multiple pages, render targets, and other symbols add to this. Avoid applying one full-screen filter per dozens of simultaneously active symbols. Profile the intended number of symbols in the actual game.\n\nPhysical-device acceptance checklist: test representative Android 2019 and 2020 devices and the oldest supported iPhone/browser; test WebGL 1 explicitly; verify load, 0/50/100% progress, transparency/PMA, circular center at corners, resize, background/resume, context loss, cleanup, and sustained frame time/memory with the intended symbol count. This package is NOT a certification that every phone from those years reaches a fixed FPS.\n\n## Validation and backend differences\nGLSL and WGSL implement the same mask, parameters, deterministic lattice noise, premultiplied-alpha compositing, and quality constants. Small floating-point and sampling differences between devices/renderers are possible. Particle placement is stochastic. Compare the boundary and burned image rather than expecting identical random spark positions. The package does not contain a fabricated physical-mobile benchmark.\n\n## References\nhttps://pixijs.com/8.x/guides/components/filters\nhttps://pixijs.com/8.x/guides/components/application\nhttps://esotericsoftware.com/spine-pixi\nhttps://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API\n`;}
+async function buildPackage(target){if($('timingMessage').classList.contains('error'))throw new Error('Enter a valid duration before exporting.');if(!loadedAsset||!fx)throw new Error('Load a Spine asset before exporting.');const a=loadedAsset,p=preset(target),core="import './FxCurves.mjs';\n"+$('sharedCore').textContent+'\nexport const { createBurnTransition, createApplication, qualityName } = globalThis.SpineBurnFx;\n';const entries=[{name:'preset.json',data:JSON.stringify(p,null,2)},{name:'public/preset.json',data:JSON.stringify(p,null,2)},{name:'FxCurves.mjs',data:$('fxCurveCore').textContent+'\nexport const FxCurves = globalThis.FxCurves;\n'},{name:'BurnTransition.mjs',data:core},{name:'example.js',data:example(target)},{name:'README.md',data:readme(target)},{name:'index.html',data:'<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spine Burn — '+target+'<\/title><style>html,body{margin:0;width:100%;height:100%;background:#151820;overflow:hidden}canvas{display:block}<\/style><script type="module" src="/example.js"><\/script><\/html>'},{name:'package.json',data:JSON.stringify({name:'spine-burn-'+target,private:true,type:'module',scripts:{dev:'vite --host 0.0.0.0',build:'vite build'},dependencies:{'pixi.js':'8.22.0','@esotericsoftware/spine-pixi-v8':'4.2.120'},devDependencies:{vite:'7.1.12'}},null,2)},{name:'shaders/burn.vert.glsl',data:SpineBurnFx.GL_VERTEX},{name:'shaders/burn.frag.glsl',data:SpineBurnFx.GL_FRAGMENT.replace('precision highp float;','precision highp float;\n#define FIRE_STEPS '+SpineBurnFx.PROFILES[fx.profile].steps+'\n#define HALO_STEPS '+SpineBurnFx.PROFILES[fx.profile].halo+'\n#define HALO_DIVISOR '+Math.max(1,SpineBurnFx.PROFILES[fx.profile].halo)+'\n')},{name:'LICENSES.txt',data:$('runtimeLicenses').textContent},{name:'public/assets/'+safePath(a.skeletonName),data:a.skeleton},{name:'public/assets/'+safePath(a.atlasName),data:a.atlas}];if(target==='webgpu')entries.push({name:'shaders/burn.wgsl',data:SpineBurnFx.GPU_SHADER.replaceAll('FIRE_STEPS_VALUE',String(SpineBurnFx.PROFILES[fx.profile].steps)).replaceAll('HALO_STEPS_VALUE',String(SpineBurnFx.PROFILES[fx.profile].halo))});for(const page of atlas.pages){const pageName=safePath(page.name);let image=a.images.get(page.name);if(!image){const found=[...a.images].filter(([k])=>k.split('/').pop()===page.name.replace(/\\/g,'/').split('/').pop());if(found.length===1)image=found[0][1];}if(!image)throw new Error('Cannot export missing atlas image: '+page.name);entries.push({name:'public/assets/'+pageName,data:image});}const names=entries.map(x=>x.name);if(new Set(names).size!==names.length)throw new Error('Export filenames conflict. Rename the skeleton or atlas files and load them again.');return {blob:await zip(entries),preset:p,entries};}
 async function downloadPackage(target){const buttons=[$('exportWebGL'),$('exportWebGPU')];buttons.forEach(b=>b.disabled=true);try{const {blob}=await buildPackage(target);const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='Spine_Burn_'+(target==='webgpu'?'WebGPU':'WebGL')+'.zip';link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);setStatus('Exported '+target.toUpperCase()+' developer package with your preset and Spine assets.');}catch(e){setStatus('Export failed: '+e.message,true);}finally{buttons.forEach(b=>b.disabled=false);}}
 $('exportWebGL').onclick=()=>downloadPackage('webgl');$('exportWebGPU').onclick=()=>downloadPackage('webgpu');window.__burnExport={buildPackage,preset};
 })();

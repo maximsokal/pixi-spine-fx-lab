@@ -10,6 +10,7 @@
 | Camera | Buttons, percentage, Fit/100%, wheel anchor; matching canvas/frame/handles; inverse crop and center drags at 50%,100%,200%. |
 | Bake invariance | Same-backend PNG bytes and sequence metadata identical before/after zoom or hiding guides, with identical settings/seed. |
 | Timing | Seconds/frames agree at 60 FPS; inverse easing correct; live duration independent of rendering FPS; deterministic fixed-step bake samples. |
+| Curves | Versioned [FX-CORE-01 schema](contracts/curves.md), deterministic numerical oracle, key/handle manipulation, invalid JSON rejection, 30/60/120 FPS and preview/bake/developer ZIP parity for custom easing. |
 | PNG | Every IHDR has exact W/H; RGBA transparency, no guides/background, animation changes over time, no per-frame trimming/recentering. WebGL PNG bytes must be **straight-alpha RGBA8**, not premultiplied RGB written as straight RGB; decode PNG independently and test partial-alpha colors. |
 | Effect | Defined endpoints, intermediate look, disabled/reverse/loop behavior; reference images; no unintended alpha holes/opaque edges. |
 | GPU | Actual WebGL 1 compatibility path, WebGL 2 and actual WebGPU where available; no JS/shader validation errors. |

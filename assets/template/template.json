@@ -33,10 +33,12 @@
   },
   "sourceFiles": [
     "src/ui.html",
+    "src/curve-core.js",
+    "src/curve-editor.js",
     "src/effect-core.js",
     "src/export-ui.js"
   ],
-  "baselineHtmlSha256": "f0d4b5222fa4cb8dbc4949d15933f3b32291709a3b1147f72c86dba494704ae5",
+  "baselineHtmlSha256": "9e9253556e1b560793c9a32ef5adac6a6828bf9315d301addf47fa24205f7564",
   "exampleEffect": "Burn to grayscale with flame and sparks",
   "exports": [
     "WebGL developer ZIP",
