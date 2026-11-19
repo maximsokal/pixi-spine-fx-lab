@@ -1,0 +1,76 @@
+{
+  "blueprintSchemaVersion": 1,
+  "categories": [
+    "fire",
+    "ice",
+    "game"
+  ],
+  "entries": [
+    {
+      "effectId": "fx.fire.burn-transition",
+      "category": "fire",
+      "path": "references/fx/fire/burn-transition.md",
+      "keywords": [
+        "burn",
+        "burn transition",
+        "fire",
+        "flame",
+        "sparks",
+        "ignite",
+        "огонь",
+        "горение",
+        "сжигание"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "effectId": "fx.ice.frost-dissolve",
+      "category": "ice",
+      "path": "references/fx/ice/frost-dissolve.md",
+      "keywords": [
+        "ice",
+        "icy",
+        "frost",
+        "freeze",
+        "crystal",
+        "frozen",
+        "заморозка",
+        "льдом",
+        "кристаллами"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        6,
+        7
+      ]
+    },
+    {
+      "effectId": "fx.game.hit-flash",
+      "category": "game",
+      "path": "references/fx/game/hit-flash.md",
+      "keywords": [
+        "hit flash",
+        "damage flash",
+        "hit reaction",
+        "damage",
+        "impact feedback",
+        "вспышка при попадании",
+        "урон",
+        "попадание"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        7
+      ]
+    }
+  ]
+}

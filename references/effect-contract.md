@@ -1,5 +1,7 @@
 # Shared effect contract
 
+Before designing a new specialized effect, read its [versioned FX Blueprint](contracts/blueprint.md) from the [FX index](fx/index.md) and the [stable parameter schema](contracts/parameters.md) on demand. The current API below describes the Burn reference; it is not a shipped generic adapter.
+
 Use one implementation in live preview, both developer ZIPs and isolated baking. For custom and reusable parameter curves, read the versioned [curve contract](contracts/curves.md) and reuse the same `FxCurves` evaluator across all three outputs. For seeded temporal event scheduling and spatial placement use [FX-CORE-02](contracts/spacing.md); it treats particle speed, emission interval, actual distance travelled and arc-length spacing as separate variables. For independently positioned/anchored effect layers, use the versioned [FX-CORE-03 emitter contract](contracts/emitters.md), its identity-transform host and selective ownership. For reusable RGBA gradients and ordered particle-age envelopes use [FX-CORE-04](contracts/colors.md); send straight RGB/alpha to Pixi and preserve the single-pass WebGL PNG unpremultiplication. For deterministic absolute-time playback, bidirectional seek, independent Spine time, CPU checkpoints and repeatable PNG exports use [FX-CORE-05](contracts/timeline.md) with one shared clock for preview/bake/developer examples. Define a concrete, JSON-serializable settings type. The following is an interface design, not an already shipped universal adapter:
 
 ```ts

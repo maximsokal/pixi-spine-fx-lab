@@ -1,6 +1,6 @@
 # Review and task workflow
 
-1. Inspect supplied source, applicable repository instructions, tests, architecture, actual lockfiles and the baseline capabilities. Consult Graphify/Obsidian only if available and relevant; verify any remembered claims against current source. Never invent their availability.
+1. For a new effect, first resolve the [small FX Blueprint index](fx/index.md) and [draft schema](contracts/blueprint.md) without loading unrelated effect docs; distinguish a real Burn reference from spec-only ICE/GAME. Inspect supplied source, applicable repository instructions, tests, architecture, actual lockfiles and the baseline capabilities. Consult Graphify/Obsidian only if available and relevant; verify any remembered claims against current source. Never invent their availability.
 2. Specify the requested look, input, start/end appearance, progression/loop policy, alpha, extra textures/layers, controls and device/backend constraints. Ask 1–3 focused questions only where a meaningful choice is unresolved.
 3. Invoke grill-me for unresolved requirements and grill-with-docs for a completed implementation plan if installed. If absent, name the absence and perform the equivalent manual audit; do not claim an invocation succeeded.
 4. Compare existing filter, custom shader and composed-effect approaches. Check exact official APIs, WebGL 1/2 and WebGPU, alpha, coordinate frames, sampling budget, lifecycle, resource files, export parity and tests. Do not modify application source during review.

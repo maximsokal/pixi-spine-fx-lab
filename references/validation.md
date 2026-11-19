@@ -3,6 +3,7 @@
 | Area | Required evidence |
 | --- | --- |
 | Runtime | Exact pins and protected hashes unchanged; approved upgrades tested separately. |
+| Blueprints | [FX-CORE-06 versioned schema](contracts/blueprint.md): unique stable effect IDs, FIRE/ICE/GAME routing, exact progressive contract loads, validated default/range/unit/preset mappings, explicit unknown-version rejection, spec-only ICE/GAME nonimplementation, no unrelated Burn controls and small SKILL router. Tests validate document/tool semantics, **not** actual LLM tool calls or unbuilt shaders. |
 | Offline | Open final HTML with network disabled; no HTTP(S) requests while loading/editing/baking sample/local files. |
 | Loading | JSON and SKEL, multipage atlas, staged texture addition, missing-page errors, failed load retains preview, repeated replacements. |
 | UI | English labels/errors; every meaningful parameter changes output and survives preset export/reset; all controls accessible in sidebar. |

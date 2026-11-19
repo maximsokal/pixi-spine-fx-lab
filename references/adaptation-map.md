@@ -1,5 +1,7 @@
 # Adaptation map
 
+For a new effect, first select its [FX Blueprint](fx/index.md) using the [versioned schema](contracts/blueprint.md), then load only the required contracts. Bind the specific effect's stable [parameters](contracts/parameters.md) to the anchors below. A spec-only Blueprint is not an existing implementation. Do not copy burn/grayscale controls into an ICE or GAME editor.
+
 The template preserves working infrastructure but contains burn-specific names and behavior. Copying it is a starting point, not a finished new effect.
 
 | File / anchor | Responsibility | Adaptation |
