@@ -36,7 +36,7 @@
     "src/effect-core.js",
     "src/export-ui.js"
   ],
-  "baselineHtmlSha256": "2582b3916763770c8f7959e8cffea74e49ecd3e5c85b3a47ced741e0dda8413b",
+  "baselineHtmlSha256": "f0d4b5222fa4cb8dbc4949d15933f3b32291709a3b1147f72c86dba494704ae5",
   "exampleEffect": "Burn to grayscale with flame and sparks",
   "exports": [
     "WebGL developer ZIP",
