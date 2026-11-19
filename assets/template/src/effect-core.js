@@ -25,6 +25,11 @@ function alphaImage(source,maxSize){const resource=source?.resource;if(!resource
 function createBurnTransition({PIXI,spine:spineRuntime,app,host,model,settings,bounds,enabled=true,coordinateOffset={x:0,y:0},random=Math.random}){
  if(!host||host.parent!==app.stage||host.x||host.y||host.rotation||host.scale.x!==1||host.scale.y!==1)throw new Error('Use an identity-transform host directly under app.stage; transform the Spine instance inside it.');
  const cfg={...settings};let rect={...bounds},progress=0,time=0,playing=false,phase=0,dead=false,maskAge=1,spawnBudget=0,points=[],particles=[],triangles=[];
+ // One owned seed stream per FX instance. Preview and isolated PNG bake reset the
+ // same stream; no Math.random or caller-ticker invocation order affects it.
+ let seededRng=global.FxTimeline.createPrng(Math.trunc(Number(cfg.seed)||0));
+ random=()=>seededRng.next();
+ let replay=null,inReplay=false,seekHooks={};
  const previousFilters=(host.filters||[]).slice(),previousArea=host.filterArea;const graphics=new PIXI.Graphics();graphics.blendMode='add';app.stage.addChild(graphics);
  let profileName=qualityName(cfg.quality),profile=PROFILES[profileName],filter;
  function buildFilter(){if(filter){host.filters=previousFilters;filter.destroy();}profileName=qualityName(cfg.quality);profile=PROFILES[profileName];const uniforms={};for(const key of ['uOrigin','uRect','uMask','uShape','uEdge','uFire','uMotion','uGray','uFireColor','uHotColor','uGrad0','uGrad1','uGrad2','uGrad3','uGrad4','uGrad5','uGrad6','uGrad7','uGradX0','uGradX1','uGradMeta'])uniforms[key]={value:[0,0,0,0],type:'vec4<f32>'};const gl=GL_FRAGMENT.replace('precision highp float;','precision highp float;\n#define FIRE_STEPS '+profile.steps+'\n#define HALO_STEPS '+profile.halo+'\n#define HALO_DIVISOR '+Math.max(1,profile.halo)+'\n');const gpu=GPU_SHADER.replaceAll('FIRE_STEPS_VALUE',String(profile.steps)).replaceAll('HALO_STEPS_VALUE',String(profile.halo));filter=new PIXI.Filter({glProgram:PIXI.GlProgram.from({vertex:GL_VERTEX,fragment:gl,name:'spine-burn-'+profileName}),gpuProgram:PIXI.GpuProgram.from({vertex:{source:gpu,entryPoint:'mainVertex'},fragment:{source:gpu,entryPoint:'mainFragment'},name:'spine-burn-'+profileName}),resources:{burnUniforms:uniforms},padding:0,resolution:profile.resolution});maskAge=1;points=[];particles=[];}
@@ -39,9 +44,12 @@ function createBurnTransition({PIXI,spine:spineRuntime,app,host,model,settings,b
   u.uGradX0=positions.slice(0,4);u.uGradX1=positions.slice(4);
   u.uGradMeta=[cfg.fireGradientEnabled?1:0,palette.stops.length,palette.space==='linear-rgb'?1:0,0];
   filter.resources.burnUniforms.update();host.filterArea=new PIXI.Rectangle(0,0,app.screen.width,app.screen.height);if(enabled){if(!(host.filters||[]).includes(filter))host.filters=[...previousFilters,filter];}else if((host.filters||[]).includes(filter))host.filters=previousFilters;graphics.visible=enabled;graphics.blendMode=cfg.sparkBlend==='normal'?'normal':'add';}
- function setProgress(value){const previousProgress=progress;progress=Math.max(0,Math.min(1,Number(value)||0));if(progress===0||progress===1){particles=[];spawnBudget=0;graphics.clear();}if(Math.abs(previousProgress-progress)>.03)maskAge=1;sync();}
- function setBounds(value){rect={...value};maskAge=1;points=[];particles=[];sync();}
- function configure(value){const old=profileName;const before=JSON.stringify(cfg);Object.assign(cfg,value);if(JSON.stringify(cfg)===before)return;if(qualityName(cfg.quality)!==old)buildFilter();maskAge=1;points=[];prepareSpacing();sync();}
+ function setProgress(value){if(!inReplay)replay=null;const previousProgress=progress;progress=Math.max(0,Math.min(1,Number(value)||0));if(progress===0||progress===1){particles=[];spawnBudget=0;graphics.clear();}if(Math.abs(previousProgress-progress)>.03)maskAge=1;sync();}
+ function setBounds(value){rect={...value};replay=null;maskAge=1;points=[];particles=[];sync();}
+ function configure(value){const old=profileName;const before=JSON.stringify(cfg);Object.assign(cfg,value);if(JSON.stringify(cfg)===before)return;if(qualityName(cfg.quality)!==old)buildFilter();
+  seededRng=global.FxTimeline.createPrng(Math.trunc(Number(cfg.seed)||0));
+  replay=null;time=0;phase=0;spawnBudget=0;maskAge=1;points=[];particles=[];triangles=[];
+  prepareSpacing();sync();}
  function refreshEmitter(){triangles=[];points=[];if(!model?.skeleton||!spineRuntime)return;const clip=new spineRuntime.SkeletonClipping(),transform=model.worldTransform;let total=0;
  for(const slot of model.skeleton.drawOrder){const attachment=slot.getAttachment();if(!slot.bone.active||!attachment){clip.clipEndWithSlot(slot);continue;}if(attachment instanceof spineRuntime.ClippingAttachment){clip.clipStart(slot,attachment);continue;}let vertices,uvs,indices;if(attachment instanceof spineRuntime.RegionAttachment){vertices=new Float32Array(8);attachment.computeWorldVertices(slot,vertices,0,2);uvs=attachment.uvs;indices=[0,1,2,2,3,0];}else if(attachment instanceof spineRuntime.MeshAttachment){vertices=new Float32Array(attachment.worldVerticesLength);attachment.computeWorldVertices(slot,0,vertices.length,vertices,0,2);uvs=attachment.uvs;indices=attachment.triangles;}else{clip.clipEndWithSlot(slot);continue;}const opacity=slot.color.a*attachment.color.a*model.skeleton.color.a*(model.worldAlpha??model.groupAlpha??model.alpha??1);if(opacity<=.05){clip.clipEndWithSlot(slot);continue;}if(clip.isClipping()){clip.clipTrianglesUnpacked(vertices,indices,indices.length,uvs);vertices=clip.clippedVertices;uvs=clip.clippedUVs;indices=clip.clippedTriangles;}const source=attachment.region?.texture?.texture?.source;const image=alphaImage(source,profile.alphaSize);if(!image){clip.clipEndWithSlot(slot);continue;}for(let i=0;i<indices.length;i+=3){const p=[];for(let j=0;j<3;j++){const k=indices[i+j]*2,x=vertices[k],y=vertices[k+1];p.push([x*transform.a+y*transform.c+transform.tx,x*transform.b+y*transform.d+transform.ty,uvs[k],uvs[k+1]]);}const area=Math.abs((p[1][0]-p[0][0])*(p[2][1]-p[0][1])-(p[1][1]-p[0][1])*(p[2][0]-p[0][0]))*.5;if(area>.05){total+=area;triangles.push({p,image,opacity,end:total});}}clip.clipEndWithSlot(slot);}clip.clipEnd();
  const band=Math.max(.012,cfg.edgeWidth/Math.max(rect.w,rect.h)*1.6);
@@ -117,28 +125,120 @@ function createBurnTransition({PIXI,spine:spineRuntime,app,host,model,settings,b
     pathBased:true});
   spacingEmitted.push({time:e.time,x,y,anchorIndex:e.anchorIndex});
  }
- function update(realDt){if(dead)return;realDt=Math.max(0,Number(realDt)||0);const dt=Math.min(realDt,.05);time+=realDt;if(playing){phase=Math.min(1,phase+realDt/cfg.duration);setProgress(ease(phase,cfg.easing,cfg.timeCurve));if(phase>=1)playing=false;}sync();const active=enabled&&progress>0&&progress<1;
- if(cfg.spacingEnabled){
+ function update(realDt){
+  if(dead)return;
+  if(!inReplay&&replay)replay=null;
+  realDt=Math.max(0,Number(realDt)||0);
+  const dt=Math.min(realDt,.05);
+  time+=realDt;
+  if(playing){phase=Math.min(1,phase+realDt/cfg.duration);
+   setProgress(ease(phase,cfg.easing,cfg.timeCurve));if(phase>=1)playing=false;}
+  sync();
+  const active=enabled&&progress>0&&progress<1;
+  if(cfg.spacingEnabled){
    if(spacingCursor){const due=spacingCursor.consume(time);
-     if(active&&cfg.sparks>0)for(const event of due)spawnSpacedEvent(event);
+    if(active&&cfg.sparks>0)for(const event of due)spawnSpacedEvent(event);}
+  }else if(active&&cfg.sparks>0){
+   maskAge+=dt;
+   if(maskAge>=profile.interval){maskAge=0;refreshEmitter();}
+   spawnBudget=Math.min(20,spawnBudget+dt*Math.min(cfg.sparks,profile.emissionCap));
+   while(spawnBudget>=1&&points.length&&particles.length<profile.maxSparks){
+    spawnBudget--;
+    const point=points[Math.floor(random()*points.length)];
+    const angle=-Math.PI/2+(random()-.5)*cfg.sparkSpread*Math.PI/180;
+    const speed=cfg.sparkSpeed*(.45+random()*.75);
+    particles.push({x:point[0],y:point[1],vx:Math.cos(angle)*speed,
+     vy:Math.sin(angle)*speed,size:cfg.sparkSize*(.5+random()),
+     life:cfg.sparkLife*(.6+random()*.65),age:0});
    }
- }else if(active&&cfg.sparks>0){maskAge+=dt;if(maskAge>=profile.interval){maskAge=0;refreshEmitter();}spawnBudget=Math.min(20,spawnBudget+dt*Math.min(cfg.sparks,profile.emissionCap));while(spawnBudget>=1&&points.length&&particles.length<profile.maxSparks){spawnBudget--;const point=points[Math.floor(random()*points.length)],angle=-Math.PI/2+(random()-.5)*cfg.sparkSpread*Math.PI/180,speed=cfg.sparkSpeed*(.45+random()*.75);particles.push({x:point[0],y:point[1],vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,size:cfg.sparkSize*(.5+random()),life:cfg.sparkLife*(.6+random()*.65),age:0});}}else spawnBudget=0;
- graphics.clear();particles=particles.filter(p=>p.pathBased?time-p.bornAt<p.life:p.age<p.life);if(!enabled){particles=[];return;}const fallbackColor=parseInt(cfg.sparkColor.slice(1),16);for(const p of particles){if(p.pathBased){p.age=Math.max(0,time-p.bornAt);p.x=p.originX+p.vx*p.age;p.y=p.originY+p.vy*p.age+.5*cfg.gravity*p.age*p.age;}else{p.age+=dt;p.vy+=cfg.gravity*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;}let alpha=Math.max(0,1-p.age/p.life),size=p.size,color=fallbackColor,glowFactor=0;
-    if(cfg.sparkLifetime?.enabled){
-      const result=global.FxColors.sampleLifetime(cfg.sparkLifetime,p.age/p.life,1);
-      alpha=result.rgba[3];size*=result.size;glowFactor=result.glow;
-      color=parseInt(global.FxColors.hex(result.rgba).slice(1),16);
+  }else spawnBudget=0;
+  particles=particles.filter(p=>p.pathBased?time-p.bornAt<p.life:p.age<p.life);
+  if(!enabled){particles=[];renderParticles();return;}
+  for(const p of particles){
+   if(p.pathBased){
+    p.age=Math.max(0,time-p.bornAt);
+    p.x=p.originX+p.vx*p.age;
+    p.y=p.originY+p.vy*p.age+.5*cfg.gravity*p.age*p.age;
+   }else{
+    p.age+=dt;p.vy+=cfg.gravity*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+   }
+  }
+  renderParticles();
+ }
+ function renderParticles(){
+  graphics.clear();
+  if(!enabled)return;
+  const fallbackColor=parseInt(cfg.sparkColor.slice(1),16);
+  for(const p of particles){
+   let alpha=Math.max(0,1-p.age/p.life),size=p.size,color=fallbackColor,glowFactor=0;
+   if(cfg.sparkLifetime?.enabled){
+    const evaluated=global.FxColors.sampleLifetime(cfg.sparkLifetime,p.age/p.life,1);
+    alpha=evaluated.rgba[3];size*=evaluated.size;glowFactor=evaluated.glow;
+    color=parseInt(global.FxColors.hex(evaluated.rgba).slice(1),16);
+   }
+   if(alpha<=0)continue;
+   if(glowFactor>0&&cfg.sparkLifetime?.enabled&&profileName!=='low')
+    graphics.circle(p.x,p.y,Math.max(.1,size*2.1*glowFactor)).fill({color,alpha:alpha*.16});
+   graphics.circle(p.x,p.y,Math.max(.1,size)).fill({color,alpha});
+   if(profileName!=='low'&&cfg.sparkTrails!==false)
+    graphics.moveTo(p.x,p.y).lineTo(p.x-p.vx*.025,p.y-p.vy*.025)
+     .stroke({color,width:Math.max(.6,size*.55),alpha:alpha*.6});
+  }
+ }
+ function captureSnapshot(){
+  return {time,progress,phase,maskAge,spawnBudget,
+   seededState:seededRng.state,particles:particles.map(p=>({...p})),
+   points:points.map(p=>[...p]),spacingEmitted:spacingEmitted.map(e=>({...e}))};
+ }
+ function restoreSnapshot(state){
+  time=state.time;progress=state.progress;phase=state.phase;
+  maskAge=state.maskAge;spawnBudget=state.spawnBudget;
+  seededRng.setState(state.seededState);
+  particles=state.particles.map(p=>({...p}));
+  points=state.points.map(p=>[...p]);
+  spacingEmitted=state.spacingEmitted.map(e=>({...e}));
+  triangles=[]; // immutable source triangles are remeasured on the next refresh
+  if(spacingPlan){
+   spacingCursor=global.FxSpacing.createCursor({events:spacingPlan.events});
+   spacingCursor.consume(time);
+  }
+  sync();
+ }
+ function seek(seconds,options={}){
+  if(dead)throw new Error('Cannot seek destroyed Burn FX');
+  if(!Number.isFinite(seconds)||seconds<0||seconds>3600)throw new RangeError('seek seconds must be 0..3600');
+  seekHooks=options;
+  const evaluate=t=>seekHooks.progressAt?
+   seekHooks.progressAt(t):ease(Math.min(1,t/cfg.duration),cfg.easing,cfg.timeCurve);
+  if(!replay){
+   seededRng.reset();time=0;progress=0;phase=0;maskAge=1;spawnBudget=0;
+   points=[];particles=[];triangles=[];spacingEmitted=[];
+   if(spacingPlan)spacingCursor=global.FxSpacing.createCursor({events:spacingPlan.events});
+   sync();renderParticles();
+   replay=global.FxTimeline.createReplay({
+    capture:captureSnapshot,restore:restoreSnapshot,
+    step:(dt,t)=>{
+     seekHooks.poseAt?.(t);
+     inReplay=true;
+     try{setProgress(evaluate(t));update(dt);}finally{inReplay=false;}
+    },
+    partial:(dt,t)=>{
+     seekHooks.poseAt?.(t);
+     inReplay=true;
+     try{setProgress(evaluate(t));update(dt);}finally{inReplay=false;}
+    },
+    render:t=>{
+     seekHooks.poseAt?.(t);
+     inReplay=true;
+     try{setProgress(evaluate(t));sync();renderParticles();}finally{inReplay=false;}
     }
-    if(alpha<=0)continue;
-    if(glowFactor>0&&cfg.sparkLifetime?.enabled&&profileName!=='low')
-      graphics.circle(p.x,p.y,Math.max(.1,size*2.1*glowFactor)).fill({color,alpha:alpha*.16});
-    graphics.circle(p.x,p.y,Math.max(.1,size)).fill({color,alpha});
-    if(profileName!=='low'&&cfg.sparkTrails!==false)
-      graphics.moveTo(p.x,p.y).lineTo(p.x-p.vx*.025,p.y-p.vy*.025)
-        .stroke({color,width:Math.max(.6,size*.55),alpha:alpha*.6});}}
+   });
+  }
+  return replay.seek(seconds);
+ }
  function play(){let lo=0,hi=1;if(progress>=1)setProgress(0);for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(ease(mid,cfg.easing,cfg.timeCurve)<progress)lo=mid;else hi=mid;}phase=(lo+hi)/2;playing=true;}
  function destroy(){if(dead)return;dead=true;host.filters=previousFilters;host.filterArea=previousArea;graphics.destroy();filter.destroy();particles=[];points=[];triangles=[];}
- sync();prepareSpacing();return {configure,setBounds,setProgress,update,play,pause(){playing=false;},reset(){playing=false;setProgress(0);},destroy,setEnabled(value){if(enabled===!!value)return;enabled=!!value;particles=[];sync();},field(x,y){return field(cfg,rect,x,y);},get progress(){return progress;},get filter(){return filter;},get particles(){return particles;},get emitterPoints(){return points;},get spacingPlan(){return spacingPlan;},get spacingEmitted(){return spacingEmitted;},get settings(){return {...cfg};},get profile(){return profileName;},get playing(){return playing;},refreshEmitter};
+ sync();prepareSpacing();return {configure,setBounds,setProgress,update,seek,invalidateReplay(){replay=null;},play,pause(){playing=false;},reset(){playing=false;setProgress(0);},destroy,setEnabled(value){if(enabled===!!value)return;enabled=!!value;particles=[];sync();},field(x,y){return field(cfg,rect,x,y);},get progress(){return progress;},get filter(){return filter;},get particles(){return particles;},get emitterPoints(){return points;},get spacingPlan(){return spacingPlan;},get spacingEmitted(){return spacingEmitted;},get settings(){return {...cfg};},get profile(){return profileName;},get playing(){return playing;},get absoluteTime(){return time;},get checkpointFrames(){return replay?.checkpointFrames||[];},refreshEmitter};
 }
 global.SpineBurnFx={createBurnTransition,createApplication,qualityName,PROFILES,field,ease,GL_VERTEX,GL_FRAGMENT,GPU_SHADER};
 })(globalThis);

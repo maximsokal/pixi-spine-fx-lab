@@ -228,13 +228,13 @@ async function run(){
     const zipFile=path.join(out,backend+'-developer-'+flavor+'.zip');
     await (await wait).saveAs(zipFile);
     const files=entries(fs.readFileSync(zipFile));
-    for(const name of ['FxEmitters.mjs','FxEmitterRuntime.mjs','FxSpacing.mjs','FxCurves.mjs','FxColors.mjs','BurnTransition.mjs'])
+    for(const name of ['FxEmitters.mjs','FxEmitterRuntime.mjs','FxSpacing.mjs','FxCurves.mjs','FxColors.mjs','FxTimeline.mjs','BurnTransition.mjs'])
       assert.ok(files.has(name),'Missing developer module '+name);
     assert.ok(files.get('example.js').toString().includes("createEmitterLayers"));
     const preset=JSON.parse(files.get('preset.json'));
     assert.equal(preset.settings.multiEmitters.enabled,true);
     const folder=path.join(out,'esm-'+flavor);fs.mkdirSync(folder,{recursive:true});
-    for(const name of ['FxEmitters.mjs','FxEmitterRuntime.mjs','FxSpacing.mjs','FxCurves.mjs','FxColors.mjs','BurnTransition.mjs'])
+    for(const name of ['FxEmitters.mjs','FxEmitterRuntime.mjs','FxSpacing.mjs','FxCurves.mjs','FxColors.mjs','FxTimeline.mjs','BurnTransition.mjs'])
       fs.writeFileSync(path.join(folder,name),files.get(name));
     const module=await import(pathToFileURL(path.join(folder,'FxEmitterRuntime.mjs')).href);
     assert.equal(typeof module.createEmitterLayers,'function');

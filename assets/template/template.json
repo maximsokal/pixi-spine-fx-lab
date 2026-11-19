@@ -39,13 +39,14 @@
     "src/spacing-ui.js",
     "src/color-core.js",
     "src/color-ui.js",
+    "src/timeline-core.js",
     "src/emitter-core.js",
     "src/emitter-runtime.js",
     "src/emitter-ui.js",
     "src/effect-core.js",
     "src/export-ui.js"
   ],
-  "baselineHtmlSha256": "bad24b91dee5d8534eab69ac0a823a0c00ef009421e3f65f56c2aeb9841b20be",
+  "baselineHtmlSha256": "8a7d665360acee709d207a051832a12dc576f9276e0bcd32090c8b89f3d31655",
   "exampleEffect": "Burn to grayscale with flame and sparks",
   "exports": [
     "WebGL developer ZIP",

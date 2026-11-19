@@ -153,7 +153,7 @@ async function main(){
    const dest=path.join(output,backend+'-developer-'+target+'.zip');
    await (await pending).saveAs(dest);
    const entriesMap=entries(fs.readFileSync(dest));
-   for(const module of ['FxColors.mjs','BurnTransition.mjs','FxEmitters.mjs','FxEmitterRuntime.mjs'])
+   for(const module of ['FxColors.mjs','FxTimeline.mjs','BurnTransition.mjs','FxEmitters.mjs','FxEmitterRuntime.mjs'])
      assert.ok(entriesMap.has(module),'developer package missing '+module);
    assert.ok(entriesMap.get('BurnTransition.mjs').toString().includes("import './FxColors.mjs'"));
    assert.ok(entriesMap.get('FxEmitters.mjs').toString().includes("import './FxColors.mjs'"));
@@ -161,7 +161,7 @@ async function main(){
    assert.deepEqual(preset.settings.fireGradient,latest.effectSettings.fireGradient);
    assert.deepEqual(preset.settings.sparkLifetime,latest.effectSettings.sparkLifetime);
    const folder=path.join(output,'modules-'+backend+'-'+target);fs.mkdirSync(folder,{recursive:true});
-   for(const name of ['FxCurves.mjs','FxColors.mjs','FxSpacing.mjs','FxEmitters.mjs','FxEmitterRuntime.mjs','BurnTransition.mjs'])
+   for(const name of ['FxCurves.mjs','FxColors.mjs','FxSpacing.mjs','FxTimeline.mjs','FxEmitters.mjs','FxEmitterRuntime.mjs','BurnTransition.mjs'])
      fs.writeFileSync(path.join(folder,name),entriesMap.get(name));
    const colors=await import(pathToFileURL(path.join(folder,'FxColors.mjs')).href);
    const runtime=await import(pathToFileURL(path.join(folder,'BurnTransition.mjs')).href);

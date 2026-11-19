@@ -112,11 +112,17 @@ async function main(){
   assert.equal(metadata.effectSettings.easing,4);
   assert.deepEqual(metadata.effectSettings.timeCurve,C.normalize(state.curve));
   const baked=await page.evaluate(()=>window.__curveBake);
-  assert.equal(baked.length,40);
+  // Fixed-step replay evaluates progress both at simulation and render
+  // boundaries. Validate each required timestamp rather than call count.
+  assert.ok(baked.length>=40);
   for(let i=0;i<40;i++){
-    const sample=baked[i];assert.equal(sample.kind,4);
+    const matches=baked.filter(x=>Math.abs(x.t-i/40)<1e-9);
+    assert.ok(matches.length>=1,'missing custom curve sample at frame '+i);
     const expected=C.evaluate(metadata.effectSettings.timeCurve,i/40);
-    assert.ok(Math.abs(sample.result-expected)<1e-7,'bake sample matches curve at frame '+i);
+    for(const sample of matches){
+      assert.equal(sample.kind,4);
+      assert.ok(Math.abs(sample.result-expected)<1e-7,'bake sample matches curve at frame '+i);
+    }
   }
   assert.equal(decodeRgba(archive.get('frames/frame_00000.png')).width,160);
   console.log('PASS CURVE BAKE',JSON.stringify({backend,frames:40,curveKeys:state.curve.keys.length}));
@@ -134,7 +140,7 @@ async function main(){
     const moduleText=items.get('BurnTransition.mjs').toString();
     assert.ok(moduleText.includes("import './FxCurves.mjs'"),'developer effect must import shared evaluator');
     const dir=path.join(output,'module-'+backend+'-'+target);fs.mkdirSync(dir,{recursive:true});
-    for(const n of ['FxCurves.mjs','BurnTransition.mjs',...(items.has('FxSpacing.mjs')?['FxSpacing.mjs']:[]),...(items.has('FxColors.mjs')?['FxColors.mjs']:[])])fs.writeFileSync(path.join(dir,n),items.get(n));
+    for(const n of ['FxCurves.mjs','BurnTransition.mjs',...(items.has('FxSpacing.mjs')?['FxSpacing.mjs']:[]),...(items.has('FxColors.mjs')?['FxColors.mjs']:[]),...(items.has('FxTimeline.mjs')?['FxTimeline.mjs']:[])])fs.writeFileSync(path.join(dir,n),items.get(n));
     const loaded=await import(pathToFileURL(path.join(dir,'BurnTransition.mjs')).href);
     const runtime=await import(pathToFileURL(path.join(dir,'FxCurves.mjs')).href);
     assert.equal(typeof loaded.createBurnTransition,'function');

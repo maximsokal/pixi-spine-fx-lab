@@ -165,7 +165,7 @@ async function main(){
     assert.deepEqual(preset.settings.spacingPath,metadata.effectSettings.spacingPath);
     const directory=path.join(output,'modules-'+backend+'-'+target);
     fs.mkdirSync(directory,{recursive:true});
-    for(const name of ['FxSpacing.mjs','FxCurves.mjs','BurnTransition.mjs',...(files.has('FxColors.mjs')?['FxColors.mjs']:[])])
+    for(const name of ['FxSpacing.mjs','FxCurves.mjs','BurnTransition.mjs',...(files.has('FxColors.mjs')?['FxColors.mjs']:[]),...(files.has('FxTimeline.mjs')?['FxTimeline.mjs']:[])])
       fs.writeFileSync(path.join(directory,name),files.get(name));
     const module=await import(pathToFileURL(path.join(directory,'FxSpacing.mjs')).href);
     const effect=await import(pathToFileURL(path.join(directory,'BurnTransition.mjs')).href);
