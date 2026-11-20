@@ -6,7 +6,7 @@
 
 1. Inspect the user's actual work, relevant AGENTS.md, repo architecture, lockfiles, tests and runtime pins. Never overwrite a newer source editor with an old template.
 2. Read the short SKILL.md router, then [index.md](../fx/index.md) or [index.json](../fx/index.json). Resolve a **specific** FIRE/ICE/GAME effect using intent phrases, not category labels. Ambiguous/multi-effect requests remain unresolved until the user chooses one or approves independent compositions.
-3. Read **only the chosen** Markdown Blueprint and this versioned contract. Load its `requiredContracts` in declared order: parameters → curves → spacing → emitters → colors → timeline, **skipping unused** modules. Never bulk-load all 41 issue specifications in SKILL.md.
+3. Read **only the chosen** Markdown Blueprint and this versioned contract. Load its `requiredContracts` in declared order: parameters → curves → spacing → optional pathGeometry → emitters → colors → timeline, **skipping unused** modules. Never bulk-load all 41 issue specifications in SKILL.md.
 4. Read [adaptation map](../adaptation-map.md) when adapting real code. Other PixiJS/Spine [versioned-adapter specifications](../compatibility/README.md) are available in main as optional documentation; they do not constitute working runtime support.
 5. Perform grill-me for unresolved look, endpoints and constraints; perform grill-with-docs (or explicitly disclosed manual equivalent) against actual code and official APIs. Review first; implement only after approval of the reviewed slice.
 
@@ -31,7 +31,7 @@ Each `references/fx/{category}/{effect}.md` contains exactly one fenced JSON blo
 | `qualityBudgets` | Bounded Low/Balanced/High effect budgets. |
 | `tests` | Required checks plus evidence files only for **actually implemented** references. |
 | `outOfScope` | Explicit exclusions; no implicit feature creep. |
-| `requiredContracts` | Ordered minimal subset; `parameters` always first, and `curves` needed for spacing/colors/timeline. |
+| `requiredContracts` | Ordered minimal subset; `parameters` always first, and `curves` needed for spacing/pathGeometry/colors/timeline. Optional `pathGeometry` also requires `spacing` and is loaded only for ribbon/branching effects. |
 | `exportMapping` | Stable parameter map and preview, isolated PNG, both developer ZIP strategy. Spec-only effects mark these not implemented. |
 | `migration` | `from` list (empty v1), `unknownVersion:"reject"`. Explicit approved migration required. |
 | `implementation` | `reference-implementation` with real source/test evidence or `specification-only` with **no** source/export claim. |

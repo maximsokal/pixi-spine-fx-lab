@@ -17,6 +17,10 @@ The small [index.json](index.json) is the machine-readable routing index. Each e
 
 Run `python scripts/blueprint_router.py --route "hit flash damage"` to inspect a route, and `python scripts/test_blueprints.py` for regression tests. This router only validates/suggests relevant documents; it does not actually read documents on an AI agent's behalf.
 
+## Optional geometry contract for specialized future effects
+
+Vine Growth (#33), Chain Lightning (#38), Sword Slash (#42), ribbons and trails may depend on [FX-CORE-08 Path Geometry](../contracts/path-geometry.md) after Curves and Spacing. It is an **implemented reusable geometry library**, not a ready-made effect. Do not load it for unrelated FIRE/ICE/GAME variants; future Blueprints explicitly include `pathGeometry` in `requiredContracts` when applicable.
+
 ## Future issue catalog
 
 Each new GitHub effect issue must be self-contained: goal, inputs, start/end look, timing/loop, alpha, artist controls, required renderer and GPU budgets, dependencies and concrete acceptance tests. Index issues by category/status/dependencies, **not** by pasting 41 full specifications into SKILL.md.

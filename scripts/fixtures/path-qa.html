@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><title>FX-CORE-08 Path Mesh QA (isolated)</title>
+<style>
+  html,body{margin:0;background:#20242e;color:white;font:14px system-ui}
+  #stage{width:512px;height:512px;margin:0;transform-origin:top left}
+  canvas{display:block}
+</style>
+</head><body><div id="stage"></div><div id="info">Loading isolated path fixture</div>
+<script src="../../assets/template/vendor/pixi-8.22.0.min.js"></script>
+<script src="../../assets/template/src/curve-core.js"></script>
+<script src="../../assets/template/src/spacing-core.js"></script>
+<script src="../../assets/template/src/path-core.js"></script>
+<script>
+'use strict';
+window.__fixture={ready:false,error:null};
+(async()=>{
+ const query=new URLSearchParams(location.search);
+ const pref=query.get('renderer')||'webgl',gl1=query.has('webgl1');
+ const app=new PIXI.Application();
+ await app.init({width:512,height:512,resolution:1,autoDensity:false,
+   backgroundAlpha:0,antialias:!gl1,preference:pref,preferWebGLVersion:gl1?1:2});
+ document.getElementById('stage').append(app.canvas);
+ app.ticker.stop();
+ const path={schemaVersion:1,closed:false,segments:[{
+   p0:[60,340],p1:[140,120],p2:[280,300],p3:[410,110]
+ }]};
+ const width={start:3,middle:28,end:4,startTaper:.1,endTaper:.95,minVisiblePx:.25};
+ let owned=[],graph=null;
+ function clear(){
+   for(const mesh of owned){app.stage.removeChild(mesh);mesh.geometry.destroy();mesh.destroy();}
+   owned=[];
+ }
+ function draw(options={}){
+   clear();
+   const color=options.color||0x65db6e;
+   const seed=options.seed??91;
+   const branches=FxPath.generateBranches({parentId:'stem',parentPath:path,
+       branchCount:options.branches??4,branchSpacingPx:options.branchSpacingPx??56,
+       branchLengthPx:80,spreadDeg:50,seed,curvatureRandomness:.35,
+       thicknessRandomness:.15,intervalRandomness:.1});
+   graph=FxPath.buildGraph({schemaVersion:1,quality:'balanced',seed,
+       sampleSpacingPx:4,edgeIrregularity:options.irregularity??.05,
+       root:{id:'stem',path,width:{...width,middle:options.middleWidth??width.middle}},
+       branches});
+   graph.branches.forEach((branch,index)=>{
+     if(!branch.indices.length)return;
+     const geometry=new PIXI.MeshGeometry({positions:branch.positions,uvs:branch.uvs,
+       indices:branch.indices,topology:'triangle-list'});
+     const mesh=new PIXI.Mesh({geometry,texture:PIXI.Texture.WHITE});
+     mesh.tint=index===0?color:0x397f45;
+     app.stage.addChild(mesh);
+     owned.push(mesh);
+   });
+   app.render();
+   return {count:owned.length,totalVertices:graph.totalVertices,
+       triangles:graph.totalTriangles,sampleCount:graph.branches[0].samples.length};
+ }
+ function actualBackend(){
+   const gl=app.renderer.gl;
+   return {
+      actual:gl?(gl instanceof WebGL2RenderingContext?'webgl2':'webgl1'):
+          (app.renderer.gpu&&app.renderer.gpu.device?'webgpu':'unknown'),
+      glVersion:gl?String(gl.getParameter(gl.VERSION)):null,
+      pixi:PIXI.VERSION,
+      requested:pref
+   };
+ }
+ async function extract(){
+   app.render();
+   const result=await app.renderer.extract.pixels({target:app.stage,
+     frame:new PIXI.Rectangle(0,0,512,512)});
+   return {width:result.width,height:result.height,pixels:Array.from(result.pixels)};
+ }
+ async function exportPng(){
+   app.render();
+   return await app.renderer.extract.base64({target:app.stage,
+     frame:new PIXI.Rectangle(0,0,512,512),format:'png'});
+ }
+ window.__fixture={ready:true,app,draw,extract,exportPng,actualBackend,getGraph:()=>graph,
+   setPreviewZoom:value=>{document.getElementById('stage').style.transform='scale('+value+')';},
+   clear,stop:()=>{clear();app.destroy(true)}};
+ draw();
+ document.getElementById('info').textContent='FX-CORE-08 isolated path mesh ready';
+})().catch(e=>{window.__fixture.error=String(e.stack||e);console.error(e)});
+</script></body></html>

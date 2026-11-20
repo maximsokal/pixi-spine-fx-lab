@@ -50,4 +50,4 @@ Run `scripts/test_spacing.cjs` for pure event/arc/mode/cap/seed/frequency/zero-m
 
 Allowable numerical tolerance is ≤1 ms for intensity inversion versus an independently computed reference, and ≤0.25 logical px for arc length. Cross-backend metadata must contain the same event times, anchor distances and seed; GPU raster bytes are not required to match across unrelated GPUs. Retain exact versions PixiJS 8.22.0 / spine-pixi-v8 4.2.120.
 
-**Out of scope:** multiple independently anchored emitters (issue #5), full ribbon/branching/tapered-path authoring (issue #10), mesh tessellation and arbitrary FX graphs. Those require separate review and approval.
+**Scope boundary:** This contract implements timestamp and arc-distance spacing, not ribbon meshes or branches. The separately approved optional [FX-CORE-08 Path Geometry](path-geometry.md) adds bounded ribbon tessellation, tapered widths and branch graphs using this same `buildArcTable` / `createSpatialPlacement` oracle. Neither module alone creates a complete effect-specific editor or generic FX graph.

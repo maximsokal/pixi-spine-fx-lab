@@ -131,6 +131,22 @@ class BlueprintTests(unittest.TestCase):
         data["effectId"]="fx.magic.aura"
         self.assertEqual(bp.validate_blueprint(data,ROOT)["effectId"],"fx.magic.aura")
 
+    def test_path_geometry_requires_curves_and_spacing_in_routing(self):
+        fire = copy.deepcopy(self.blueprints["fx.fire.burn-transition"])
+        fire["requiredContracts"].insert(3, "pathGeometry")
+        self.assertEqual(bp.validate_blueprint(fire,ROOT)["effectId"],
+                         "fx.fire.burn-transition")
+        self.assertIn("pathGeometry", bp.CONTRACT_FILES)
+        self.assertTrue((ROOT / bp.CONTRACT_FILES["pathGeometry"]).is_file())
+        # Existing effects remain independent; do NOT force path into non-path Blueprints.
+        for name in ("fx.ice.frost-dissolve", "fx.game.hit-flash"):
+            self.assertNotIn("pathGeometry",self.blueprints[name]["requiredContracts"])
+        for key in ("spacing", "curves"):
+            invalid = copy.deepcopy(fire)
+            invalid["requiredContracts"].remove(key)
+            with self.assertRaises(bp.BlueprintError):
+                bp.validate_blueprint(invalid,ROOT)
+
     def test_only_existing_source_is_claimed(self):
         for effect in self.blueprints.values():
             for path in effect["implementation"]["sourceFiles"]:

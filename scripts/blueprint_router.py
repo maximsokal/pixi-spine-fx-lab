@@ -12,6 +12,7 @@ CONTRACT_FILES = {
     "parameters": "references/contracts/parameters.md",
     "curves": "references/contracts/curves.md",
     "spacing": "references/contracts/spacing.md",
+    "pathGeometry": "references/contracts/path-geometry.md",
     "emitters": "references/contracts/emitters.md",
     "colors": "references/contracts/colors.md",
     "timeline": "references/contracts/timeline.md",
@@ -151,8 +152,11 @@ def validate_blueprint(doc, root):
             "invalid required contracts")
     require(contracts == [c for c in ORDER if c in contracts],
             "contract dependency order invalid")
-    require(not set(contracts) & {"spacing", "colors", "timeline"} or "curves" in contracts,
-            "spacing/colors/timeline require curves")
+    require(not set(contracts) & {"spacing", "pathGeometry", "colors", "timeline"} or
+            "curves" in contracts,
+            "spacing/pathGeometry/colors/timeline require curves")
+    require("pathGeometry" not in contracts or "spacing" in contracts,
+            "pathGeometry requires spacing")
     m = doc["exportMapping"]
     require(isinstance(m, dict) and m.get("settingsRoot") == "settings" and
             m.get("parameterMap") == {p["key"]: p["exportPath"] for p in doc["parameters"]},
