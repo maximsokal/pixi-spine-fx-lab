@@ -62,6 +62,8 @@ For ICE and GAME demonstration Blueprints, everything described under rendering 
 
 ## Tests and scope
 
+Before declaring an implemented effect complete, load [FX-CORE-07 effect-specific validation](effect-validation.md) for observable artist controls, start/peak/end images, independent pixel decoding, backend provenance and honest PASS/FAIL/NOT RUN reports. This validation contract is optional when only designing a Blueprint, not a default module for all requests.
+
 Run `python scripts/test_blueprints.py` for specific FIRE/ICE/GAME routing and selective dependencies, incorrect IDs/versions/ranges, duplicate/unsafe paths, migration rejection, no fake ICE/GAME support and a small SKILL router. Then `python scripts/verify_project.py assets/template --html assets/Spine_Burn_Lab.html` and `git diff --check`.
 
 This is **documentation + standard-library validation tooling**, no HTML, runtime, shader or new ZIP code. Existing #1–#7 browser passes are preserved but not claimed to have been freshly re-run just because specs changed.

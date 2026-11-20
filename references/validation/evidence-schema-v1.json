@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/maximsokal/pixi-spine-fx-lab/raw/refs/heads/main/references/validation/evidence-schema-v1.json",
+  "title": "FX-CORE-07 Effect-Specific Validation Evidence v1",
+  "description": "Machine-readable structural evidence format. Normative run/status/filesystem checks in scripts/effect_validation.py; JSON validation alone is not proof of actual rendering.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "effectId",
+    "effectVersion",
+    "sourceCommit",
+    "status",
+    "environment",
+    "fixture",
+    "checks",
+    "warnings"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "effectId": {
+      "type": "string",
+      "pattern": "^fx\\.[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*$"
+    },
+    "effectVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "sourceCommit": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{40}$"
+    },
+    "status": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "NOT RUN"
+      ]
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "browser",
+        "device",
+        "requestedBackend",
+        "actualBackend",
+        "glVersion",
+        "gpu",
+        "offline",
+        "networkRequests"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "browser": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "device": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "requestedBackend": {
+          "enum": [
+            "webgl",
+            "webgpu",
+            null
+          ]
+        },
+        "actualBackend": {
+          "enum": [
+            "webgl1",
+            "webgl2",
+            "webgpu",
+            null
+          ]
+        },
+        "glVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gpu": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "offline": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "networkRequests": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "userAgent": {
+          "type": "string"
+        },
+        "devicePixelRatio": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "seed",
+        "settings",
+        "width",
+        "height",
+        "fps",
+        "asset",
+        "frameTimesSeconds"
+      ],
+      "properties": {
+        "seed": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "settings": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "fps": {
+          "const": 60
+        },
+        "asset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frameTimesSeconds": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/check"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*\\.\\./)[^\\\\]+\\.png$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id",
+        "kind",
+        "status",
+        "expected",
+        "actual",
+        "tolerance",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][A-Za-z0-9._-]+$"
+        },
+        "kind": {
+          "enum": [
+            "visual",
+            "numeric",
+            "backend",
+            "asset",
+            "export",
+            "lifecycle"
+          ]
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT RUN"
+          ]
+        },
+        "expected": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actual": {},
+        "tolerance": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "NOT RUN"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "reason"
+            ],
+            "properties": {
+              "actual": {
+                "type": "null"
+              },
+              "evidence": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "PASS",
+                  "FAIL"
+                ]
+              },
+              "kind": {
+                "const": "visual"
+              }
+            },
+            "required": [
+              "status",
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -62,7 +62,7 @@ Do not promise automatic translation of “any effect” to every backend. Gener
    ```
 
    Use an available local Playwright installation. Set `PLAYWRIGHT_MODULE` to its module path and `BROWSER_EXECUTABLE` to Chromium if not exposed normally. Do not assume the original workspace/browser paths exist elsewhere.
-5. Follow [the acceptance matrix](references/validation.md). Add effect-specific endpoint, alpha and appearance tests. A compile or visible canvas alone is insufficient.
+5. Follow [the acceptance matrix](references/validation.md) and load [FX-CORE-07 effect-validation contract](references/contracts/effect-validation.md) only when verifying a concrete FX Blueprint. Record per-control numerical/visual evidence and honest PASS/FAIL/NOT RUN; a compile or visible canvas alone is insufficient.
 6. Extract/build both developer ZIPs, run their examples and test fallback. Reuse passing focused checks unless later changes invalidate them. Report unavailable physical-device tests honestly.
 
 ## Deliver and reuse
