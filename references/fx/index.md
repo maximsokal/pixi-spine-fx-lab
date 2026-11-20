@@ -21,6 +21,6 @@ Run `python scripts/blueprint_router.py --route "hit flash damage"` to inspect a
 
 Each new GitHub effect issue must be self-contained: goal, inputs, start/end look, timing/loop, alpha, artist controls, required renderer and GPU budgets, dependencies and concrete acceptance tests. Index issues by category/status/dependencies, **not** by pasting 41 full specifications into SKILL.md.
 
-## Versioned adapters are a separate unmerged branch
+## Optional versioned adapters — specifications in main
 
-The PixiJS 5–8 / Spine Runtime 3.7–4.3 compatibility specifications live in `docs/versioned-runtime-adapters-spec-2026-11-17`, which has diverged from main. These Markdown files are **not** in main and are not active adapters. Default remains PixiJS 8.22.0 and Spine Runtime 4.2.120 until separate review and tests approve a compatibility change.
+The [PixiJS 5–8 / Spine Runtime 3.7–4.3 compatibility specifications](../compatibility/README.md) are now part of main. These Markdown files are **optional, documentation-only** and are not functioning adapters. Default remains PixiJS 8.22.0 and Spine Runtime 4.2.120 until separate review and tests approve a compatibility change.

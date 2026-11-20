@@ -7,7 +7,7 @@
 1. Inspect the user's actual work, relevant AGENTS.md, repo architecture, lockfiles, tests and runtime pins. Never overwrite a newer source editor with an old template.
 2. Read the short SKILL.md router, then [index.md](../fx/index.md) or [index.json](../fx/index.json). Resolve a **specific** FIRE/ICE/GAME effect using intent phrases, not category labels. Ambiguous/multi-effect requests remain unresolved until the user chooses one or approves independent compositions.
 3. Read **only the chosen** Markdown Blueprint and this versioned contract. Load its `requiredContracts` in declared order: parameters → curves → spacing → emitters → colors → timeline, **skipping unused** modules. Never bulk-load all 41 issue specifications in SKILL.md.
-4. Read [adaptation map](../adaptation-map.md) when adapting real code. Other PixiJS/Spine versioned-adapter docs are optional and currently live outside main on a separate docs branch; they do not constitute runtime support.
+4. Read [adaptation map](../adaptation-map.md) when adapting real code. Other PixiJS/Spine [versioned-adapter specifications](../compatibility/README.md) are available in main as optional documentation; they do not constitute working runtime support.
 5. Perform grill-me for unresolved look, endpoints and constraints; perform grill-with-docs (or explicitly disclosed manual equivalent) against actual code and official APIs. Review first; implement only after approval of the reviewed slice.
 
 The deterministic Python reference router runs `python scripts/blueprint_router.py --route "frost dissolve"` and validator runs `python scripts/blueprint_router.py`. These tools do **not** emulate agent tool-use or create an effect, and their routing tests are not proof that a remote LLM read the documents.
@@ -57,7 +57,7 @@ For ICE and GAME demonstration Blueprints, everything described under rendering 
 - `blueprintSchemaVersion` determines the Blueprint document structure; v2 requires explicit migration and tests. Reject incompatible v1 fields rather than guessing.
 - `effectVersion` tracks effect look/behavior, separate from Blueprint schema or underlying Pixi runtime.
 - `presetSchemaVersion` tracks artist settings and developer ZIP format, separate from Blueprint version. This issue does **not** add Blueprint import to the Burn Lab preset.
-- The independent PixiJS 5–8 / Spine 3.7–4.3 compatibility docs currently exist in branch `docs/versioned-runtime-adapters-spec-2026-11-17` only. They remain **unmerged**, must not be loaded as main dependencies or misrepresented as verified support. Separate review/merge/upgrade required.
+- The independent PixiJS 5–8 / Spine 3.7–4.3 [compatibility specifications](../compatibility/README.md) are in main as optional documentation. They must not be loaded as default dependencies or misrepresented as verified support. Separate review, implementation and per-version compatibility tests are required.
 - Existing Burn Lab pins and protected assets stay unchanged in this issue.
 
 ## Tests and scope
