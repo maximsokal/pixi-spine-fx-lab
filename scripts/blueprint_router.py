@@ -269,6 +269,17 @@ def route(request, root):
         return {"status": "unmatched",
                 "reason": "no matching effect; request clarified visual goal"}
     if len(matches) > 1:
+        # A specific effect phrase outranks *only* weak generic category words
+        # in another blueprint. Explicit requests for two effects stay ambiguous.
+        weak = {"fire", "sparks", "flame", "огонь", "ignite"}
+        specific = [(entry, words) for entry, words in matches
+                    if any(len(w.split()) > 1 for w in words)]
+        if len(specific) == 1 and all(
+            entry is specific[0][0] or all(word.lower() in weak for word in words)
+            for entry, words in matches
+        ):
+            matches = specific
+    if len(matches) > 1:
         return {"status": "ambiguous", "candidates": [e["effectId"] for e, _ in matches],
                 "reason": "multiple effects; request selection or multiple blueprints"}
     entry, matched = matches[0]

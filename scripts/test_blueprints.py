@@ -21,12 +21,13 @@ class BlueprintTests(unittest.TestCase):
     def test_registry_is_small_and_complete(self):
         self.assertEqual(self.catalog["blueprintSchemaVersion"], 1)
         self.assertEqual(set(self.catalog["categories"]), {"fire", "ice", "game"})
-        self.assertEqual(len(self.blueprints), 4)
+        self.assertEqual(len(self.blueprints), 5)
         self.assertEqual(set(self.blueprints), {
             "fx.fire.burn-transition", "fx.fire.torch-flame",
+            "fx.fire.fire-explosion",
             "fx.ice.frost-dissolve", "fx.game.hit-flash"})
-        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 4)
-        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 4)
+        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 5)
+        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 5)
         expected = {"fire":[3,4,5,6,7], "ice":[3,6,7], "game":[3,7]}
         for row in self.catalog["entries"]:
             self.assertEqual(row["dependsOnCoreIssues"],expected[row["category"]])
@@ -34,6 +35,8 @@ class BlueprintTests(unittest.TestCase):
     def test_routing_and_exact_contracts(self):
         cases = [
             ("Build an organic fire burn transition with sparks", "fx.fire.burn-transition",
+             {"parameters", "curves", "spacing", "emitters", "colors", "timeline"}),
+            ("Make a radial fire explosion with debris, sparks and smoke", "fx.fire.fire-explosion",
              {"parameters", "curves", "spacing", "emitters", "colors", "timeline"}),
             ("Create an animated torch flame following a Spine bone", "fx.fire.torch-flame",
              {"parameters", "curves", "spacing", "emitters", "colors", "timeline"}),
@@ -67,6 +70,12 @@ class BlueprintTests(unittest.TestCase):
             self.assertNotIn("BurnTransition.mjs", json.dumps(data))
             self.assertNotIn("settings.desaturation", json.dumps(data))
             self.assertNotIn("settings.fireColor", json.dumps(data))
+        explosion = self.blueprints["fx.fire.fire-explosion"]
+        self.assertEqual(explosion["implementation"]["status"], "reference-implementation")
+        self.assertTrue(explosion["tests"]["verified"])
+        self.assertEqual(len(explosion["layers"]), 6)
+        self.assertIn("assets/Fire_Explosion_Lab.html", explosion["implementation"]["sourceFiles"])
+        self.assertNotIn("settings.desaturation", json.dumps(explosion))
         torch = self.blueprints["fx.fire.torch-flame"]
         self.assertEqual(torch["implementation"]["status"], "reference-implementation")
         self.assertTrue(torch["tests"]["verified"])

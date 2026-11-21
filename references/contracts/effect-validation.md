@@ -1,6 +1,6 @@
 # FX-CORE-07 — Effect-Specific Visual and Numerical Validation (v1)
 
-**Reusable verification contract, not a rendering implementation.** Load this only for a selected FX Blueprint. One effect = one dedicated editor. FIRE Burn is the current working reference; ICE Frost and GAME Hit Flash are still specification-only, so their visual results are **NOT RUN** until independently built and tested.
+**Reusable verification contract, not a rendering implementation.** Load this only for a selected FX Blueprint. One effect = one dedicated editor. FIRE Burn, Torch Flame and Fire Explosion are distinct working references; ICE Frost and GAME Hit Flash are still specification-only, so their visual results are **NOT RUN** until independently built and tested.
 
 ## Completion criteria
 

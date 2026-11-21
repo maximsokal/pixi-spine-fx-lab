@@ -1,6 +1,6 @@
 # FX-CORE-06 — Versioned FX Blueprint and agent adaptation contract (draft v1)
 
-**Specification only.** Not a shipped universal adapter, effect graph or new shader. An FX request maps to **one specialized configurable editor** after its own reviewed and approved implementation plan. The current Burn Lab is the only runnable reference in this initial catalog.
+**Specification only.** Not a shipped universal adapter, effect graph or new shader. An FX request maps to **one specialized configurable editor** after its own reviewed and approved implementation plan. Current runnable references are the protected Burn Lab, separate Torch Flame editor (FIRE-01) and independent Fire Explosion editor (FIRE-02).
 
 ## Progressive disclosure: selection before loading
 

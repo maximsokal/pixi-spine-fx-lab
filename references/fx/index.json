@@ -33,9 +33,47 @@
       "effectId": "fx.fire.torch-flame",
       "category": "fire",
       "path": "references/fx/fire/torch-flame.md",
-      "keywords": ["torch flame", "torch", "flame", "candle flame", "flickering flame", "факел", "пламя факела", "пламя"],
+      "keywords": [
+        "torch flame",
+        "torch",
+        "flame",
+        "candle flame",
+        "flickering flame",
+        "факел",
+        "пламя факела",
+        "пламя"
+      ],
       "status": "reference-implementation",
-      "dependsOnCoreIssues": [3, 4, 5, 6, 7]
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "effectId": "fx.fire.fire-explosion",
+      "category": "fire",
+      "path": "references/fx/fire/fire-explosion.md",
+      "keywords": [
+        "fire explosion",
+        "explosion",
+        "blast",
+        "explosive burst",
+        "взрыв",
+        "вибух",
+        "огненный взрыв",
+        "вогняний вибух"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
     },
     {
       "effectId": "fx.ice.frost-dissolve",
