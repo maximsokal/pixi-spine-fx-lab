@@ -3,7 +3,8 @@
   "categories": [
     "fire",
     "ice",
-    "game"
+    "game",
+    "water"
   ],
   "entries": [
     {
@@ -167,6 +168,31 @@
       "dependsOnCoreIssues": [
         3,
         4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "effectId": "fx.water.water-splash",
+      "category": "water",
+      "path": "references/fx/water/water-splash.md",
+      "keywords": [
+        "water splash",
+        "splash",
+        "splash crown",
+        "water droplets",
+        "impact spray",
+        "всплеск воды",
+        "водяные брызги",
+        "сплеск води",
+        "бризки води"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        10,
         5,
         6,
         7

@@ -4,6 +4,8 @@ For a new effect, first select its [FX Blueprint](fx/index.md) using the [versio
 
 The template preserves working infrastructure but contains burn-specific names and behavior. Copying it is a starting point, not a finished new effect. **FIRE-06:** `assets/heat-haze/src/` uses a bounded CPU-generated heat field and actual PixiJS 8.22.0 DisplacementFilter over an explicitly captured background RenderTexture, alpha ROI mask and optional independently editable glow; 512px data/glow/composited PNG ZIP and pinned developer WebGL/WebGPU handoffs. No CSS/screen capture or fake transparent refraction.
 
+**WATER-01:** `assets/water-splash/src/` uses shared versioned Curves/Spacing/Path/Colors and numerical absolute-time 40-frame quadratic ballistic drops plus real tapered crown MeshGeometry, optional ripple and separate fine mist; no Burn/Fire dependency. `scripts/build_splash_editor.py` produces offline `assets/Water_Splash_Lab.html`; its PNG ZIP is *isolated* straight-alpha and both exact-core WebGL/WebGPU developer ZIPs pin Pixi8.22/Spine4.2.120. Repeat-impact loop deliberately restarts at frame40 (not seamless).
+
 **FIRE-05:** `assets/smoke-plume/src/` and `scripts/build_smoke_editor.py` implement soft-alpha pooled sprites for a persistent warm-loop smoke plume, independent stop/burst fade, optional fine ash, editable nozzle/path source and pinned Spine anchors. Do not edit other FIRE sources.
 
 **FIRE-04:** `assets/embers-sparks/src/` and `scripts/build_embers_editor.py` implement independent one-to-four combustion sources, age-cooled sparks, optional streaks/bloom, actual pinned Spine anchors, shared FxSpacing/FxColors/FxTimeline and standalone export. Preserve all prior FIRE editors.
