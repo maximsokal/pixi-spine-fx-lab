@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smoke Plume FX Lab — Spine 4.2 / PixiJS 8</title>
+<style>
+:root{font:14px/1.48 system-ui,-apple-system,Segoe UI,sans-serif;color:#eceff7;background:#111520}
+*{box-sizing:border-box}body{margin:0}button,select,input,textarea{font:inherit}
+button,select,input[type=number],textarea{border:1px solid #3b465c;background:#20293a;color:#eef2fc;border-radius:7px;padding:7px}
+button{cursor:pointer}button:hover{background:#33425a}button:disabled{opacity:.45;cursor:default}
+button.primary{background:#ce6d29;color:white;border-color:#eb9255}
+header{height:58px;display:flex;gap:14px;align-items:center;justify-content:space-between;padding:8px 18px;background:#171d29;border-bottom:1px solid #313b50}
+h1{font-size:18px;letter-spacing:.2px;margin:0}header span{font-size:12px;color:#95a3bf}
+main{display:grid;grid-template-columns:minmax(370px,1fr) 365px;height:calc(100dvh - 58px);min-height:510px}
+.viewport-panel{min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:radial-gradient(ellipse at 50% 35%,#28304a,#10151f 70%);padding:14px}
+#preview{position:relative;width:512px;height:512px;flex:none;transform-origin:center;box-shadow:0 14px 65px #0008;border:1px solid #64718c55}
+#preview.checker{background-color:#eef2f5;background-image:linear-gradient(45deg,#bcc6d1 25%,transparent 25%),linear-gradient(-45deg,#bcc6d1 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#bcc6d1 75%),linear-gradient(-45deg,transparent 75%,#bcc6d1 75%);background-size:26px 26px;background-position:0 0,0 13px,13px -13px,-13px 0}
+#preview.dark{background:#0e1019}#preview.light{background:#faf8f3}
+#preview canvas{display:block}
+#originHandle{position:absolute;width:18px;height:18px;border-radius:100%;border:2px solid #ffda71;background:#10152088;left:0;top:0;transform:translate(-50%,-50%);cursor:move;z-index:2;box-shadow:0 0 0 2px #111a}
+#originHandle[hidden]{display:none}
+#trajectoryHandles{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:visible}
+#trajectoryHandles[hidden]{display:none}
+#trajectoryHandles circle{pointer-events:all;cursor:move;stroke:#182030;stroke-width:1.5px}
+#trajectoryHandles circle:hover{stroke:white;stroke-width:2.5px}
+
+.preview-tools{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:100%}
+.preview-tools label{display:flex;gap:6px;align-items:center}.preview-tools select{max-width:110px}
+aside{background:#1b2331;overflow-y:auto;min-height:0;border-left:1px solid #384457;padding:12px 15px 35px;scrollbar-color:#65718c transparent}
+details{border:1px solid #39445a;border-radius:9px;margin:9px 0;background:#1e2939}
+summary{cursor:pointer;font-weight:650;padding:11px 12px;user-select:none}details>.inside{padding:0 12px 12px}
+label.control{display:grid;grid-template-columns:1fr 85px;gap:6px;align-items:center;margin:9px 0;font-size:13px}
+label.control output{font-variant-numeric:tabular-nums;color:#ffd7a6}
+label.control input[type=range]{grid-column:1/-1;width:100%;accent-color:#e57d38}
+label.control input[type=color]{width:85px;height:34px;padding:2px}
+label.control input[type=checkbox]{justify-self:end}
+.layer-row{border-top:1px solid #3b4656;padding:9px 0}.layer-row .row{display:flex;justify-content:space-between;align-items:center;gap:7px}
+.layer-coord{display:flex;gap:8px}.layer-coord label{display:flex;align-items:center;gap:4px;font-size:12px}.layer-coord input{width:72px}
+textarea{width:100%;min-height:95px;resize:vertical;font-family:ui-monospace,Consolas,monospace;font-size:11px}
+.small{font-size:12px;color:#abb8d0}.stack{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+#status{padding:9px 11px;color:#b7c8e5;border:1px solid #36445c;border-radius:6px;min-height:38px;max-width:100%}
+#status.error{color:#ffb5b3;border-color:#a34d55}
+#curveMounts details{background:#202c3f}
+@media(max-width:850px){main{height:auto;display:flex;flex-direction:column}.viewport-panel{min-height:640px}aside{border-left:0;overflow:visible}.preview-tools{padding-bottom:12px}}
+</style></head>
+<body>
+<header><div><h1>Smoke Plume FX Lab</h1><span>Procedural • editable • offline • Spine 4.2</span></div>
+<div><span id="backendActual">Initializing GPU…</span></div></header>
+<main>
+<section class="viewport-panel" aria-label="Effect preview">
+<div class="preview-tools">
+<button id="play">Pause</button><button id="reverse">Reverse</button><button id="reset">Reset</button>
+<label>Frame <input id="frame" type="range" min="0" max="119" value="0" step="1"></label>
+<output id="frameLabel">0 / 119</output>
+</div>
+<div id="preview" class="checker">
+<svg id="trajectoryHandles" width="512" height="512" viewBox="0 0 512 512" aria-label="Optional moving source cubic path">
+<polyline data-path fill="none" stroke="#79e6dc" stroke-width="1.6" stroke-dasharray="5 5" opacity=".8"/>
+<circle data-handle="start" r="7" fill="#76e5d2"/>
+<circle data-handle="c1" r="5" fill="#aac2fe"/>
+<circle data-handle="c2" r="5" fill="#aac2fe"/>
+<circle data-handle="end" r="7" fill="#76e5d2"/>
+<circle data-handle="head" r="8" fill="#ff7c43"/>
+</svg>
+<button id="originHandle" title="Drag selected emitter anchor" aria-label="Drag selected emitter anchor"></button>
+</div>
+<div class="preview-tools"><label>Background <select id="background"><option value="checker">Checkerboard</option><option value="dark">Dark</option><option value="light">Light</option></select></label>
+<label>Zoom <select id="zoom"><option value=".5">50%</option><option value="1" selected>100%</option><option value="2">200%</option></select></label>
+<label>Backend <select id="backend"><option value="webgl2">WebGL 2</option><option value="webgl1">WebGL 1</option><option value="webgpu">WebGPU</option></select></label></div>
+<div id="status" role="status" aria-live="polite">Starting…</div>
+</section>
+<aside aria-label="Effect settings">
+<details open><summary>Spine assets and preview</summary><div class="inside">
+<div class="stack"><button id="sample">Load Doctor head sample</button><button id="chooseFiles">Load Spine export…</button><input type="file" id="files" accept=".json,.skel,.atlas,.png,.webp,.jpg,.jpeg" multiple hidden></div>
+<p id="assetLabel" class="small">Smoke can run standalone or follow multiple independent Spine 4.2 bones, slots and attachments.</p>
+<label class="control">Animation <select id="animation"></select></label>
+<label class="control">Skin <select id="skin"></select></label>
+<label class="control">Show Spine <input type="checkbox" id="showSpine" checked></label>
+</div></details>
+<details open><summary>Emission / lifecycle / fade</summary><div class="inside" id="geometryControls"></div></details>
+<details open><summary>Puff geometry, lofting and density</summary><div class="inside" id="particleControls"></div></details>
+<details open><summary>Emission and spatial distribution</summary><div class="inside">
+<label class="control">Emission mode <select id="emissionMode"><option value="time">Time (18/s)</option><option value="distance">Moving source arc distance</option><option value="both">Both: time gated by distance</option></select></label>
+<label class="control">Spatial distribution <select id="spatialMode"><option value="even">Even</option><option value="random">Seeded random</option><option value="clustered">Clustered</option></select></label>
+<label class="control">Use editable nozzle/path spacing curve <input type="checkbox" id="spacingCurveEnabled"></label>
+<label class="control">Animation lifecycle
+<select id="mode"><option value="loop">Loop (120 frames)</option>
+<option value="stop">Stop &amp; fade (60 frames)</option>
+<option value="burst">40 emission + 60 fade (one-shot)</option></select></label>
+<p class="small">Time mode works for stationary smoke. Distance/both require a moving source. Rate and rate curve control time/both. Nozzle origin gap and clustering are independent of time schedule. Negative Y is upward. Rise speed integrates over individual puff age. Source path speed is independent.</p>
+</div></details>
+<details open><summary>Independent smoke emitters (up to 4)</summary><div class="inside" id="emitterControls"></div></details>
+<details><summary>Optional moving emitter — editable cubic path</summary><div class="inside">
+<p id="pathLength" class="small">Enable a moving source below to edit its spatial path.</p>
+<p class="small">Drag cyan path start/end, blue tangent handles and orange moving-source position. The guides are DOM-only and do not appear in baked PNG.</p>
+<div class="stack"><button id="pathReset">Reset motion path</button><button id="pathStraight">Straighten motion path</button></div>
+</div></details>
+<details><summary>Selected emitter anchor — World / Local / Bone / Slot</summary><div class="inside" id="anchorControls"></div></details>
+<details><summary>Selected emitter layers — independent</summary><div class="inside" id="layerControls"></div></details>
+<details><summary>Editable gray-to-charcoal RGBA smoke gradient</summary><div class="inside">
+<label class="control">Style <select id="style"><option value="natural">Natural</option><option value="stylized">Stylized</option><option value="magical">Magical</option></select></label>
+<div class="stack"><button id="stylePalette">Apply style palette</button></div>
+<div id="gradientEditor"></div></div></details>
+<details><summary>Puff size, opacity, rise and emission curves</summary><div class="inside" id="curveMounts">
+<p class="small">Rate (emitterTime), size/opacity/rise (particleAge), and nozzle/path gap (pathPosition) have independently editable knots/handles.</p>
+<div id="emissionCurveEditor"></div><div id="sizeCurveEditor"></div><div id="riseCurveEditor"></div><div id="opacityCurveEditor"></div><div id="spacingCurveEditor"></div>
+</div></details>
+<details open><summary>Preset and export</summary><div class="inside">
+<label class="control">Quality <select id="quality"><option value="low">Low</option><option value="balanced" selected>Balanced</option><option value="high">High</option></select></label>
+<div class="stack">
+<button id="fitCanvas">Fit effect to 512×512</button><button class="primary" id="bake">Bake PNG ZIP</button><button id="cancel" disabled>Cancel</button>
+<button id="webglZip">WebGL dev ZIP</button><button id="webgpuZip">WebGPU dev ZIP</button>
+<button id="savePreset">Save preset JSON</button><button id="loadPreset">Import preset</button>
+<input id="presetFile" type="file" accept=".json,application/json" hidden></div>
+<p class="small">120-frame seamless looping plume (default), 60-frame stop fade, or 40-frame emission plus 60-frame fade as a complete 100-frame one-shot. PNG output accepts 1–3600 frames. Out-of-frame particles must be explicitly fitted; CSS zoom and checkerboard never enter alpha.</p>
+<button id="defaults">Reset all settings</button>
+</div></details>
+</aside></main>
+<!-- VENDOR -->
+<!-- CORES -->
+<script id="sampleData" type="application/json">__SAMPLE_DATA__</script>
+<!-- APP -->
+<!-- EXPORT -->
+</body></html>

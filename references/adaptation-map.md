@@ -2,7 +2,9 @@
 
 For a new effect, first select its [FX Blueprint](fx/index.md) using the [versioned schema](contracts/blueprint.md), then load only the required contracts. Bind the specific effect's stable [parameters](contracts/parameters.md) to the anchors below. A spec-only Blueprint is not an existing implementation. Do not copy burn/grayscale controls into an ICE or GAME editor.
 
-The template preserves working infrastructure but contains burn-specific names and behavior. Copying it is a starting point, not a finished new effect. **FIRE-04:** `assets/embers-sparks/src/` and `scripts/build_embers_editor.py` implement independent one-to-four combustion sources, age-cooled sparks, optional streaks/bloom, actual pinned Spine anchors, shared FxSpacing/FxColors/FxTimeline and standalone export. Preserve all prior FIRE editors.
+The template preserves working infrastructure but contains burn-specific names and behavior. Copying it is a starting point, not a finished new effect. **FIRE-05:** `assets/smoke-plume/src/` and `scripts/build_smoke_editor.py` implement soft-alpha pooled sprites for a persistent warm-loop smoke plume, independent stop/burst fade, optional fine ash, editable nozzle/path source and pinned Spine anchors. Do not edit other FIRE sources.
+
+**FIRE-04:** `assets/embers-sparks/src/` and `scripts/build_embers_editor.py` implement independent one-to-four combustion sources, age-cooled sparks, optional streaks/bloom, actual pinned Spine anchors, shared FxSpacing/FxColors/FxTimeline and standalone export. Preserve all prior FIRE editors.
 
 **FIRE-03:** `assets/fireball-projectile/src/` plus `scripts/build_projectile_editor.py` implement independently controlled motion-aware fireball and ribbon/editor with true FxSpacing path distance events and five layers. No modifications to existing Burn, Torch or Explosion sources.
 

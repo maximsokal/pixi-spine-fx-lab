@@ -124,6 +124,30 @@
       ]
     },
     {
+      "effectId": "fx.fire.smoke-plume",
+      "category": "fire",
+      "path": "references/fx/fire/smoke-plume.md",
+      "keywords": [
+        "smoke plume",
+        "rising smoke plume",
+        "smoke puffs",
+        "smoke column",
+        "smoke cloud",
+        "turbulent smoke",
+        "дымовой столб",
+        "клубы дыма",
+        "димовий шлейф"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
       "effectId": "fx.ice.frost-dissolve",
       "category": "ice",
       "path": "references/fx/ice/frost-dissolve.md",
