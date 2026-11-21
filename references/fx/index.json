@@ -99,6 +99,31 @@
       ]
     },
     {
+      "effectId": "fx.fire.embers-sparks",
+      "category": "fire",
+      "path": "references/fx/fire/embers-sparks.md",
+      "keywords": [
+        "embers and sparks",
+        "embers",
+        "ember particles",
+        "embers sparks",
+        "rising embers",
+        "sparks editor",
+        "glowing embers",
+        "тлеющие угольки",
+        "искры и угольки",
+        "іскри та жарини"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
       "effectId": "fx.ice.frost-dissolve",
       "category": "ice",
       "path": "references/fx/ice/frost-dissolve.md",

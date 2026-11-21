@@ -21,13 +21,14 @@ class BlueprintTests(unittest.TestCase):
     def test_registry_is_small_and_complete(self):
         self.assertEqual(self.catalog["blueprintSchemaVersion"], 1)
         self.assertEqual(set(self.catalog["categories"]), {"fire", "ice", "game"})
-        self.assertEqual(len(self.blueprints), 6)
+        self.assertEqual(len(self.blueprints), 7)
         self.assertEqual(set(self.blueprints), {
             "fx.fire.burn-transition", "fx.fire.torch-flame",
             "fx.fire.fire-explosion", "fx.fire.fireball-projectile",
+            "fx.fire.embers-sparks",
             "fx.ice.frost-dissolve", "fx.game.hit-flash"})
-        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 6)
-        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 6)
+        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 7)
+        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 7)
         expected = {"fire":[3,4,5,6,7], "ice":[3,6,7], "game":[3,7]}
         for row in self.catalog["entries"]:
             if row["effectId"]=="fx.fire.fireball-projectile":
@@ -43,6 +44,8 @@ class BlueprintTests(unittest.TestCase):
              {"parameters", "curves", "spacing", "emitters", "colors", "timeline"}),
             ("Make a fireball projectile with a moving curved trail", "fx.fire.fireball-projectile",
              {"parameters", "curves", "spacing", "pathGeometry", "emitters", "colors", "timeline"}),
+            ("Make rising embers and sparks with cooling gradient", "fx.fire.embers-sparks",
+             {"parameters", "curves", "spacing", "emitters", "colors", "timeline"}),
             ("Create an animated torch flame following a Spine bone", "fx.fire.torch-flame",
              {"parameters", "curves", "spacing", "emitters", "colors", "timeline"}),
             ("An icy crystal frost dissolve around the Spine model", "fx.ice.frost-dissolve",
@@ -87,6 +90,12 @@ class BlueprintTests(unittest.TestCase):
         self.assertEqual(len(projectile["layers"]),5)
         self.assertIn("assets/Fireball_Projectile_Lab.html",projectile["implementation"]["sourceFiles"])
         self.assertNotIn("settings.desaturation",json.dumps(projectile))
+        embers=self.blueprints["fx.fire.embers-sparks"]
+        self.assertEqual(embers["implementation"]["status"],"reference-implementation")
+        self.assertTrue(embers["tests"]["verified"])
+        self.assertEqual(len(embers["layers"]),3)
+        self.assertEqual(len(embers["parameters"]),25)
+        self.assertIn("assets/Embers_Sparks_Lab.html",embers["implementation"]["sourceFiles"])
         torch = self.blueprints["fx.fire.torch-flame"]
         self.assertEqual(torch["implementation"]["status"], "reference-implementation")
         self.assertTrue(torch["tests"]["verified"])
