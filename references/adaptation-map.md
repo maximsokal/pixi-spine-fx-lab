@@ -2,7 +2,7 @@
 
 For a new effect, first select its [FX Blueprint](fx/index.md) using the [versioned schema](contracts/blueprint.md), then load only the required contracts. Bind the specific effect's stable [parameters](contracts/parameters.md) to the anchors below. A spec-only Blueprint is not an existing implementation. Do not copy burn/grayscale controls into an ICE or GAME editor.
 
-The template preserves working infrastructure but contains burn-specific names and behavior. Copying it is a starting point, not a finished new effect.
+The template preserves working infrastructure but contains burn-specific names and behavior. Copying it is a starting point, not a finished new effect. **Already implemented FIRE-01:** `assets/torch-flame/src/` and `scripts/build_torch_editor.py` are a separate purpose-built Torch Flame editor. When using it, preserve its own `FxTorch` renderer-neutral core, `FxTorchRuntime` Pixi layer ownership, editable controls, PNG bake and dual developer packages. Do not retrofit Torch into `assets/template/src/effect-core.js`, the Burn-only exporter, or vendor files.
 
 | File / anchor | Responsibility | Adaptation |
 | --- | --- | --- |

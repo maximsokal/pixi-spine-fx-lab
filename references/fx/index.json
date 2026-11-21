@@ -14,7 +14,6 @@
         "burn",
         "burn transition",
         "fire",
-        "flame",
         "sparks",
         "ignite",
         "огонь",
@@ -29,6 +28,14 @@
         6,
         7
       ]
+    },
+    {
+      "effectId": "fx.fire.torch-flame",
+      "category": "fire",
+      "path": "references/fx/fire/torch-flame.md",
+      "keywords": ["torch flame", "torch", "flame", "candle flame", "flickering flame", "факел", "пламя факела", "пламя"],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [3, 4, 5, 6, 7]
     },
     {
       "effectId": "fx.ice.frost-dissolve",

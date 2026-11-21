@@ -4,14 +4,15 @@ The small [index.json](index.json) is the machine-readable routing index. Each e
 
 | Category | Selected Blueprint | Status | Contracts |
 | --- | --- | --- | --- |
-| FIRE | [Burn transition](fire/burn-transition.md) | **Reference implementation**, current Burn Lab | parameters, curves, spacing, emitters, colors, timeline |
+| FIRE | [Burn transition](fire/burn-transition.md) | **Reference implementation**, original Burn Lab | parameters, curves, spacing, emitters, colors, timeline |
+| FIRE | [Torch Flame](fire/torch-flame.md) | **Reference implementation**, separate offline Torch Flame Editor | parameters, curves, spacing, emitters, colors, timeline |
 | ICE | [Frost dissolve](ice/frost-dissolve.md) | **Specification only**, not a shipped editor | parameters, curves, colors, timeline |
 | GAME | [Hit flash](game/hit-flash.md) | **Specification only**, not a shipped editor | parameters, curves, timeline |
 
 ## Deterministic route for an agent
 
-1. Match a specific effect intent, not a broad term like "game". "Flame burn sparks" selects FIRE; "icy crystal frost" selects ICE; "damage hit flash" selects GAME.
-2. If both FIRE and ICE or multiple candidate effects are mentioned, do **not** silently select one. Ask for target or plan independent effects.
+1. Match a **specific effect intent**, not a broad category. "Burn transition with sparks" selects the Burn Lab, while "torch flame" / "факел" selects [Torch Flame](fire/torch-flame.md). "Icy crystal frost" selects ICE and "damage hit flash" selects GAME. Plain "flame" routes to Torch, not the Burn transition mask.
+2. If both Burn and Torch, or FIRE and ICE, or multiple candidate effects are mentioned, do **not** silently select one. Ask for the intended target or plan independent effects.
 3. Read the chosen Blueprint and [schema](../contracts/blueprint.md). Then read **only** `requiredContracts` in the documented dependency order, skipping unrelated modules and Blueprints.
 4. Inspect actual source and pins, [adaptation map](../adaptation-map.md) and official docs before any proposed implementation. For spec-only effects obtain a separate reviewed/approved plan; they do not already export PNG or developer ZIPs.
 
