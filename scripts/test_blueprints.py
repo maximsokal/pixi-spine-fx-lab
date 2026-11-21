@@ -21,15 +21,16 @@ class BlueprintTests(unittest.TestCase):
     def test_registry_is_small_and_complete(self):
         self.assertEqual(self.catalog["blueprintSchemaVersion"], 1)
         self.assertEqual(set(self.catalog["categories"]), {"fire", "ice", "game"})
-        self.assertEqual(len(self.blueprints), 8)
+        self.assertEqual(len(self.blueprints), 9)
         self.assertEqual(set(self.blueprints), {
             "fx.fire.burn-transition", "fx.fire.torch-flame",
             "fx.fire.fire-explosion", "fx.fire.fireball-projectile",
             "fx.fire.embers-sparks",
             "fx.fire.smoke-plume",
+            "fx.fire.heat-haze",
             "fx.ice.frost-dissolve", "fx.game.hit-flash"})
-        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 8)
-        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 8)
+        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 9)
+        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 9)
         expected = {"fire":[3,4,5,6,7], "ice":[3,6,7], "game":[3,7]}
         for row in self.catalog["entries"]:
             if row["effectId"]=="fx.fire.fireball-projectile":
@@ -45,6 +46,8 @@ class BlueprintTests(unittest.TestCase):
              {"parameters", "curves", "spacing", "emitters", "colors", "timeline"}),
             ("Make a fireball projectile with a moving curved trail", "fx.fire.fireball-projectile",
              {"parameters", "curves", "spacing", "pathGeometry", "emitters", "colors", "timeline"}),
+            ("Create a heat haze with refracted pixels rising over a background", "fx.fire.heat-haze",
+             {"parameters","curves","spacing","emitters","colors","timeline"}),
             ("Make rising smoke plume with turbulent puffs", "fx.fire.smoke-plume",
              {"parameters", "curves", "spacing", "emitters", "colors", "timeline"}),
             ("Make rising embers and sparks with cooling gradient", "fx.fire.embers-sparks",
@@ -93,6 +96,12 @@ class BlueprintTests(unittest.TestCase):
         self.assertEqual(len(projectile["layers"]),5)
         self.assertIn("assets/Fireball_Projectile_Lab.html",projectile["implementation"]["sourceFiles"])
         self.assertNotIn("settings.desaturation",json.dumps(projectile))
+        haze=self.blueprints["fx.fire.heat-haze"]
+        self.assertEqual(haze["implementation"]["status"],"reference-implementation")
+        self.assertTrue(haze["tests"]["verified"])
+        self.assertEqual(len(haze["layers"]),2)
+        self.assertEqual(len(haze["parameters"]),22)
+        self.assertIn("assets/Heat_Haze_Lab.html",haze["implementation"]["sourceFiles"])
         smoke=self.blueprints["fx.fire.smoke-plume"]
         self.assertEqual(smoke["implementation"]["status"],"reference-implementation")
         self.assertTrue(smoke["tests"]["verified"])

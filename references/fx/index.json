@@ -148,6 +148,31 @@
       ]
     },
     {
+      "effectId": "fx.fire.heat-haze",
+      "category": "fire",
+      "path": "references/fx/fire/heat-haze.md",
+      "keywords": [
+        "heat haze",
+        "heat shimmer",
+        "thermal refraction",
+        "rising thermal waves",
+        "heat distortion",
+        "thermal air refraction",
+        "тепловое марево",
+        "дрожание воздуха",
+        "теплове марево",
+        "гаряче повітря"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
       "effectId": "fx.ice.frost-dissolve",
       "category": "ice",
       "path": "references/fx/ice/frost-dissolve.md",
