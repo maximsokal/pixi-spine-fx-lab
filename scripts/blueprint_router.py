@@ -240,7 +240,7 @@ def validate_catalog(root, catalog):
                 doc["category"] == entry["category"] and
                 doc["implementation"]["status"] == entry["status"],
                 "catalog metadata differs from Blueprint")
-        expected_issues = [{"curves":3, "spacing":4, "emitters":5, "colors":6,
+        expected_issues = [{"curves":3, "spacing":4, "pathGeometry":10, "emitters":5, "colors":6,
                             "timeline":7}[c] for c in doc["requiredContracts"] if c != "parameters"]
         require(entry["dependsOnCoreIssues"] == expected_issues,
                 "core issue dependencies differ from Blueprint")

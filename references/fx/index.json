@@ -76,6 +76,29 @@
       ]
     },
     {
+      "effectId": "fx.fire.fireball-projectile",
+      "category": "fire",
+      "path": "references/fx/fire/fireball-projectile.md",
+      "keywords": [
+        "fireball projectile",
+        "fireball",
+        "projectile",
+        "moving fireball",
+        "fire ball",
+        "огненный шар",
+        "вогняна куля"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        10,
+        5,
+        6,
+        7
+      ]
+    },
+    {
       "effectId": "fx.ice.frost-dissolve",
       "category": "ice",
       "path": "references/fx/ice/frost-dissolve.md",

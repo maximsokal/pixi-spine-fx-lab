@@ -7,13 +7,14 @@ The small [index.json](index.json) is the machine-readable routing index. Each e
 | FIRE | [Burn transition](fire/burn-transition.md) | **Reference implementation**, original Burn Lab | parameters, curves, spacing, emitters, colors, timeline |
 | FIRE | [Torch Flame](fire/torch-flame.md) | **Reference implementation**, separate offline Torch Flame Editor | parameters, curves, spacing, emitters, colors, timeline |
 | FIRE | [Fire Explosion](fire/fire-explosion.md) | **Reference implementation**, independent one-shot Explosion Editor | parameters, curves, spacing, emitters, colors, timeline |
+| FIRE | [Fireball Projectile](fire/fireball-projectile.md) | **Reference implementation**, moving Bezier-head projectile with motion-tracking tail | parameters, curves, spacing, pathGeometry, emitters, colors, timeline |
 | ICE | [Frost dissolve](ice/frost-dissolve.md) | **Specification only**, not a shipped editor | parameters, curves, colors, timeline |
 | GAME | [Hit flash](game/hit-flash.md) | **Specification only**, not a shipped editor | parameters, curves, timeline |
 
 ## Deterministic route for an agent
 
-1. Match a **specific effect intent**, not a broad category. "Burn transition with sparks" selects the Burn Lab, while "torch flame" / "факел" selects [Torch Flame](fire/torch-flame.md). "Icy crystal frost" selects ICE and "damage hit flash" selects GAME. Plain "flame" routes to Torch, not the Burn transition mask. "Fire explosion" / "взрыв" routes to [Fire Explosion](fire/fire-explosion.md).
-2. If Burn, Torch and/or Fire Explosion are requested together, or FIRE and ICE, or multiple candidate effects are mentioned, do **not** silently select one. Ask for the intended target or plan independent effects.
+1. Match a **specific effect intent**, not a broad category. "Burn transition with sparks" selects the Burn Lab, while "torch flame" / "факел" selects [Torch Flame](fire/torch-flame.md). "Icy crystal frost" selects ICE and "damage hit flash" selects GAME. Plain "flame" routes to Torch, not the Burn transition mask. "Fireball projectile" routes to the independently draggable motion-aware [Fireball Projectile](fire/fireball-projectile.md). "Fire explosion" / "взрыв" routes to [Fire Explosion](fire/fire-explosion.md).
+2. If Burn, Torch, Fire Explosion and/or Fireball Projectile are requested together, or FIRE and ICE, or multiple candidate effects are mentioned, do **not** silently select one. Ask for the intended target or plan independent effects.
 3. Read the chosen Blueprint and [schema](../contracts/blueprint.md). Then read **only** `requiredContracts` in the documented dependency order, skipping unrelated modules and Blueprints.
 4. Inspect actual source and pins, [adaptation map](../adaptation-map.md) and official docs before any proposed implementation. For spec-only effects obtain a separate reviewed/approved plan; they do not already export PNG or developer ZIPs.
 
