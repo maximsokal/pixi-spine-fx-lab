@@ -224,6 +224,35 @@
       ]
     },
     {
+      "effectId": "fx.water.water-ripples",
+      "category": "water",
+      "path": "references/fx/water/water-ripples.md",
+      "keywords": [
+        "water ripples",
+        "rippling surface",
+        "expanding concentric circles",
+        "concentric water rings",
+        "ripple shader",
+        "water wave rings",
+        "surface ring waves",
+        "circular ripple waves",
+        "water ripple effect",
+        "круги на воде",
+        "волны на воде",
+        "кільця на воді",
+        "брижі на воді",
+        "expanding concentric water ripple rings"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
       "effectId": "fx.ice.frost-dissolve",
       "category": "ice",
       "path": "references/fx/ice/frost-dissolve.md",
