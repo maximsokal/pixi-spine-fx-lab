@@ -21,17 +21,17 @@ class BlueprintTests(unittest.TestCase):
     def test_registry_is_small_and_complete(self):
         self.assertEqual(self.catalog["blueprintSchemaVersion"], 1)
         self.assertEqual(set(self.catalog["categories"]), {"fire", "ice", "game", "water"})
-        self.assertEqual(len(self.blueprints), 12)
+        self.assertEqual(len(self.blueprints), 13)
         self.assertEqual(set(self.blueprints), {
             "fx.fire.burn-transition", "fx.fire.torch-flame",
             "fx.fire.fire-explosion", "fx.fire.fireball-projectile",
             "fx.fire.embers-sparks",
             "fx.fire.smoke-plume",
             "fx.fire.heat-haze",
-            "fx.water.water-splash", "fx.water.rainfall", "fx.water.water-ripples",
+            "fx.water.water-splash", "fx.water.rainfall", "fx.water.water-ripples", "fx.water.waterfall",
             "fx.ice.frost-dissolve", "fx.game.hit-flash"})
-        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 12)
-        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 12)
+        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 13)
+        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 13)
         expected = {"fire":[3,4,5,6,7], "ice":[3,6,7], "game":[3,7], "water":[3,4,10,5,6,7]}
         for row in self.catalog["entries"]:
             if row["effectId"]=="fx.fire.fireball-projectile":
@@ -49,6 +49,9 @@ class BlueprintTests(unittest.TestCase):
              {"parameters", "curves", "spacing", "emitters", "colors", "timeline"}),
             ("Make a fireball projectile with a moving curved trail", "fx.fire.fireball-projectile",
              {"parameters", "curves", "spacing", "pathGeometry", "emitters", "colors", "timeline"}),
+            ("Create a continuous waterfall with flowing strands, droplets and foam",
+             "fx.water.waterfall",
+             {"parameters","curves","spacing","pathGeometry","emitters","colors","timeline"}),
             ("Create expanding concentric water ripple rings",
              "fx.water.water-ripples",
              {"parameters","curves","spacing","emitters","colors","timeline"}),
@@ -116,6 +119,12 @@ class BlueprintTests(unittest.TestCase):
         self.assertEqual(len(rain["layers"]),4)
         self.assertEqual(len(rain["parameters"]),24)
         self.assertIn("assets/Rainfall_Lab.html",rain["implementation"]["sourceFiles"])
+        waterfall=self.blueprints["fx.water.waterfall"]
+        self.assertEqual(waterfall["implementation"]["status"],"reference-implementation")
+        self.assertEqual(len(waterfall["layers"]),3)
+        self.assertEqual(len(waterfall["parameters"]),17)
+        self.assertEqual(len(waterfall["curves"]),5)
+        self.assertIn("assets/Waterfall_Lab.html",waterfall["implementation"]["sourceFiles"])
         ripples=self.blueprints["fx.water.water-ripples"]
         self.assertEqual(ripples["implementation"]["status"],"reference-implementation")
         self.assertEqual(len(ripples["layers"]),3)

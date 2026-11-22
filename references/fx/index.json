@@ -253,6 +253,33 @@
       ]
     },
     {
+      "effectId": "fx.water.waterfall",
+      "category": "water",
+      "path": "references/fx/water/waterfall.md",
+      "keywords": [
+        "waterfall",
+        "waterfall falling streams",
+        "cascading water ribbons",
+        "continuous waterfall with foam and breakup",
+        "waterfalls and water spray",
+        "waterfall streams droplets foam",
+        "cascading liquid",
+        "вода водопад",
+        "водопад",
+        "водоспад",
+        "водяний водоспад"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        10,
+        5,
+        6,
+        7
+      ]
+    },
+    {
       "effectId": "fx.ice.frost-dissolve",
       "category": "ice",
       "path": "references/fx/ice/frost-dissolve.md",
