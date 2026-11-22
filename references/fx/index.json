@@ -280,6 +280,28 @@
       ]
     },
     {
+      "effectId": "fx.water.rising-bubbles",
+      "category": "water",
+      "path": "references/fx/water/rising-bubbles.md",
+      "keywords": [
+        "rising bubbles",
+        "underwater buoyant bubbles",
+        "bubble rim highlights",
+        "transparent air bubbles rising",
+        "bubble pop rings",
+        "rising bubbles effect",
+        "underwater ascending bubbles"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
       "effectId": "fx.ice.frost-dissolve",
       "category": "ice",
       "path": "references/fx/ice/frost-dissolve.md",

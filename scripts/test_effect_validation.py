@@ -218,7 +218,7 @@ class ReportContractTests(unittest.TestCase):
     def test_scope_locks_and_catalog_acceptance(self):
         refs = fxv.catalog_requirements(ROOT)
         self.assertEqual(set(refs), {"fx.fire.burn-transition", "fx.fire.torch-flame",
-                                     "fx.fire.fire-explosion", "fx.fire.fireball-projectile", "fx.fire.embers-sparks", "fx.fire.smoke-plume", "fx.fire.heat-haze", "fx.water.water-splash", "fx.water.rainfall", "fx.water.water-ripples", "fx.water.waterfall",
+                                     "fx.fire.fire-explosion", "fx.fire.fireball-projectile", "fx.fire.embers-sparks", "fx.fire.smoke-plume", "fx.fire.heat-haze", "fx.water.water-splash", "fx.water.rainfall", "fx.water.water-ripples", "fx.water.waterfall", "fx.water.rising-bubbles",
                                      "fx.ice.frost-dissolve", "fx.game.hit-flash"})
         for item in refs.values():
             self.assertEqual(set(item["phases"]), {"original","active","burned"}

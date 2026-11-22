@@ -15,6 +15,7 @@ The small [index.json](index.json) is the machine-readable routing index. Each e
 | WATER | [Rainfall](water/rainfall.md) | **Reference implementation**, seamless 60-frame periodic pooled rain, wind, actual ground contacts and optional near/far parallax | parameters, curves, spacing, emitters, colors, timeline |
 | WATER | [Water Ripples](water/water-ripples.md) | **Reference implementation**, independently anchored 40-frame one-shot or cyclic concentric elliptical ring waves, optional arc-length highlights, alpha-aware pooled Pixi MeshSimple | parameters, curves, spacing, emitters, colors, timeline |
 | WATER | [Waterfall](water/waterfall.md) | **Reference implementation**, seamless 60-frame flowing water ribbons, detached causal droplets, independently movable sparse base foam, optional 40-frame shutdown; pure path arclength and pooled Pixi MeshSimple/particles | parameters, curves, spacing, pathGeometry, emitters, colors, timeline |
+| WATER | [Rising Bubbles](water/rising-bubbles.md) | **Reference implementation**, seamless 60-frame buoyant translucent bubble rim, independently positioned highlights and optional lifetime pop rings; 40-frame shutdown and true cubic nozzle arc spacing | parameters, curves, spacing, emitters, colors, timeline |
 | ICE | [Frost dissolve](ice/frost-dissolve.md) | **Specification only**, not a shipped editor | parameters, curves, colors, timeline |
 | GAME | [Hit flash](game/hit-flash.md) | **Specification only**, not a shipped editor | parameters, curves, timeline |
 
