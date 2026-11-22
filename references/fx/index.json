@@ -302,6 +302,29 @@
       ]
     },
     {
+      "effectId": "fx.water.steam-jet",
+      "category": "water",
+      "path": "references/fx/water/steam-jet.md",
+      "keywords": [
+        "steam jet",
+        "pipe steam",
+        "steam vapor",
+        "white steam",
+        "jet of steam",
+        "струя пара",
+        "пар из трубы",
+        "паровий струмінь"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
       "effectId": "fx.ice.frost-dissolve",
       "category": "ice",
       "path": "references/fx/ice/frost-dissolve.md",

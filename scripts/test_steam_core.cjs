@@ -1,0 +1,53 @@
+// WATER-06 contract-first numerical oracles. Run: node scripts/test_steam_core.cjs
+'use strict';
+const assert=require('node:assert/strict');
+const Steam=require('../assets/steam-jet/src/steam-core.js');
+const near=(x,y,epsilon=1e-5)=>assert.ok(Math.abs(x-y)<=epsilon, String(x)+' != '+String(y));
+const defaults=Steam.defaults(),e=defaults.emitters[0];
+assert.equal(defaults.rate,12);assert.equal(defaults.initialSize,18);
+assert.equal(defaults.expansion,2.2);assert.equal(defaults.flowSpeed,90);
+assert.equal(defaults.diffusion,.55);assert.equal(defaults.softness,.7);
+assert.deepEqual(Steam.LAYERS,['dense','wisps','droplets']);
+assert.equal(Steam.normalize(defaults).schemaVersion,1);
+let timeline=Steam.schedule(defaults,e);
+assert.equal(timeline.events.length,12,'exactly twelve births in [0,1)');
+near(timeline.events[0].time,0);
+near(timeline.events[11].time,11/12);
+assert.ok(timeline.events.every(ev=>ev.time>=0&&ev.time<1));
+assert.ok(timeline.origins.length>=2);
+assert.ok(timeline.origins.every(o=>Number.isFinite(o.x)&&Number.isFinite(o.y)));
+assert.ok(timeline.origins.every(o=>Math.abs(o.x)<=defaults.nozzleWidth/2+1));
+assert.ok(timeline.arcErrorBound<=.25);
+const first=Steam.sample(defaults,0),end=Steam.sample(defaults,1);
+assert.deepEqual(first,end,'exact cycle seam in numerical sample');
+assert.ok(first.primitives>0,'warm-start plume populated at zero');
+const mid=Steam.sample(defaults,.5);
+assert.notDeepEqual(first,mid,'particles evolve');
+const initial=Steam.puffDiameter(defaults,0),endSize=Steam.puffDiameter(defaults,1);
+near(initial,18);near(endSize,39.6);
+near(Steam.puffDiameter(defaults,.5),28.8);
+near(Steam.travel(defaults,.5),63.7875,.02);
+near(Steam.travel(defaults,1),93.15,.02);
+const zero=structuredClone(defaults);zero.rate=0;
+assert.equal(Steam.sample(zero,0).primitives,0);
+const noDiff=structuredClone(defaults);noDiff.diffusion=0;
+assert.ok(Steam.sample(noDiff,.5).emitters[0].layers.dense.every(p=>Math.abs(p.diffusionOffset)<=1e-9));
+const stopped=structuredClone(defaults);stopped.mode='stop';stopped.durationFrames=40;stopped.exportFrames=40;
+assert.equal(Steam.sample(stopped,39/60).primitives,0,'shutdown last included frame alpha=0');
+assert.ok(Steam.sample(stopped,0).primitives>0,'warm stop start retains plume');
+for(const name of Steam.LAYERS){
+ const switched=structuredClone(defaults);switched.emitters[0].layers[name].enabled=false;
+ assert.equal(Steam.sample(switched,.5).emitters[0].layers[name].length,0);
+}
+const flipped=structuredClone(defaults);flipped.rate=100;flipped.lifetimeSeconds=6;flipped.emitters=Array.from({length:4},(_,i)=>Steam.newEmitter(i));
+flipped.quality='low';assert.throws(()=>Steam.normalize(flipped),/budget/i);
+const bad=structuredClone(defaults);bad.spurious=true;assert.throws(()=>Steam.normalize(bad),/unknown|invalid/i);
+const other=structuredClone(defaults);other.emitters.push({...structuredClone(e)});
+assert.throws(()=>Steam.normalize(other),/duplicate/i);
+const reshaped=structuredClone(defaults);reshaped.sizeCurve.keys[1].y=2.4;
+assert.notEqual(Steam.puffDiameter(reshaped,.5),Steam.puffDiameter(defaults,.5));
+near(Steam.puffDiameter(reshaped,0),18);near(Steam.puffDiameter(reshaped,1),39.6);
+const gapChanged=structuredClone(defaults);gapChanged.originGap=40;
+assert.notDeepEqual(Steam.schedule(gapChanged,gapChanged.emitters[0]).origins,
+ timeline.origins,'originGap must remain effective when the gap curve is enabled');
+console.log('WATER-06 core: GREEN ('+timeline.events.length+' births, diameter/travel/stop/seed/anchors/budgets)');

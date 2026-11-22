@@ -21,22 +21,22 @@ class BlueprintTests(unittest.TestCase):
     def test_registry_is_small_and_complete(self):
         self.assertEqual(self.catalog["blueprintSchemaVersion"], 1)
         self.assertEqual(set(self.catalog["categories"]), {"fire", "ice", "game", "water"})
-        self.assertEqual(len(self.blueprints), 14)
+        self.assertEqual(len(self.blueprints), 15)
         self.assertEqual(set(self.blueprints), {
             "fx.fire.burn-transition", "fx.fire.torch-flame",
             "fx.fire.fire-explosion", "fx.fire.fireball-projectile",
             "fx.fire.embers-sparks",
             "fx.fire.smoke-plume",
             "fx.fire.heat-haze",
-            "fx.water.water-splash", "fx.water.rainfall", "fx.water.water-ripples", "fx.water.waterfall", "fx.water.rising-bubbles",
+            "fx.water.water-splash", "fx.water.rainfall", "fx.water.water-ripples", "fx.water.waterfall", "fx.water.rising-bubbles", "fx.water.steam-jet",
             "fx.ice.frost-dissolve", "fx.game.hit-flash"})
-        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 14)
-        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 14)
+        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 15)
+        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 15)
         expected = {"fire":[3,4,5,6,7], "ice":[3,6,7], "game":[3,7], "water":[3,4,10,5,6,7]}
         for row in self.catalog["entries"]:
             if row["effectId"]=="fx.fire.fireball-projectile":
                 self.assertEqual(row["dependsOnCoreIssues"],[3,4,10,5,6,7])
-            elif row["effectId"] in ("fx.water.rainfall","fx.water.water-ripples","fx.water.rising-bubbles"):
+            elif row["effectId"] in ("fx.water.rainfall","fx.water.water-ripples","fx.water.rising-bubbles","fx.water.steam-jet"):
                 self.assertEqual(row["dependsOnCoreIssues"],[3,4,5,6,7])
             else:
                 self.assertEqual(row["dependsOnCoreIssues"],expected[row["category"]])
@@ -52,6 +52,8 @@ class BlueprintTests(unittest.TestCase):
             ("Create a continuous waterfall with flowing strands, droplets and foam",
              "fx.water.waterfall",
              {"parameters","curves","spacing","pathGeometry","emitters","colors","timeline"}),
+            ("Make a steam jet of soft white vapor from a pipe", "fx.water.steam-jet",
+             {"parameters","curves","spacing","emitters","colors","timeline"}),
             ("Create underwater rising bubbles with translucent rim highlights and pop rings",
              "fx.water.rising-bubbles",
              {"parameters","curves","spacing","emitters","colors","timeline"}),
