@@ -199,6 +199,31 @@
       ]
     },
     {
+      "effectId": "fx.water.rainfall",
+      "category": "water",
+      "path": "references/fx/water/rainfall.md",
+      "keywords": [
+        "rainfall",
+        "rain streaks",
+        "rain particles",
+        "continuous rain",
+        "windy rain",
+        "rain shower",
+        "дождь",
+        "дождевые капли",
+        "дощ",
+        "злива"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
       "effectId": "fx.ice.frost-dissolve",
       "category": "ice",
       "path": "references/fx/ice/frost-dissolve.md",

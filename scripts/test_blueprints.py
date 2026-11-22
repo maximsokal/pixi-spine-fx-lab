@@ -21,21 +21,23 @@ class BlueprintTests(unittest.TestCase):
     def test_registry_is_small_and_complete(self):
         self.assertEqual(self.catalog["blueprintSchemaVersion"], 1)
         self.assertEqual(set(self.catalog["categories"]), {"fire", "ice", "game", "water"})
-        self.assertEqual(len(self.blueprints), 10)
+        self.assertEqual(len(self.blueprints), 11)
         self.assertEqual(set(self.blueprints), {
             "fx.fire.burn-transition", "fx.fire.torch-flame",
             "fx.fire.fire-explosion", "fx.fire.fireball-projectile",
             "fx.fire.embers-sparks",
             "fx.fire.smoke-plume",
             "fx.fire.heat-haze",
-            "fx.water.water-splash",
+            "fx.water.water-splash", "fx.water.rainfall",
             "fx.ice.frost-dissolve", "fx.game.hit-flash"})
-        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 10)
-        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 10)
+        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 11)
+        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 11)
         expected = {"fire":[3,4,5,6,7], "ice":[3,6,7], "game":[3,7], "water":[3,4,10,5,6,7]}
         for row in self.catalog["entries"]:
             if row["effectId"]=="fx.fire.fireball-projectile":
                 self.assertEqual(row["dependsOnCoreIssues"],[3,4,10,5,6,7])
+            elif row["effectId"]=="fx.water.rainfall":
+                self.assertEqual(row["dependsOnCoreIssues"],[3,4,5,6,7])
             else:
                 self.assertEqual(row["dependsOnCoreIssues"],expected[row["category"]])
 
@@ -47,6 +49,8 @@ class BlueprintTests(unittest.TestCase):
              {"parameters", "curves", "spacing", "emitters", "colors", "timeline"}),
             ("Make a fireball projectile with a moving curved trail", "fx.fire.fireball-projectile",
              {"parameters", "curves", "spacing", "pathGeometry", "emitters", "colors", "timeline"}),
+            ("Create rainfall with tilted streaks and splashing ground impacts",
+             "fx.water.rainfall",{"parameters","curves","spacing","emitters","colors","timeline"}),
             ("Make a water splash with arcing droplets and ripples", "fx.water.water-splash",
              {"parameters","curves","spacing","pathGeometry","emitters","colors","timeline"}),
             ("Create a heat haze with refracted pixels rising over a background", "fx.fire.heat-haze",
@@ -104,6 +108,11 @@ class BlueprintTests(unittest.TestCase):
         self.assertEqual(len(water["layers"]),4)
         self.assertEqual(len(water["parameters"]),19)
         self.assertIn("assets/Water_Splash_Lab.html",water["implementation"]["sourceFiles"])
+        rain=self.blueprints["fx.water.rainfall"]
+        self.assertEqual(rain["implementation"]["status"],"reference-implementation")
+        self.assertEqual(len(rain["layers"]),4)
+        self.assertEqual(len(rain["parameters"]),24)
+        self.assertIn("assets/Rainfall_Lab.html",rain["implementation"]["sourceFiles"])
         haze=self.blueprints["fx.fire.heat-haze"]
         self.assertEqual(haze["implementation"]["status"],"reference-implementation")
         self.assertTrue(haze["tests"]["verified"])
