@@ -4,7 +4,8 @@
     "fire",
     "ice",
     "game",
-    "water"
+    "water",
+    "air"
   ],
   "entries": [
     {
@@ -363,6 +364,29 @@
       "status": "specification-only",
       "dependsOnCoreIssues": [
         3,
+        7
+      ]
+    },
+    {
+      "effectId": "fx.air.wind-gust",
+      "category": "air",
+      "path": "references/fx/air/wind-gust.md",
+      "keywords": [
+        "wind gust",
+        "curved wind streaks",
+        "directional wind",
+        "wind ribbons",
+        "air gust",
+        "порыв ветра",
+        "порив вітру"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        10,
+        5,
+        6,
         7
       ]
     }

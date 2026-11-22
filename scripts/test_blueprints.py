@@ -20,19 +20,19 @@ class BlueprintTests(unittest.TestCase):
 
     def test_registry_is_small_and_complete(self):
         self.assertEqual(self.catalog["blueprintSchemaVersion"], 1)
-        self.assertEqual(set(self.catalog["categories"]), {"fire", "ice", "game", "water"})
-        self.assertEqual(len(self.blueprints), 15)
+        self.assertEqual(set(self.catalog["categories"]), {"fire", "ice", "game", "water", "air"})
+        self.assertEqual(len(self.blueprints), 16)
         self.assertEqual(set(self.blueprints), {
             "fx.fire.burn-transition", "fx.fire.torch-flame",
             "fx.fire.fire-explosion", "fx.fire.fireball-projectile",
             "fx.fire.embers-sparks",
             "fx.fire.smoke-plume",
             "fx.fire.heat-haze",
-            "fx.water.water-splash", "fx.water.rainfall", "fx.water.water-ripples", "fx.water.waterfall", "fx.water.rising-bubbles", "fx.water.steam-jet",
+            "fx.water.water-splash", "fx.water.rainfall", "fx.water.water-ripples", "fx.water.waterfall", "fx.water.rising-bubbles", "fx.water.steam-jet", "fx.air.wind-gust",
             "fx.ice.frost-dissolve", "fx.game.hit-flash"})
-        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 15)
-        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 15)
-        expected = {"fire":[3,4,5,6,7], "ice":[3,6,7], "game":[3,7], "water":[3,4,10,5,6,7]}
+        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 16)
+        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 16)
+        expected = {"fire":[3,4,5,6,7], "ice":[3,6,7], "game":[3,7], "water":[3,4,10,5,6,7], "air":[3,4,10,5,6,7]}
         for row in self.catalog["entries"]:
             if row["effectId"]=="fx.fire.fireball-projectile":
                 self.assertEqual(row["dependsOnCoreIssues"],[3,4,10,5,6,7])
