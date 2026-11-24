@@ -10,6 +10,7 @@ function decodePng(input){
  assert.ok(bytes.length>=45&&bytes.subarray(0,8).equals(Buffer.from('89504e470d0a1a0a','hex')),'valid PNG signature');
  let at=8,width=0,height=0,colorType=-1,hasIHDR=false,ended=false;
  const idat=[];
+ let transparentKey=null;
  while(at+12<=bytes.length){
   const len=bytes.readUInt32BE(at),end=at+12+len;
   assert.ok(len<=32*1024*1024&&end<=bytes.length,'complete, bounded PNG chunk');
@@ -23,6 +24,11 @@ function decodePng(input){
    colorType=body[9];assert.ok(colorType===2||colorType===6,'RGB or RGBA PNG');
    assert.equal(body[10],0);assert.equal(body[11],0);
    assert.equal(body[12],0,'non-interlaced PNG only');
+  }
+  else if(tag==='tRNS'){
+   assert.ok(hasIHDR&&colorType===2&&len===6&&!transparentKey&&!idat.length,'invalid or misplaced RGB8 tRNS');
+   // PNG stores 16-bit key samples; for RGB8 only their low bytes matter.
+   transparentKey=[body[1],body[3],body[5]];
   }
   else if(tag==='IDAT')idat.push(body);
   else if(tag==='IEND'){assert.equal(len,0);ended=true;break;}
@@ -48,7 +54,8 @@ function decodePng(input){
   }
   for(let x=0;x<width;x++){
    const si=x*nch,di=(y*width+x)*4;
-   pixels[di]=row[si];pixels[di+1]=row[si+1];pixels[di+2]=row[si+2];pixels[di+3]=nch===4?row[si+3]:255;
+   pixels[di]=row[si];pixels[di+1]=row[si+1];pixels[di+2]=row[si+2];pixels[di+3]=nch===4?row[si+3]:
+    transparentKey&&row[si]===transparentKey[0]&&row[si+1]===transparentKey[1]&&row[si+2]===transparentKey[2]?0:255;
   }
   row.copy(previous);
  }

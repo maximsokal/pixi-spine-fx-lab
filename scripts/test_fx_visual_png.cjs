@@ -32,3 +32,41 @@ const unsupported=fixture(2,source);
 unsupported[25]=3;
 assert.throws(()=>decodePng(unsupported),/CRC|RGB/);
 console.log('PASS FX-CORE-07 independent PNG RGB/RGBA8 parser, pixel delta/alpha, malformed CRC/truncation');
+
+// Truecolour tRNS stores three big-endian 16-bit samples; RGB8 uses low bytes.
+const {test}=require('node:test');
+const transparentKey=chunk('tRNS',Buffer.from([0,1,0,50,0,250]));
+function insertChunk(png,extra,at=33){
+ return Buffer.concat([png.subarray(0,at),extra,png.subarray(at)]);
+}
+const rgbFixture=fixture(2,source);
+test('RGB8 tRNS preserves RGB and reconstructs binary alpha',()=>{
+ const decoded=decodePng(insertChunk(rgbFixture,transparentKey));
+ assert.deepEqual(decoded.rgba(0,0),[1,50,250,0]);
+ assert.deepEqual(decoded.rgba(1,0),[255,0,170,255]);
+ assert.deepEqual(countAlpha(decoded),{transparent:1,partial:0,opaque:1});
+ assert.equal(comparePixels(rgb,decoded,{step:1,channelTolerance:0}).changedPixels,1);
+});
+test('RGB8 tRNS ignores unused high sample bits per PNG spec',()=>{
+ const key=chunk('tRNS',Buffer.from([9,1,8,50,7,250]));
+ assert.equal(decodePng(insertChunk(rgbFixture,key)).rgba(0,0)[3],0);
+});
+test('RGB8 tRNS nonmatching key leaves both pixels opaque',()=>{
+ const key=chunk('tRNS',Buffer.from([0,1,0,50,0,249]));
+ assert.deepEqual(countAlpha(decodePng(insertChunk(rgbFixture,key))),{transparent:0,partial:0,opaque:2});
+});
+test('reject tRNS with invalid length',()=>{
+ assert.throws(()=>decodePng(insertChunk(rgbFixture,chunk('tRNS',Buffer.alloc(5)))),/tRNS/);
+});
+test('reject duplicate tRNS',()=>{
+ assert.throws(()=>decodePng(insertChunk(rgbFixture,Buffer.concat([transparentKey,transparentKey]))),/tRNS/);
+});
+test('reject tRNS after IDAT',()=>{
+ assert.throws(()=>decodePng(insertChunk(rgbFixture,transparentKey,rgbFixture.length-12)),/tRNS/);
+});
+test('reject tRNS before IHDR',()=>{
+ assert.throws(()=>decodePng(insertChunk(rgbFixture,transparentKey,8)),/tRNS/);
+});
+test('reject tRNS in RGBA8',()=>{
+ assert.throws(()=>decodePng(insertChunk(fixture(6,source),transparentKey)),/tRNS/);
+});
