@@ -132,13 +132,16 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
           container.label='FX layer '+layer.id;
           container.addChild(graphics);
           record={container,graphics,filter:null};
-          if(layer.type==='postprocess'){
-            if(!PIXI.BlurFilter)throw Error('PixiJS BlurFilter unavailable for postprocess layer');
-            record.filter=new PIXI.BlurFilter({strength:2.5,quality:2});
-            container.filters=[record.filter];
-          }
           state.layers.set(layer.id,record);
           state.container.addChild(container);
+        }
+        // Imported settings can change a layer's type without changing its ID.
+        if(layer.type==='postprocess'&&!record.filter){
+          if(!PIXI.BlurFilter)throw Error('PixiJS BlurFilter unavailable for postprocess layer');
+          record.filter=new PIXI.BlurFilter({strength:2.5,quality:2});
+          record.container.filters=[record.filter];
+        }else if(layer.type!=='postprocess'&&record.filter){
+          record.container.filters=[];record.filter.destroy();record.filter=null;
         }
         record.container.zIndex=layer.order;
         record.graphics.blendMode=layer.blend;
