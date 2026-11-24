@@ -16,7 +16,9 @@
     "arch:statik:cycles": "node scripts/run-statik.cjs cycles --format json",
     "arch:statik:dead-code": "node scripts/run-statik.cjs dead-code",
     "arch:statik:impact": "node scripts/run-statik.cjs impact",
-    "arch:check": "npm run arch:deps && npm run arch:unused && npm run arch:statik:index && npm run arch:statik"
+    "arch:statik:health": "node scripts/run-statik-health.cjs",
+    "arch:statik:test": "node --test scripts/test-statik-health.cjs",
+    "arch:check": "npm run arch:deps && npm run arch:unused && npm run arch:statik:health"
   },
   "devDependencies": {
     "dependency-cruiser": "18.9.0",

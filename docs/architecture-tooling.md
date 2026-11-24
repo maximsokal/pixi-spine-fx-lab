@@ -29,6 +29,8 @@ npm run arch:statik:summary
 npm run arch:statik:cycles
 npm run arch:statik:dead-code
 npm run arch:statik:impact -- assets/template/src/curve-core.js
+npm run arch:statik:test
+npm run arch:statik:health
 npm run arch:check
 ```
 
@@ -61,6 +63,12 @@ The 11 blueprint tests and 9 effect-validation tests passed. Full Python discove
 Run `python -m unittest discover -s scripts` for Python discovery. The Steam Jet and Wind Gust package validators are explicit CLI checks; importing them must not inspect archives or invoke npm. For real browser-generated archives, separately run `python scripts/test_steam_packages.py <steam-qa-directory>` and `python scripts/test_wind_packages.py <wind-qa-directory>`. Missing or invalid archives remain errors. Do not treat successful unit discovery as evidence of real PNG, ZIP or offline Vite build parity.
 
 Targeted verification on Python 3.13.5: the three-file local snapshot (two original validators verified by Git blob SHA plus the new regression suite) produced 3 failures before the fix and 5/5 passing tests after it. Full repository discovery and real browser archives were not run in this environment because the full checkout and browser-generated fixtures were unavailable. The earlier baseline above is historical.
+
+### Statik coverage gate (#75)
+
+Run `npm run arch:statik:test` for dependency-free synthetic subprocess regression tests and `npm run arch:statik:health` for the real installed analyzer. The health command refreshes the index with the vendor exclusion, checks a nonempty index and entry-point set, then checks the direct Wind Gust → curve-core dependency in the pinned Statik JSON schema. Only if those checks pass does it run lint. Raw Statik commands remain available for diagnostic output, including lint, even if coverage is degraded. Exit 0 is a limited canary PASS, not proof of complete coverage; 1 is ERROR (invalid output or process failure); 2 is DEGRADED (missing coverage) or UNVERIFIED (executable unavailable). `arch:check` runs dependency-cruiser and Knip before the health gate and propagates its nonzero status. Statik remains advisory for architecture decisions: a degraded result is not an architecture violation and cannot justify code removal. Do not hide a failed or unavailable tool.
+
+Local Node 22.16.0 verification: 11/11 synthetic regression tests passed; absent actual Statik reported UNVERIFIED and exit 2; full arch:check stopped at missing dependency-cruiser (exit 127). Full checkout, real pinned Statik on Linux/Windows, and runtime/browser tests were not available. This change guards against misleading success; it does not fix upstream CommonJS parsing or Windows path indexing.
 
 ## CI proposal
 
