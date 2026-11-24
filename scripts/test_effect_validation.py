@@ -143,10 +143,11 @@ class ReportContractTests(unittest.TestCase):
     def test_specs_cannot_report_implemented_pass(self):
         self.check_bad(lambda p: p.update(effectId="fx.ice.frost-dissolve"))
         self.check_bad(lambda p: p.update(effectId="fx.game.hit-flash"))
+        self.check_bad(lambda p: p.update(effectId="fx.air.snowfall"))
 
     def test_true_not_run_for_spec_only_effect(self):
         """Unimplemented ICE/GAME must not invent a renderer or screenshots."""
-        for effect in ("fx.ice.frost-dissolve", "fx.game.hit-flash"):
+        for effect in ("fx.ice.frost-dissolve", "fx.game.hit-flash", "fx.air.snowfall"):
             with self.subTest(effect=effect):
                 doc=fxv.catalog_requirements(ROOT)[effect]["blueprint"]
                 report=copy.deepcopy(self.report)
@@ -219,7 +220,7 @@ class ReportContractTests(unittest.TestCase):
         refs = fxv.catalog_requirements(ROOT)
         self.assertEqual(set(refs), {"fx.fire.burn-transition", "fx.fire.torch-flame",
                                      "fx.fire.fire-explosion", "fx.fire.fireball-projectile", "fx.fire.embers-sparks", "fx.fire.smoke-plume", "fx.fire.heat-haze", "fx.water.water-splash", "fx.water.rainfall", "fx.water.water-ripples", "fx.water.waterfall", "fx.water.rising-bubbles", "fx.water.steam-jet", "fx.air.wind-gust",
-                                     "fx.ice.frost-dissolve", "fx.game.hit-flash"})
+                                     "fx.ice.frost-dissolve", "fx.game.hit-flash", "fx.air.snowfall"})
         for item in refs.values():
             self.assertEqual(set(item["phases"]), {"original","active","burned"}
                              if item["effectId"] == "fx.fire.burn-transition"
