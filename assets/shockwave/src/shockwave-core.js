@@ -31,29 +31,29 @@
   if(!Array.isArray(input.emitters)||input.emitters.length>4)fail('max 4 emitters');const ids=new Set();
   c.emitters=input.emitters.map(e=>{shape(e,EK);if(typeof e.id!=='string'||!/^[a-z][\w-]{0,63}$/i.test(e.id)||ids.has(e.id))fail('invalid/duplicate emitter');ids.add(e.id);shape(e.layers,LAYERS);const layers={};for(const k of LAYERS){const l=e.layers[k];shape(l,LK);layers[k]={...transform(l),alpha:num(l.alpha,'alpha',0,1)};}return {id:e.id,...transform(e),layers};});return c;
  }
- function births(c,e){const t=[0],seed=c.seed^e.seed^hash(e.id);for(let i=1;i<c.ringCount;i++){
+ function births(c,e,layer='secondary'){const t=[0],seed=c.seed^e.seed^e.layers[layer].seed^hash(e.id);for(let i=1;i<c.ringCount;i++){
   const gap=c.ringDelayFrames*C.evaluate(c.intervalCurve,t[i-1]/END),next=t[i-1]+Math.max(c.minIntervalFrames,gap*(1+(rand(seed,i)*2-1)*c.timeJitter));
   if(next>=END)fail('ring schedule exceeds 40-frame window');t.push(next);
  }return t;}
- function schedule(input,id){const c=normalize(input),e=c.emitters.find(v=>v.id===id);if(!e)fail('unknown emitter');return births(c,e);}
+ function schedule(input,id,layer='secondary'){const c=normalize(input),e=c.emitters.find(v=>v.id===id);if(!e)fail('unknown emitter');if(!LAYERS.includes(layer))fail('unknown layer');return layer==='primary'?[0]:births(c,e,layer);}
  // Exact circle arc length. Place stable directions at the final radius, then
  // advect along the growing wave; no per-frame rebirth or seam duplicate.
  function directions(c,radius,seed,remaining){const length=TAU*radius,out=[];let d=0;
-  while(d<length){if(out.length>=remaining)fail('particle budget exceeded');out.push(d);const gap=clamp(c.arcGapPx*C.evaluate(c.arcSpacingCurve,d/length),2,100);d+=gap;}
+  while(d<length){if(c.distribution==='even'&&d>0&&length-d<2-1e-9)break;if(out.length>=remaining)fail('particle budget exceeded');out.push(d);const gap=clamp(c.arcGapPx*C.evaluate(c.arcSpacingCurve,d/length),2,100);d+=gap;}
   return out.map((distance,i)=>{const prev=out[i-1]??0,next=out[i+1]??length,span=Math.min(distance-prev,next-distance),j=c.distribution==='even'?0:(rand(seed,i)*2-1)*c.spatialJitter*span;
    const offset=c.distribution==='clustered'?Math.sin(distance/radius*4)*.2*span:0;
    const dist=clamp(distance+j+offset,prev,next);return {distance:dist,angle:dist/radius};});
  }
  function freeze(o){if(o&&typeof o==='object'&&!Object.isFrozen(o)){Object.values(o).forEach(freeze);Object.freeze(o);}return o;}
  function createPlan(input){const c=freeze(normalize(input)),limit=BUDGETS[c.quality],compiled=[];let peak=0;
-  for(const e of c.emitters){const times=births(c,e),dirs=[];if(e.enabled&&e.layers.particles.enabled&&e.layers.particles.alpha>0){for(let i=0;i<times.length;i++){const a=directions(c,c.finalRadius+i*c.radialGapPx,c.seed^e.seed^e.layers.particles.seed^hash(e.id)^i,limit-peak);peak+=a.length;dirs.push(a);}}compiled.push({e,times,dirs});}
+  for(const e of c.emitters){const times={primary:[0],secondary:births(c,e,'secondary'),particles:births(c,e,'particles')},dirs=[];if(e.enabled&&e.layers.particles.enabled&&e.layers.particles.alpha>0){for(let i=0;i<times.particles.length;i++){const a=directions(c,c.finalRadius+i*c.radialGapPx,c.seed^e.seed^e.layers.particles.seed^hash(e.id)^i,limit-peak);peak+=a.length;dirs.push(a);}}compiled.push({e,times,dirs});}
   function sample(seconds){num(seconds,'time',0,1e8);const frame=seconds*60,emitters=[];let cost=0;
    for(const {e,times,dirs} of compiled){const layers={primary:[],secondary:[],particles:[]},transforms={};
     for(const k of LAYERS){const l=e.layers[k];transforms[k]={x:l.x,y:l.y,rotation:l.rotation};if(!e.enabled||!l.enabled||!l.alpha||frame>=END)continue;
-     for(let i=0;i<times.length;i++){if(k==='primary'&&i!==0||k==='secondary'&&i===0)continue;
-      const age=frame-e.timeOffset-l.timeOffset-times[i];if(age<0||age>=END)continue;const u=age/END,radius=c.startRadius+i*c.radialGapPx+(c.finalRadius-c.startRadius)*C.evaluate(c.radiusCurve,u),width=c.ringWidth*C.evaluate(c.widthCurve,u),rgba=COL.sample(c.palette,u);
+     for(let i=0;i<times[k].length;i++){if(k==='secondary'&&i===0)continue;
+      const age=frame-e.timeOffset-l.timeOffset-times[k][i];if(age<0||age>=END)continue;const u=age/END,radius=c.startRadius+i*c.radialGapPx+(c.finalRadius-c.startRadius)*C.evaluate(c.radiusCurve,u),width=c.ringWidth*C.evaluate(c.widthCurve,u),rgba=COL.sample(c.palette,u);
       rgba[3]*=l.alpha*C.evaluate(c.opacityCurve,u)*clamp((END-frame)/6,0,1);if(!rgba[3]||!width)continue;
-      const ring={id:e.id+'-'+k+'-'+i,index:i,bornFrame:times[i]+e.timeOffset+l.timeOffset,radius,width,edgeSoftness:c.edgeSoftness,rgba};
+      const ring={id:e.id+'-'+k+'-'+i,index:i,bornFrame:times[k][i]+e.timeOffset+l.timeOffset,radius,width,edgeSoftness:c.edgeSoftness,rgba};
       if(k==='particles'){for(const p of dirs[i]||[])layers[k].push({...p,id:ring.id+'-'+layers[k].length,x:radius*Math.cos(p.angle),y:radius*Math.sin(p.angle),rgba:rgba.slice()});}
       else layers[k].push(ring);
      }cost+=layers[k].length;

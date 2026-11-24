@@ -68,3 +68,37 @@ test('strict configuration and preflight bounds',()=>{
  const c=S.defaults();c.finalRadius=500;c.arcGapPx=2;c.ringCount=8;c.ringDelayFrames=0;c.emitters[0].layers.particles.enabled=true;
  assert.throws(()=>S.createPlan(c),/budget/);
 });
+
+test('independent layer seeds control only their own jittered schedule',()=>{
+ const c=S.defaults();c.ringCount=4;c.timeJitter=.4;c.emitters[0].layers.particles.enabled=true;
+ c.emitters.push(S.newEmitter(1));const base=S.sample(c,.4);
+ const secondary=S.schedule(c,'emitter1'),particles=S.schedule(c,'emitter1','particles');
+ c.emitters[0].layers.secondary.seed++;
+ const a=S.sample(c,.4);assert.notDeepEqual(S.schedule(c,'emitter1'),secondary);
+ assert.deepEqual(S.schedule(c,'emitter1','particles'),particles);
+ assert.deepEqual(layer(a,'particles'),layer(base,'particles'));
+ assert.deepEqual(layer(a,'primary'),layer(base,'primary'));assert.deepEqual(a.emitters[1],base.emitters[1]);
+ c.emitters[0].layers.particles.seed++;
+ const b=S.sample(c,.4);assert.notDeepEqual(S.schedule(c,'emitter1','particles'),particles);
+ assert.deepEqual(layer(b,'secondary'),layer(a,'secondary'));
+ assert.deepEqual(layer(b,'primary'),layer(a,'primary'));assert.deepEqual(b.emitters[1],a.emitters[1]);
+ const p=S.createPlan(c);p.sample(.55);assert.deepEqual(p.sample(.4),b);
+});
+test('zero jitter preserves times and primary is a single initial birth',()=>{
+ const c=S.defaults();c.ringCount=3;
+ for(const key of ['secondary','particles'])assert.deepEqual(S.schedule(c,'emitter1',key),[0,5,10]);
+ assert.deepEqual(S.schedule(c,'emitter1','primary'),[0]);assert.throws(()=>S.schedule(c,'emitter1','unknown'),/layer/);
+});
+test('even circular distribution avoids near duplicate at wrap seam',()=>{
+ const c=S.defaults();c.finalRadius=70.1;c.arcGapPx=22;c.emitters[0].layers.particles.enabled=true;
+ const a=layer(S.sample(c,.45),'particles');assert.equal(a.length,20);
+ for(let i=1;i<a.length;i++)close(a[i].distance-a[i-1].distance,22);
+ assert.ok(2*Math.PI*c.finalRadius-a.at(-1).distance+a[0].distance>=2);
+ c.finalRadius=(22*6+2)/(2*Math.PI);const b=layer(S.sample(c,.45),'particles');
+ assert.equal(b.length,7);close(2*Math.PI*c.finalRadius-b.at(-1).distance,2);
+});
+test('discarded even seam candidate does not consume the particle budget',()=>{
+ const c=S.defaults();c.finalRadius=512.5/(2*Math.PI);c.arcGapPx=2;c.quality='low';c.emitters[0].layers.particles.enabled=true;
+ const p=S.createPlan(c);assert.equal(p.peakParticles,256);
+ assert.equal(layer(p.sample(.45),'particles').length,256);
+});
