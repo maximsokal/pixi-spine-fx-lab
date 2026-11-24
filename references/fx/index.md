@@ -35,6 +35,19 @@ Run `python scripts/blueprint_router.py --route "hit flash damage"` to inspect a
 
 Vine Growth (#33), Chain Lightning (#38), Sword Slash (#42), ribbons and trails may depend on [FX-CORE-08 Path Geometry](../contracts/path-geometry.md) after Curves and Spacing. It is an **implemented reusable geometry library**, not a ready-made effect. Do not load it for unrelated FIRE/ICE/GAME variants; future Blueprints explicitly include `pathGeometry` in `requiredContracts` when applicable.
 
+## Complete issue Blueprint catalog (#52)
+
+[backlog.json](backlog.json) indexes all 41 original effect specifications (#11–#51) and eight shared core contracts (#3–#10), separately from the local executable Blueprint registry. The opt-in lookup never activates an effect or substitutes a similar effect. Use:
+
+```sh
+python scripts/fx_backlog.py --select GAME-05
+python scripts/fx_backlog.py --select 41
+python scripts/fx_backlog.py --list --category GAME --priority P0
+python scripts/test_fx_backlog.py
+```
+
+Each result contains its exact GitHub specification, priority, relevant shared contracts, and an explicit local Blueprint link when one exists. Local lifecycle is read from the existing registry, not copied as a frozen GitHub issue state. Issue-only entries are specifications, not runnable editors; consult the linked issue before review. When adding a new local Blueprint, update its corresponding `localEffectId` in the backlog. The original 41-effect catalog excludes the separate Burn, Frost Dissolve and Hit Flash entries in the local registry. No change to SKILL.md or existing effect routing is required.
+
 ## Future issue catalog
 
 Each new GitHub effect issue must be self-contained: goal, inputs, start/end look, timing/loop, alpha, artist controls, required renderer and GPU budgets, dependencies and concrete acceptance tests. Index issues by category/status/dependencies, **not** by pasting 41 full specifications into SKILL.md.
