@@ -32,7 +32,14 @@
   };
  }
  function createTransport({duration=3,time=0,direction=1,loop=false,playing=false}={}){
-  let length=num(duration,'duration',1/FPS,1e6),t=canonicalSeconds(num(time,'time',0,length));
+  let length=num(duration,'duration',1/FPS,1e6);
+  // Authored endpoint wins over frame snapping; never snap outside duration.
+  const transportSeconds=value=>{
+   if(value===length)return length;
+   const snapped=canonicalSeconds(value);
+   return snapped<=length?snapped:value;
+  };
+  let t=transportSeconds(num(time,'time',0,length));
   if(direction!==1&&direction!==-1)throw new RangeError('direction must be +1 or -1');
   if(typeof loop!=='boolean'||typeof playing!=='boolean')throw new TypeError('loop and playing must be boolean');
   let velocity=direction,looped=loop,active=playing;
@@ -40,7 +47,7 @@
    direction:velocity,loop:looped,playing:active});
   return {
    get state(){return snapshot()},
-   seek(value){t=canonicalSeconds(num(value,'seek time',0,length));return snapshot()},
+   seek(value){t=transportSeconds(num(value,'seek time',0,length));return snapshot()},
    play(next=velocity){if(next!==1&&next!==-1)throw new RangeError('direction must be +1 or -1');
     velocity=next;active=true;return snapshot();},
    pause(){active=false;return snapshot()},
@@ -61,7 +68,7 @@
      if(next>=length-eps){next=length;active=false;}
      if(next<=eps){next=0;active=false;}
     }
-    t=canonicalSeconds(next);return snapshot();
+    t=transportSeconds(next);return snapshot();
    }
   };
  }

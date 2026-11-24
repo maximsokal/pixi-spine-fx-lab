@@ -57,3 +57,44 @@ replay.invalidate();assert.deepEqual(state,{elapsed:0,value:0,rng:42});
 assert.equal(replay.time,0);assert.deepEqual(replay.checkpointFrames,[0]);
 assert.ok(renders.length>0&&deltas.every(t=>t===1/60));
 console.log('PASS FX-CORE-05 transport seconds, reverse/pause/loop, PRNG, 30/60/120 FPS, fractional seek, 30→10→30, 64 checkpoints, 3600 frame indexing');
+
+// A fractional duration is authoritative even within the frame-snap epsilon.
+const {test}=require('node:test');
+for(const duration of [1-5e-10,1+5e-10]){
+ test('constructor preserves exact endpoint '+duration,()=>{
+  const state=T.createTransport({duration,time:duration}).state;
+  assert.equal(state.time,duration);assert.equal(state.phase,1);
+ });
+ test('seek preserves exact endpoint '+duration,()=>{
+  const clock=T.createTransport({duration});
+  const state=clock.seek(duration);
+  assert.equal(state.time,duration);assert.equal(state.phase,1);
+ });
+ test('forward tick stops at exact endpoint '+duration,()=>{
+  const clock=T.createTransport({duration,playing:true});
+  const state=clock.tick(2);
+  assert.equal(state.time,duration);assert.equal(state.phase,1);assert.equal(state.playing,false);
+ });
+}
+test('near-end seek cannot round past fractional duration',()=>{
+ const duration=1-5e-10,time=1-7e-10;
+ const state=T.createTransport({duration}).seek(time);
+ assert.equal(state.time,time);assert.ok(state.phase<1);
+});
+test('looping forward tick stays inside fractional duration',()=>{
+ const duration=1-5e-10,time=1-7e-10;
+ const clock=T.createTransport({duration,loop:true,playing:true});
+ const state=clock.tick(time);
+ assert.equal(state.time,time);assert.ok(state.phase<1);assert.equal(state.playing,true);
+});
+test('looping reverse exact wrap preserves fractional endpoint',()=>{
+ const duration=1+5e-10;
+ const clock=T.createTransport({duration,direction:-1,loop:true,playing:true});
+ const state=clock.tick(duration);
+ assert.equal(state.time,duration);assert.equal(state.phase,1);assert.equal(state.playing,true);
+});
+test('in-range frame snap and forward loop seam remain unchanged',()=>{
+ const clock=T.createTransport({duration:2,loop:true,playing:true});
+ assert.equal(clock.seek(1-5e-10).time,1);
+ assert.equal(clock.tick(1).time,0);
+});
