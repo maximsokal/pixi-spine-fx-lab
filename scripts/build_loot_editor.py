@@ -4,7 +4,7 @@ import argparse
 import json
 import re
 from pathlib import Path
-from build_editor import local, text
+from build_editor import local, text, sample_data
 
 
 def build(root):
@@ -18,12 +18,13 @@ def build(root):
     def tag(base, name):
         return "<script>" + re.sub(r"</script", r"<\\/script", text(local(base, name)), flags=re.I) + "</script>"
 
-    notices = text(local(template, "licenses/pixi.txt"))
-    vendor = "<!--\n" + notices + "\n-->\n" + tag(template, "vendor/pixi-8.22.0.min.js")
+    notices = text(local(template, "licenses/pixi.txt")) + "\n" + text(local(template, "licenses/spine.txt"))
+    vendor = "<!--\n" + notices + "\n-->\n" + "\n".join(tag(template, name) for name in manifest["browserScripts"])
     cores = [tag(template, "src/" + name) for name in (
         "curve-core.js", "spacing-core.js", "color-core.js", "timeline-core.js", "curve-editor.js", "color-ui.js")]
-    cores += [tag(source, name) for name in ("loot-core.js", "loot-runtime.js")]
-    for marker, value in (("<!-- VENDOR -->", vendor), ("<!-- CORES -->", "\n".join(cores)),
+    cores += [tag(source, name) for name in ("loot-core.js", "loot-runtime.js", "loot-spine.js")]
+    sample = json.dumps(sample_data(template, manifest), separators=(",", ":")).replace("</", "<\\/")
+    for marker, value in (("__SAMPLE_DATA__", sample), ("<!-- VENDOR -->", vendor), ("<!-- CORES -->", "\n".join(cores)),
                           ("<!-- APP -->", tag(source, "loot-editor.js"))):
         if html.count(marker) != 1:
             raise ValueError("Expected exactly one marker: " + marker)

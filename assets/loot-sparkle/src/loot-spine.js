@@ -5,6 +5,11 @@
  if(typeof module==='object'&&module.exports)module.exports=api;else root.FxLootSpine=api;
 })(globalThis,function(){
  'use strict';
+ function sample(spec){
+  return {name:spec.skeletonName,skeleton:new Blob([JSON.stringify(spec.skeleton)]),
+   atlas:new Blob([spec.atlas]),images:new Map(Object.entries(spec.images).map(([name,b64])=>
+    [name,new Blob([Uint8Array.from(atob(b64),c=>c.charCodeAt(0))],{type:'image/png'})]))};
+ }
  const fail=m=>{throw Error('GAME-12 Spine: '+m);};
  const versionOk=v=>typeof v==='string'&&/^4\.2\.(?:0|[1-9]\d*)$/.test(v);
  const normalized=n=>n.replace(/\\/g,'/');
@@ -58,6 +63,8 @@
   const {PIXI,spine,TextDecoder:Decoder,URL,Image,FxTimeline}=env;
   if(!source?.skeleton||!source?.atlas||!(source.images instanceof Map))fail('select skeleton, atlas and textures');
   if(!PIXI||!spine||!FxTimeline)fail('pinned runtime unavailable');
+  if(source.skeleton.size>64*1024*1024||source.atlas.size>4*1024*1024||source.images.size>64||
+   [...source.images.values()].reduce((n,b)=>n+(b.size||0),0)>192*1024*1024)fail('asset budget exceeded');
   const retained={name:source.name,skeleton:source.skeleton,atlas:source.atlas,images:new Map(source.images)};
   const decoded=decodeSkeleton(retained.name,new Uint8Array(await retained.skeleton.arrayBuffer()),{spine,TextDecoder:Decoder});
   const atlas=new spine.TextureAtlas(await retained.atlas.text()),pages=matchPages(atlas.pages,retained.images);
@@ -102,5 +109,5 @@
    return Object.freeze({model,source:retained,version:decoded.version,pages:pages.length,animations,skins,defaultSkin,defaultAnimation,pose,destroy});
   }catch(e){try{destroy()}catch(cleanup){e.cleanupError=cleanup;}throw e;}
  }
- return {VERSION:1,matchPages,decodeSkeleton,anchorPoses,create};
+ return {VERSION:1,matchPages,decodeSkeleton,anchorPoses,create,sample};
 });
