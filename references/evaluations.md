@@ -10,3 +10,14 @@ Use these as realistic tasks. Evaluate preservation and reasoning, not whether t
 6. **Unsupported request**: Ask for arbitrary Spine versions or MP4 export without scope. Confirm the agent identifies these as extensions, reviews them and does not pretend the baseline already supports them.
 
 Do not claim Claude model testing or physical-phone testing unless actually performed. The skill can be structurally validated and forward-tested with the available agent independently of Claude installation.
+
+## Local committed scope and asset-integrity check (#71)
+
+Use an explicitly reviewed baseline commit, candidate commit, and exact allowed file paths. For example:
+
+```sh
+python scripts/agent_scope.py --base BASE_SHA --candidate CANDIDATE_SHA --allow assets/fire/src/core.js
+python scripts/test_agent_scope.py
+```
+
+The independent check compares actual Git tree entries, including file modes, additions, deletions and both sides of renames. It rehashes protected blobs against the baseline manifest using SHA-256 and rejects changes to that manifest and its vendor, license and sample directories even if included in the allowlist. Planned runtime upgrades must use their separate approved review. Exit 0 = scoped tree/integrity PASS; 1 = FAIL; 2 = UNVERIFIED (invalid inputs or unavailable Git data). It does not inspect uncommitted worktree files, establish human approval, or validate editor visuals, PNG, exports or offline behavior. Those checks remain explicitly NOT RUN. Use the output alongside, never instead of, the existing acceptance matrix. Run from a trusted copy of the checker and supply trusted baseline/allowlist; do not allow an agent to alter its own evaluator.
