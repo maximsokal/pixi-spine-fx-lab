@@ -288,8 +288,8 @@ const EmbersEditor=(()=>{
   const binary=/\.skel$/i.test(source.skeletonName);
   const raw=binary?new Uint8Array(bytes):new TextDecoder().decode(bytes);
   const data=binary?raw:JSON.parse(raw);
-  const version=binary?binaryVersion(raw):data.skeleton?.spine;
-  if(typeof version!=='string'||!version.startsWith('4.2.'))
+  const version=binary?binaryVersion(raw):data?.skeleton?.spine;
+  if(typeof version!=='string'||!/^4\.2\.(?:0|[1-9]\d*)$/.test(version))
    throw Error('Embers requires Spine 4.2 export. Actual: '+version);
   const newAtlas=new spine.TextureAtlas(await source.atlas.text()),newTextures=[];
   let newModel=null;

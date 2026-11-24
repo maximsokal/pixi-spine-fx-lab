@@ -7,7 +7,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const root=process.env.IMPORT_GUARD_ROOT||path.resolve(__dirname,'..');
-const editors=[['torch-flame','torch'],['rising-bubbles','bubbles'],['waterfall','waterfall']];
+const editors=[['torch-flame','torch'],['rising-bubbles','bubbles'],['waterfall','waterfall'],['embers-sparks','embers'],['fire-explosion','explosion'],['fireball-projectile','projectile'],['heat-haze','haze'],['rainfall','rain'],['smoke-plume','smoke'],['steam-jet','steam'],['water-ripples','ripples'],['water-splash','splash'],['wind-gust','wind']];
 function harness(effect,editor){
  const file=fs.readFileSync(path.join(root,'assets',effect,'src',editor+'-editor.js'),'utf8');
  const start=file.indexOf(' function binaryVersion('),end=file.indexOf('\n  let newModel=null;',start);
