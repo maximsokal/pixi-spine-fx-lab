@@ -46,18 +46,32 @@ main().catch(e=>{console.error(e);document.getElementById('backend').textContent
 `;
  async function developer({settings,target,source,options,assetInfo,previewSeconds,crop,frameCount,sources,licenses}){
   if(!['webgl','webgpu'].includes(target))throw Error('Invalid developer target');
-  const preset={schemaVersion:1,effectId:'fx.game.loot-sparkle',rendererPreference:target,settings:FxLoot.compile(settings).settings,previewSeconds,crop,frameCount,asset:null,compatibility:{pixi:'8.22.0',spine:'4.2.120'}};
-  const entries=[],add=(name,data)=>entries.push({name,data:typeof data==='string'?enc(data):data}),blob=async(name,b)=>add(name,new Uint8Array(await b.arrayBuffer()));
+  const preset={schemaVersion:1,effectId:'fx.game.loot-sparkle',rendererPreference:target,settings:FxLoot.compile(settings).settings,previewSeconds,crop:crop==null?crop:{...crop},frameCount,asset:null,compatibility:{pixi:'8.22.0',spine:'4.2.120'}};
+  const MiB=1024*1024;
+  const entries=[],add=(name,data)=>entries.push({name,data:typeof data==='string'?enc(data):data});
+  // Capture source strings and all mutable metadata before any asynchronous reads.
+  for(const name of files){if(typeof sources?.[name]!=='string'||!sources[name].trim())throw Error('Missing source '+name);add(name,sources[name])}
+  if(typeof licenses!=='string'||!licenses.trim())throw Error('Missing runtime notices');
   if(source){
-   const ext=/\.skel$/i.test(source.name)?'skel':'json';
-   preset.asset={sourceSkeletonName:source.name,sourceAtlasName:source.atlas.name||'sample.atlas',version:assetInfo.version,skeleton:'assets/skeleton.'+ext,atlas:'assets/skeleton.atlas',images:[],options:{...options}};
-   await blob('public/'+preset.asset.skeleton,source.skeleton);await blob('public/'+preset.asset.atlas,source.atlas);
-   let i=0;for(const [name,b] of source.images){
+   const {name,skeleton,atlas}=source;
+   if(typeof name!=='string'||!/\.(json|skel)$/i.test(name)||!(source.images instanceof Map)||!source.images.size||source.images.size>64)throw Error('Invalid Spine asset');
+   const images=[...source.images],sizes=new Map();let imageBytes=0;
+   const validate=(b,max)=>{if(!b||!Number.isSafeInteger(b.size)||b.size<1||b.size>max||typeof b.arrayBuffer!=='function')throw Error('Invalid asset size');sizes.set(b,b.size);return b.size;};
+   const skeletonSize=validate(skeleton,64*MiB),atlasSize=validate(atlas,4*MiB);
+   for(const [key,b] of images){if(typeof key!=='string'||!key.trim())throw Error('Invalid image key');imageBytes+=validate(b,192*MiB);}
+   // Reserve package metadata and source code before reading potentially large Blobs.
+   const sourceBytes=entries.reduce((n,e)=>n+e.data.length,0)+enc(licenses).length;
+   if(imageBytes>192*MiB||skeletonSize+atlasSize+imageBytes+sourceBytes>240*MiB)throw Error('Asset budget exceeded');
+   const ext=/\.skel$/i.test(name)?'skel':'json';
+   if(typeof assetInfo?.version!=='string'||!/^4\.2\.(?:0|[1-9]\d*)$/.test(assetInfo.version))throw Error('Invalid Spine version');
+   preset.asset={sourceSkeletonName:name,sourceAtlasName:atlas.name||'sample.atlas',version:assetInfo.version,skeleton:'assets/skeleton.'+ext,atlas:'assets/skeleton.atlas',images:[],options:{...options}};
+   const blob=async(name,b)=>{const data=new Uint8Array(await b.arrayBuffer());if(data.length!==sizes.get(b))throw Error('Asset size changed');add(name,data)};
+   await blob('public/'+preset.asset.skeleton,skeleton);await blob('public/'+preset.asset.atlas,atlas);
+   let i=0;for(const [name,b] of images){
     const suffix=/\.(png|webp|jpe?g)$/i.exec(name)?.[1].toLowerCase()||'png',path='assets/page_'+String(i++).padStart(3,'0')+'.'+suffix;
     preset.asset.images.push({name,path});await blob('public/'+path,b);
    }
   }
-  for(const name of files){if(typeof sources[name]!=='string'||!sources[name])throw Error('Missing source '+name);add(name,sources[name])}
   const json=JSON.stringify(preset,null,2);add('preset.json',json);add('public/preset.json',json);
   add('package.json',JSON.stringify({name:'loot-sparkle-'+target,private:true,type:'module',scripts:{dev:'vite',build:'vite build',preview:'vite preview'},dependencies:{'pixi.js':'8.22.0','@esotericsoftware/spine-pixi-v8':'4.2.120'},devDependencies:{vite:'7.1.12'}},null,2));
   add('example.js',demo);add('LICENSES.txt',licenses);
