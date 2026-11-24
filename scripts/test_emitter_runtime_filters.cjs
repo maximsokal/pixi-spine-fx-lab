@@ -18,6 +18,9 @@ function fixture({customModel,editDoc,defer=false,noBlur=false,failFilterAt=0,fa
   addChildAt(child,index){if(child.parent)child.parent.removeChild(child);this.children.splice(index,0,child);child.parent=this;}
   removeChild(child){this.children.splice(this.children.indexOf(child),1);child.parent=null;}
   getChildIndex(child){return this.children.indexOf(child);}
+  toGlobal(p){const q={x:this.x+p.x*this.scale.x,y:this.y+p.y*this.scale.y};return this.parent?this.parent.toGlobal(q):q;}
+  toLocal(p){const q=this.parent?this.parent.toLocal(p):p;return {x:(q.x-this.x)/this.scale.x,y:(q.y-this.y)/this.scale.y};}
+  getGlobalPosition(){return this.toGlobal({x:0,y:0});}
   destroy(options){assert.equal(this.destroyed++,0,'double container destroy');
    if(options?.children)for(const child of [...this.children])child.destroy(options);
    if(this.parent)this.parent.removeChild(this);
@@ -260,4 +263,35 @@ test('failed filter allocation for a new layer does not create partial emitter n
  assert.equal(r.document,previous);assert.equal(f.nodes.length,count);
  assert.equal(r.nodes.get(eid).layers.has(layer.id),false);
  r.configure(next);assert.ok(f.record(eid,layer.id).filter);r.destroy();assertClean(f);
+});
+
+// Drag inversion must use the same coordinate space as the resolved placement.
+for(const space of ['world','local']){
+ test('front fallback drag in '+space+' space inverts the actual anchor transform',()=>{
+  const f=slotFixture({fallback:'front',occupied:true}),r=f.runtime;
+  Object.assign(f.bone,{a:2,b:0,c:0,d:3});
+  const next=E.deserialize(E.serialize(r.document));
+  const e=next.emitters[1];Object.assign(e,{space,x:4,y:5});r.configure(next);
+  const origin=space==='world'?{x:14,y:25}:{x:18,y:35};
+  assert.deepEqual(r.scenePositionForEmitter(e.id),origin);
+  const offset=r.emitterOffsetFromScene(e.id,origin.x+6,origin.y+9);
+  assert.deepEqual(offset,space==='world'?{x:10,y:14}:{x:7,y:8});
+  Object.assign(e,offset);r.configure(next);
+  assert.deepEqual(r.scenePositionForEmitter(e.id),{x:origin.x+6,y:origin.y+9});
+  r.destroy();assertClean(f);
+ });
+}
+test('actual slot drag continues to invert its wrapper transform',()=>{
+ const f=slotFixture(),r=f.runtime,wrapper=f.bindings.get('body');
+ wrapper.position.set(30,40);wrapper.scale.set(2);
+ assert.deepEqual(r.emitterOffsetFromScene(eid,38,50),{x:4,y:5});
+ r.destroy();assertClean(f);
+});
+test('hidden unresolved attachment rejects drag through its stale wrapper',()=>{
+ const f=slotFixture(),r=f.runtime;f.setAttachment(null);r.seek(1.2);
+ assert.equal(r.scenePositionForEmitter(eid),null);
+ assert.throws(()=>r.emitterOffsetFromScene(eid,10,20),/unresolved/i);
+ f.setAttachment('bodyA');r.seek(1.2);
+ assert.deepEqual(r.emitterOffsetFromScene(eid,10,20),{x:10,y:20});
+ r.destroy();assertClean(f);
 });

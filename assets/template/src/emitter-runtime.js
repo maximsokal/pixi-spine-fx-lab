@@ -211,6 +211,7 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
       const parent=parentFor(e);
       const world=parent?(e.placement==='slot'&&parent!==groups.front?{x:e.x,y:e.y}:anchorWorld(e)):null;
       const ready=Boolean(parent&&world);
+      state.anchorResolved=ready;
       if(parent&&state.container.parent!==parent)parent.addChild(state.container);
       state.container.visible=ready&&doc.enabled&&e.enabled&&e.visible;
       if(ready){
@@ -250,8 +251,9 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     if(!e||!state)throw Error('Emitter not found');
     if(e.placement==='slot'){
       const parent=state.container.parent;
-      if(!parent)throw Error('Unresolved slot parent');
-      return parent.toLocal(stage.toGlobal({x,y}));
+      if(!parent||!state.anchorResolved)throw Error('Unresolved slot parent');
+      // Front fallback uses anchorWorld, not the Spine slot wrapper's coordinates.
+      if(parent!==groups.front)return parent.toLocal(stage.toGlobal({x,y}));
     }
     const project=(dx,dy)=>anchorWorld({...e,x:dx,y:dy});
     const p=project(0,0),a=project(1,0),b=project(0,1);
