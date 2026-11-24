@@ -115,3 +115,68 @@ test('valid pixel metrics retain exact sampling and fractional tolerance',()=>{
  assert.equal(comparePixels(rgb,rgba,{step:20,channelTolerance:191}).changedPixels,0);
  assert.deepEqual(countAlpha({...rgba,pixels:new Uint8Array(rgba.pixels)}),{transparent:0,partial:1,opaque:1});
 });
+
+// Standalone PNG framing: valid CRCs are not enough to prove chunk ordering.
+const signature=rgbFixture.subarray(0,8),header=rgbFixture.subarray(8,33);
+const compressed=zlib.deflateSync(Buffer.from([0,1,50,250,255,0,170]));
+const imageData=chunk('IDAT',compressed),trailer=chunk('IEND',Buffer.alloc(0));
+const textChunk=chunk('tEXt',Buffer.from('Comment\0QA'));
+const palette=chunk('PLTE',Buffer.from([1,50,250,255,0,170]));
+const assemble=(...chunks)=>Buffer.concat([signature,...chunks]);
+test('reject ancillary chunk before IHDR',()=>{
+ assert.throws(()=>decodePng(assemble(textChunk,header,imageData,trailer)),/IHDR/);
+});
+test('reject IDAT before IHDR',()=>{
+ assert.throws(()=>decodePng(assemble(imageData,header,trailer)),/IHDR/);
+});
+test('reject interrupted IDAT sequence',()=>{
+ assert.throws(()=>decodePng(assemble(header,chunk('IDAT',compressed.subarray(0,4)),
+  textChunk,chunk('IDAT',compressed.subarray(4)),trailer)),/IDAT/);
+});
+test('reject duplicate IEND',()=>{
+ assert.throws(()=>decodePng(assemble(header,imageData,trailer,trailer)),/IEND/);
+});
+test('reject trailing bytes after IEND',()=>{
+ assert.throws(()=>decodePng(Buffer.concat([rgbFixture,Buffer.from([0,1,2])])),/IEND/);
+});
+test('accept consecutive split IDAT with empty chunks and trailing metadata',()=>{
+ const decoded=decodePng(assemble(header,chunk('IDAT',Buffer.alloc(0)),
+  chunk('IDAT',compressed.subarray(0,4)),chunk('IDAT',compressed.subarray(4)),
+  chunk('IDAT',Buffer.alloc(0)),textChunk,trailer));
+ assert.deepEqual(decoded.pixels,rgb.pixels);
+});
+test('accept unused padding inside final IDAT as specified by PNG',()=>{
+ const decoded=decodePng(assemble(header,chunk('IDAT',Buffer.concat([compressed,Buffer.alloc(3)])),trailer));
+ assert.deepEqual(decoded.pixels,rgb.pixels);
+});
+test('reject truncated zlib stream even with valid PNG CRC',()=>{
+ assert.throws(()=>decodePng(assemble(header,chunk('IDAT',compressed.subarray(0,-1)),trailer)));
+});
+test('reject excess decompressed scanline bytes',()=>{
+ const oversized=zlib.deflateSync(Buffer.from([0,1,50,250,255,0,170,0]));
+ assert.throws(()=>decodePng(assemble(header,chunk('IDAT',oversized),trailer)));
+});
+test('accept optional RGB8 PLTE without changing raw pixel values',()=>{
+ assert.deepEqual(decodePng(assemble(header,palette,imageData,trailer)).pixels,rgb.pixels);
+});
+test('accept optional RGBA8 PLTE without changing raw pixel values',()=>{
+ assert.deepEqual(decodePng(insertChunk(fixture(6,source),palette)).pixels,rgba.pixels);
+});
+test('accept RGB8 PLTE followed by tRNS',()=>{
+ const decoded=decodePng(assemble(header,palette,transparentKey,imageData,trailer));
+ assert.deepEqual(decoded.rgba(0,0),[1,50,250,0]);
+});
+for(const [name,body] of [['empty',Buffer.alloc(0)],['unaligned',Buffer.alloc(4)],['oversized',Buffer.alloc(771)]]){
+ test('reject '+name+' PLTE',()=>{
+  assert.throws(()=>decodePng(assemble(header,chunk('PLTE',body),imageData,trailer)),/PLTE/);
+ });
+}
+test('reject duplicate PLTE',()=>{
+ assert.throws(()=>decodePng(assemble(header,palette,palette,imageData,trailer)),/PLTE/);
+});
+test('reject PLTE after IDAT',()=>{
+ assert.throws(()=>decodePng(assemble(header,imageData,palette,trailer)),/PLTE/);
+});
+test('reject PLTE after tRNS',()=>{
+ assert.throws(()=>decodePng(assemble(header,transparentKey,palette,imageData,trailer)),/PLTE/);
+});

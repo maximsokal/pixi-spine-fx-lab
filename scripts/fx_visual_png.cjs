@@ -10,12 +10,14 @@ function decodePng(input){
  assert.ok(bytes.length>=45&&bytes.subarray(0,8).equals(Buffer.from('89504e470d0a1a0a','hex')),'valid PNG signature');
  let at=8,width=0,height=0,colorType=-1,hasIHDR=false,ended=false;
  const idat=[];
- let transparentKey=null;
+ let transparentKey=null,hasPLTE=false,idatClosed=false;
  while(at+12<=bytes.length){
   const len=bytes.readUInt32BE(at),end=at+12+len;
   assert.ok(len<=32*1024*1024&&end<=bytes.length,'complete, bounded PNG chunk');
   const tag=bytes.toString('ascii',at+4,at+8),body=bytes.subarray(at+8,at+8+len);
   assert.equal(crc32(bytes.subarray(at+4,at+8+len)),bytes.readUInt32BE(at+8+len),'PNG chunk CRC '+tag);
+  assert.ok(hasIHDR||tag==='IHDR','IHDR must be first, found '+tag);
+  if(idat.length&&tag!=='IDAT')idatClosed=true;
   if(tag==='IHDR'){
    assert.ok(!hasIHDR&&len===13,'single IHDR');
    hasIHDR=true;width=body.readUInt32BE(0);height=body.readUInt32BE(4);
@@ -25,13 +27,22 @@ function decodePng(input){
    assert.equal(body[10],0);assert.equal(body[11],0);
    assert.equal(body[12],0,'non-interlaced PNG only');
   }
+  else if(tag==='PLTE'){
+   assert.ok(!hasPLTE&&!idat.length&&!transparentKey&&len>=3&&len<=768&&len%3===0,'invalid or misplaced PLTE');
+   hasPLTE=true; // Optional suggested palette; truecolour samples are unchanged.
+  }
   else if(tag==='tRNS'){
    assert.ok(hasIHDR&&colorType===2&&len===6&&!transparentKey&&!idat.length,'invalid or misplaced RGB8 tRNS');
    // PNG stores 16-bit key samples; for RGB8 only their low bytes matter.
    transparentKey=[body[1],body[3],body[5]];
   }
-  else if(tag==='IDAT')idat.push(body);
-  else if(tag==='IEND'){assert.equal(len,0);ended=true;break;}
+  else if(tag==='IDAT'){
+   assert.ok(!idatClosed,'IDAT chunks must be consecutive');idat.push(body);
+  }
+  else if(tag==='IEND'){
+   assert.equal(len,0,'empty IEND');
+   assert.equal(end,bytes.length,'IEND must be the final chunk');ended=true;break;
+  }
   else assert.ok(!/^[A-Z]/.test(tag[0]),'unsupported critical PNG chunk '+tag);
   at=end;
  }
