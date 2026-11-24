@@ -41,7 +41,7 @@ function fixture({customModel,editDoc,defer=false,noBlur=false,failFilterAt=0,fa
  const record=(eid,lid)=>runtime.nodes.get(eid).layers.get(lid);
  const edit=(eid,lid,type)=>{const next=E.deserialize(E.serialize(runtime.document));
   next.emitters.find(e=>e.id===eid).layers.find(l=>l.id===lid).type=type;runtime.configure(next);};
- return {runtime,stage,host,filters,nodes,record,edit};
+ return {runtime,stage,host,filters,nodes,record,edit,failNextFilter(offset=1){failFilterAt=filterAttempts+offset;}};
 }
 const eid='emitter1',glow='emitter1_glow',post='emitter1_postprocess';
 test('same-ID ordinary layer changed to postprocess receives a blur filter',()=>{
@@ -227,4 +227,37 @@ test('failed insertion cannot remove a replacement caller object',()=>{
  const f=slotFixture({failInsertion:'foreign'});assertFrame(f,[]);
  assert.equal(f.bindings.get('body'),f.callerObject);assert.equal(f.removed,0);
  f.runtime.destroy();assert.equal(f.bindings.get('body'),f.callerObject);assertClean(f);
+});
+
+// Reject filter allocation failures before mutating an existing scene.
+for(const offset of [1,2]){
+ test('configure filter allocation failure '+offset+' preserves the previous live scene',()=>{
+  const f=fixture(),r=f.runtime; r.seek(1.2);
+  const previous=r.document,snapshot=r.snapshot,oldRecords=[...r.nodes.values()].flatMap(e=>[...e.layers.values()]);
+  const oldFilters=f.filters.slice(),count=f.nodes.length;
+  const next=E.deserialize(E.serialize(previous));
+  next.emitters[0].layers.find(l=>l.id===post).type='rays';
+  next.emitters[0].layers.find(l=>l.id===glow).type='postprocess';
+  next.emitters[1].layers.find(l=>l.id==='emitter2_glow').type='postprocess';
+  next.emitters[0].x+=20;
+  f.failNextFilter(offset);
+  assert.throws(()=>r.configure(next),/filter allocation failed/);
+  assert.equal(r.document,previous);assert.equal(r.snapshot,snapshot);assert.equal(r.clock,1.2);
+  assert.deepEqual([...r.nodes.values()].flatMap(e=>[...e.layers.values()]),oldRecords);
+  assert.equal(f.nodes.length,count);assert.ok(oldFilters.every(v=>v.destroyed===0));
+  assert.ok(f.filters.slice(oldFilters.length).every(v=>v.destroyed===1));
+  r.seek(1.2);assert.deepEqual(r.snapshot,snapshot);
+  r.configure(next);assert.equal(r.document.emitters[0].x,next.emitters[0].x);
+  assert.equal(f.record(eid,post).filter,null);assert.ok(f.record(eid,glow).filter);
+  r.destroy();assertClean(f);
+ });
+}
+test('failed filter allocation for a new layer does not create partial emitter nodes',()=>{
+ const f=fixture(),r=f.runtime,previous=r.document,count=f.nodes.length;
+ const next=E.deserialize(E.serialize(previous));
+ const layer=E.newLayer('postprocess',eid,8);layer.id='new_postprocess';next.emitters[0].layers.push(layer);
+ f.failNextFilter();assert.throws(()=>r.configure(next),/filter allocation failed/);
+ assert.equal(r.document,previous);assert.equal(f.nodes.length,count);
+ assert.equal(r.nodes.get(eid).layers.has(layer.id),false);
+ r.configure(next);assert.ok(f.record(eid,layer.id).filter);r.destroy();assertClean(f);
 });

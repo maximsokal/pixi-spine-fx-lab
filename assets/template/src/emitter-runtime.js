@@ -127,7 +127,7 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     }
     return slotParent(slot,e)||(e.fallback==='front'?groups.front:null);
   }
-  function setup(){
+  function setup(preparedFilters=null){
     if(dead)return;
     diagnostics=[];
     const targetIds=new Set();
@@ -157,7 +157,8 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
         // Imported settings can change a layer's type without changing its ID.
         if(layer.type==='postprocess'&&!record.filter){
           if(!PIXI.BlurFilter)throw Error('PixiJS BlurFilter unavailable for postprocess layer');
-          record.filter=new PIXI.BlurFilter({strength:2.5,quality:2});
+          record.filter=preparedFilters?preparedFilters.get(layer.id):new PIXI.BlurFilter({strength:2.5,quality:2});
+          preparedFilters?.delete(layer.id);
           record.container.filters=[record.filter];
         }else if(layer.type!=='postprocess'&&record.filter){
           record.container.filters=[];record.filter.destroy();record.filter=null;
@@ -270,7 +271,18 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     if(dead)throw Error('Emitter runtime destroyed');
     const next=E.normalize(value);
     requireFilters(next);
-    doc=next;setup();seek(clock);
+    const preparedFilters=new Map();
+    try{
+      // Allocate before changing the live document or disposing its resources.
+      for(const e of next.emitters)for(const layer of e.layers){
+        if(layer.type==='postprocess'&&!owned.get(e.id)?.layers.get(layer.id)?.filter)
+          preparedFilters.set(layer.id,new PIXI.BlurFilter({strength:2.5,quality:2}));
+      }
+      doc=next;setup(preparedFilters);seek(clock);
+    }finally{
+      // Only filters not transferred to a layer are still owned by this staging map.
+      for(const filter of preparedFilters.values())filter.destroy();
+    }
   }
   function setBounds(value){rect={...value};seek(clock);}
   function destroy(){
