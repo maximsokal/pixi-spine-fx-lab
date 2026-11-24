@@ -126,4 +126,34 @@ assert.equal(explicitWrap.events.length,0,'even a short explicit open-path wrap 
 const reversal=S.combineSchedule({schedule:p,placement:place,motion:[{time:0,x:0,y:0},{time:1,x:100,y:0},{time:2,x:0,y:0}],mode:'distance',teleportThresholdPx:200,maxEvents:100});
 assert.ok(reversal.events.length>dist.events.length,'reverse movement counts distance traveled');
 assert.ok(reversal.events[10].x<reversal.events[9].x,'reversal places events at the actual returning emitter');
+// Arc-length inverse must not confuse a cubic's parameter with distance.
+// Exact physical oracle: x=100*t^3, so x must equal requested distance.
+const easedLine={schemaVersion:1,closed:false,segments:[{p0:[0,0],p1:[0,0],p2:[0,0],p3:[100,0]}]};
+const et=S.buildArcTable(easedLine);
+close(et.length,100);
+for(const d of [0,1,10,25,50,75,99,100]){
+ const q=S.pointAtDistance(et,d);
+ close(q.x,d,.00001);close(q.y,0,.00001);
+ close(q.t,Math.cbrt(d/100),.00001);
+ close(S.pointAtDistance(et,d,'clamp',true).x,100-d,.00001);
+}
+const ep=S.createSpatialPlacement({path:easedLine,baseSpacingPx:10,minSpacing:10,maxSpacing:10,mode:'even'});
+for(let i=0;i<ep.points.length;i++)close(ep.points[i].x,(i+1)*10,.00001);
+// Exact De Casteljau split at t=.5 of the same cubic.
+const splitEased={...easedLine,segments:[{p0:[0,0],p1:[0,0],p2:[0,0],p3:[12.5,0]},
+ {p0:[12.5,0],p1:[25,0],p2:[50,0],p3:[100,0]}]};
+const st=S.buildArcTable(splitEased);
+for(let d=0;d<=100;d+=2.5)close(S.pointAtDistance(st,d).x,S.pointAtDistance(et,d).x,.00001);
+// Dense independent integration of a nonuniform curved cubic.
+const steep={schemaVersion:1,closed:false,segments:[{p0:[0,0],p1:[0,0],p2:[0,200],p3:[400,200]}]};
+const at=S.buildArcTable(steep),seg=steep.segments[0],steps=40000,arc=[0];
+const evalIndependent=t=>({x:400*t*t*t,y:200*(3*t*t-2*t*t*t)});
+let prev=evalIndependent(0);
+for(let i=1;i<=steps;i++){const q=evalIndependent(i/steps);arc.push(arc.at(-1)+Math.hypot(q.x-prev.x,q.y-prev.y));prev=q;}
+for(let d=0;d<=at.length;d+=5){
+ const p=S.pointAtDistance(at,d);
+ const scaled=p.t*steps,j=Math.min(steps-1,Math.floor(scaled));
+ const measured=arc[j]+(arc[j+1]-arc[j])*(scaled-j);
+ close(measured,d,.25001);
+}
 console.log('PASS FX-CORE-02 temporal scheduling, 30/60/120 FPS, burst/custom/jitter/caps, arc-length, modes, stationary/teleport/reverse/zero');

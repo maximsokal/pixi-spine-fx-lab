@@ -124,4 +124,15 @@ for(const invalid of [
 ])assert.throws(()=>P.buildRibbon(invalid),/invalid|limit|budget|path|width|spacing|quality|seed/i);
 assert.throws(()=>P.generateBranches({...gopts,branchCount:900}),/budget|count|limit/i);
 assert.ok(a.indices.length/3<=P.BUDGETS.balanced.maxTriangles);
+// Nonuniform collinear handles must not bunch leaves, ribbon vertices or branch anchors.
+const slowLine={schemaVersion:1,closed:false,segments:[{p0:[0,0],p1:[0,0],p2:[0,0],p3:[100,0]}]};
+const slowRibbon=P.buildRibbon({...opts,path:slowLine,sampleSpacingPx:10});
+for(const v of slowRibbon.samples)close(v.x,v.distance,.00001);
+const leaves=P.placeElements({path:slowLine,spacingPx:10,mode:'even'});
+for(const v of leaves.points)close(v.x,v.distance,.00001);
+const slowGraph=P.buildGraph({schemaVersion:1,root:{id:'stem',path:slowLine,width},branches:[
+ {id:'child',parentId:'stem',attachDistancePx:50,path:childPath,widthRatio:.5}
+]});
+close(slowGraph.branches[1].samples[0].x,50,.00001);
+close(slowGraph.branches[1].samples[0].y,0,.00001);
 console.log('PASS FX-CORE-08 arc-length ribbons, independent end taper, normal joins, closed curves, branching and caps');

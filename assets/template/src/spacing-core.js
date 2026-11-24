@@ -213,7 +213,26 @@
     while(hi-lo>1){const m=(lo+hi)>>1;if(table.nodes[m].s<=d)lo=m;else hi=m;}
     const a=table.nodes[lo],b=table.nodes[hi],f=b.s>a.s?(d-a.s)/(b.s-a.s):0;
     const segment=table.path.segments[b.segment]||table.path.segments.at(-1);
-    const t=a.segment===b.segment?a.t+(b.t-a.t)*f:b.t*f;
+    const startT=a.segment===b.segment?a.t:0,endT=b.t;
+    let t=startT+(endT-startT)*f;
+    // A flat cubic can still have highly nonlinear parameter speed.
+    // Invert the projection onto this arc-table leaf's chord, rather
+    // than interpolating t. The distance error is bounded by the leaf's
+    // control-polygon excess plus the preceding table length error.
+    if(f>0&&f<1){
+      const dx=b.x-a.x,dy=b.y-a.y,chord=Math.hypot(dx,dy);
+      if(chord>0){
+        const ux=dx/chord,uy=dy/chord,target=f*chord;
+        let lower=startT,upper=endT;
+        for(let i=0;i<48;i++){
+          const p=evaluateCubic(segment,t);
+          const residual=(p.x-a.x)*ux+(p.y-a.y)*uy-target;
+          if(Math.abs(residual)<=1e-9)break;
+          if(residual<0)lower=t;else upper=t;
+          t=(lower+upper)/2;
+        }
+      }
+    }
     const point=evaluateCubic(segment,t),tangent=derivative(segment,t);
     if(reverse){tangent.x=-tangent.x;tangent.y=-tangent.y;}
     return {x:point.x,y:point.y,distance:d,tangent,angle:Math.atan2(tangent.y,tangent.x),segment:b.segment,t};
