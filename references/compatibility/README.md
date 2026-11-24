@@ -1,4 +1,4 @@
-# Runtime compatibility modules — draft specification
+# Runtime compatibility modules — opt-in catalog
 
 > Documentation-only proposal. These Markdown files are opt-in knowledge modules, **not** code adapters or a claim that alternate runtimes work in the shipped v0.1.0 editor. The shipped runtime and protected baseline files are unchanged. The main SKILL router provides only a conditional link to these optional documents; reading them must never modify or replace the baseline.
 
@@ -23,6 +23,19 @@ The baseline remains PixiJS **8.22.0** + official **spine-pixi-v8 4.2.120** + Sp
 | 4.3 | **Not certified** | **Not certified** | Official `spine-pixi-v7` 4.3.x, **unverified here** | Official `spine-pixi-v8` 4.3.x, **unverified here** |
 
 Matrix `research` means upstream source indicates a possible package family, NOT project support. Every major/minor Spine export requires the matching runtime family. Pixi 9 is outside this matrix until official support and tested pair are established. Do not treat Pixi 8 WebGPU as available on Pixi 5/6/7.
+
+
+## Executable catalog selector
+
+The optional planning-only selector is now available; it does not install libraries, change assets, or activate an editor adapter.
+
+```sh
+node scripts/compatibility-profile.cjs route 7 4.3 webgl
+node scripts/compatibility-profile.cjs resolve 8 4.2 webgpu 8.22.0 4.2.120
+node --test scripts/test_compatibility_profile.cjs
+```
+
+`route` returns exactly one Pixi guide and one Spine guide, the shared contract and QA matrix, and the legacy policy only for research pairs. All 24 catalog cells are classified: 1 baseline, 3 official unverified, 12 research, 8 unsupported. `resolve` accepts only the exact shipped baseline and explicit renderer, reads declared vendor/license SHA256 metadata from the baseline manifest, and rejects other pairs rather than substituting versions. Declared hashes are not a fresh binary integrity check. `inspectExport` and `assertExport` validate JSON `skeleton.spine` metadata; binary files require a matching parser and are deliberately rejected by this selector. No current-run backend certification is inferred (`NOT_RUN`, actual backend null). Use the existing profile-specific QA matrix before any activation. Child issues #53–#64 retain runtime integration and evidence scope.
 
 ## File inventory
 - `contract.md`: selector, manifest schema, integration seams, version guards, no-fallback policy.
