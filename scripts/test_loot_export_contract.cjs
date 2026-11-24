@@ -28,7 +28,7 @@ test('40/60 fixed-step frames, valid archive, deterministic bytes and frozen inp
  for(const [mode,backend] of [['pickup','webgl2'],['idle','webgpu']]){
   const {opts,state}=fixture(mode,backend),result=await X.bakeSequence(opts),n=mode==='idle'?60:40;
   A.equal(result.manifest.count,n);A.equal(state.destroyed,1);A.deepEqual(state.times,Array.from({length:n},(_,i)=>i/60));
-  const files=zip(result.zip);A.equal(files.size,n+1);A.equal(files.has('frames/frame_00000.png'),true);
+  const files=zip(result.zip);A.equal(files.size,n+2);A.equal(files.has('frames/frame_00000.png'),true);
   const meta=JSON.parse(dec(files.get('sequence.json')));A.equal(meta.frames.at(-1).timeSeconds,(n-1)/60);A.equal(meta.backend,backend);
   const a=png(files.get('frames/frame_00000.png'));A.deepEqual(a.raw,backend==='webgpu'?[0,16,8,4,32,0,0,0,0]:[0,128,64,32,32,0,0,0,0]);
   A.deepEqual(await X.bakeSequence(opts),result);

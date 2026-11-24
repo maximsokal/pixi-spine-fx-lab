@@ -54,16 +54,16 @@
  const emitter=()=>cfg.emitters.find(e=>e.id===selected),layer=()=>$('layerSelect').value;
  const status=(m,err=false)=>{$('status').textContent=m;$('status').dataset.error=String(err)};
  const end=()=>((cfg.mode==='idle'?cfg.durationFrames:cfg.durationFrames-1)/60);
- function lock(v){busy=v;for(const id of ['backend','originHandle','play','reverse','sample','removeSpine','skeletonFile','atlasFile','textureFiles','allFiles','clearTextures','loadSpine','animation','skin','animationSpeed','showSpine','resetFrame','frame','bakePng','bakeX','bakeY','bakeWidth','bakeHeight','bakeFrames'])$(id).disabled=v;}
+ function lock(v){busy=v;for(const id of ['backend','originHandle','play','reverse','sample','removeSpine','skeletonFile','atlasFile','textureFiles','allFiles','clearTextures','loadSpine','animation','skin','animationSpeed','showSpine','resetFrame','frame','bakePng','bakeX','bakeY','bakeWidth','bakeHeight','bakeFrames','webglZip','webgpuZip','cropHandle'])$(id).disabled=v;}
  let bakeController=null;
  async function bakePng({download=true,crop,frameCount}={}){
   if(busy||!fx||!backend)throw Error('Renderer is busy or unavailable');
-  const state=transport.state,settings=clone(cfg),actual=backend;
+  const state=transport.state,settings=clone(cfg),actual=backend;const info=source?{name:source.name,bytes:source.skeleton.size,options:spineOptions()}:null;
   const factory=FxLootBake.sceneFactory({source,poseOptions:spineOptions()});
   const controller=new AbortController();bakeController=controller;
   pause();lock(true);$('cancelBake').disabled=false;$('bakeProgress').max=frameCount??settings.durationFrames;$('bakeProgress').value=0;
   try{
-   const result=await FxLootExport.bakeSequence({settings,backend:actual,crop,frameCount,createScene:factory,signal:controller.signal,
+   const result=await FxLootExport.bakeSequence({settings,backend:actual,crop,frameCount,assetInfo:info,createScene:factory,signal:controller.signal,
     progress(done,total){$('bakeProgress').max=total;$('bakeProgress').value=done;status('Baking '+done+'/'+total);},
     yieldFrame:()=>new Promise(resolve=>setTimeout(resolve,0))});
    if(download){const url=URL.createObjectURL(new Blob([result.zip],{type:'application/zip'})),a=document.createElement('a');a.href=url;a.download='Loot_Sparkle_'+result.manifest.count+'frames_PNG.zip';try{a.click()}finally{setTimeout(()=>URL.revokeObjectURL(url),30000);}}
@@ -202,6 +202,29 @@
   }catch(e){renderer?.destroy();spineCandidate?.destroy();if(candidate?.renderer)candidate.destroy(true,{children:true});$('backend').value=backend||request;status(e.message,true)}
   finally{lock(false)}
  }
+ let cropDrag=null;
+ function readCrop(){
+  const keys={x:'bakeX',y:'bakeY',width:'bakeWidth',height:'bakeHeight'},c={};
+  for(const [k,id] of Object.entries(keys)){const el=$(id);if(!el.value.trim()||!el.validity.valid||!Number.isInteger(Number(el.value)))throw Error('Invalid '+id);c[k]=Number(el.value)}return c;
+ }
+ function guide(){try{const c=readCrop(),g=$('cropGuide');g.hidden=!$('showCrop').checked;g.style.left=c.x/512*100+'%';g.style.top=c.y/512*100+'%';g.style.width=c.width/512*100+'%';g.style.height=c.height/512*100+'%';$('cropHandle').textContent=c.width+' x '+c.height}catch(e){status(e.message,true)}}
+ for(const id of ['bakeX','bakeY','bakeWidth','bakeHeight','showCrop'])$(id).onchange=guide;
+ $('cropHandle').onpointerdown=e=>{if(busy)return;e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);cropDrag={...readCrop(),px:e.clientX,py:e.clientY,scale:$('surface').getBoundingClientRect().width/512}};
+ $('cropHandle').onpointermove=e=>{if(!cropDrag||busy)return;$('bakeX').value=Math.max(-16384,Math.min(16384,Math.round(cropDrag.x+(e.clientX-cropDrag.px)/cropDrag.scale)));$('bakeY').value=Math.max(-16384,Math.min(16384,Math.round(cropDrag.y+(e.clientY-cropDrag.py)/cropDrag.scale)));guide()};
+ $('cropHandle').onpointerup=$('cropHandle').onpointercancel=()=>{cropDrag=null};
+ async function exportDeveloper(target){
+  if(busy||!fx)return;let c,count;
+  try{c=readCrop();const n=$('bakeFrames');if(n.value.trim()&&(!n.validity.valid||!Number.isInteger(Number(n.value))))throw Error('Invalid frame count');count=n.value.trim()?Number(n.value):cfg.durationFrames}catch(e){status(e.message,true);return}
+  const snapshot=clone(cfg),retained=source?{...source,images:new Map(source.images)}:null,options=spineOptions(),info=assetInfo(),state=transport.state;
+  pause();lock(true);
+  try{
+   const names=['curve-core.js','spacing-core.js','color-core.js','timeline-core.js','loot-core.js','loot-runtime.js','loot-spine.js'];
+   const r=await FxLootExportBrowser.developer({settings:snapshot,target,source:retained,options,assetInfo:info,previewSeconds:state.time,crop:c,frameCount:count,sources:Object.fromEntries(names.map(n=>[n,$(n).textContent])),licenses:$('runtimeLicenses').textContent});
+   const u=URL.createObjectURL(new Blob([r.zip],{type:'application/zip'})),a=document.createElement('a');a.href=u;a.download='Loot_Sparkle_'+target+'.zip';try{a.click()}finally{setTimeout(()=>URL.revokeObjectURL(u),30000)}
+   status('Exported '+target+' developer ZIP');
+  }catch(e){status(e.message,true)}finally{lock(false);if(state.playing){transport.play(state.direction);lastTime=null;$('play').textContent='Pause'}}
+ }
+ $('webglZip').onclick=()=>exportDeveloper('webgl');$('webgpuZip').onclick=()=>exportDeveloper('webgpu');guide();
  $('backend').onchange=()=>init($('backend').value);
  paletteEditor=FxColorUi.mount($('paletteHost'),{value:cfg.palette,defaultValue:L.defaults().palette,idPrefix:'lootPalette',isLocked:()=>busy,onChange(p){edit(c=>{c.palette={...p,parameterKey:'lootColor'}})}});
  $('preset').value=JSON.stringify(cfg,null,2);refreshAll();setZoom(1);

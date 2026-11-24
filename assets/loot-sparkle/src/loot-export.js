@@ -14,7 +14,7 @@
  function ints(v,k,min,max){if(!Number.isSafeInteger(v)||v<min||v>max)fail('invalid '+k);return v;}
  function cropSpec(c={x:0,y:0,width:512,height:512}){
   if(!c||Object.keys(c).length!==4)fail('invalid crop');
-  const out={x:ints(c.x,'crop x',-16384,16384),y:ints(c.y,'crop y',-16384,16384),width:ints(c.width,'width',1,8192),height:ints(c.height,'height',1,8192)};
+  const out={x:ints(c.x,'crop x',-16384,16384),y:ints(c.y,'crop y',-16384,16384),width:ints(c.width,'width',1,4096),height:ints(c.height,'height',1,4096)};
   if(out.width*out.height*4>PIXEL_CAP)fail('pixel working budget');return Object.freeze(out);
  }
  function straightRgba(pixels,width,height,alpha){
@@ -42,7 +42,7 @@
   return join([Uint8Array.of(137,80,78,71,13,10,26,10),chunk('IHDR',header),chunk('IDAT',compressed),chunk('IEND',new Uint8Array())]);
  }
  function makeZip(entries,check=()=>{},limit=ZIP_CAP){
-  if(!Array.isArray(entries)||!entries.length||entries.length>3601)fail('invalid ZIP entry count');
+  if(!Array.isArray(entries)||!entries.length||entries.length>3602)fail('invalid ZIP entry count');
   ints(limit,'ZIP limit',22,ZIP_CAP);const seen=new Set(),local=[],central=[];let offset=0,centralSize=0;
   for(const {name,data} of entries){
    check();if(typeof name!=='string'||name.length>255||!name.split('/').every(p=>/^[A-Za-z0-9_.-]+$/.test(p)&&p!=='.'&&p!=='..')||seen.has(name))fail('unsafe or duplicate ZIP name');
@@ -58,12 +58,12 @@
   check();const end=new Uint8Array(22),e=new DataView(end.buffer);e.setUint32(0,0x06054b50,true);e.setUint16(8,entries.length,true);e.setUint16(10,entries.length,true);e.setUint32(12,centralSize,true);e.setUint32(16,offset,true);
   return join([...local,...central,end]);
  }
- async function bakeSequence({settings,backend,crop,frameCount,createScene,signal,progress=()=>{},deflate=browserDeflate,yieldFrame=()=>Promise.resolve(),pngLimit=PNG_CAP,zipLimit=ZIP_CAP,encodeText=s=>new TextEncoder().encode(s)}){
+ async function bakeSequence({settings,backend,crop,frameCount,assetInfo=null,createScene,signal,progress=()=>{},deflate=browserDeflate,yieldFrame=()=>Promise.resolve(),pngLimit=PNG_CAP,zipLimit=ZIP_CAP,encodeText=s=>new TextEncoder().encode(s)}){
   if(!L||!['webgl1','webgl2','webgpu'].includes(backend)||typeof createScene!=='function')fail('invalid scene or backend');
   const frozen=L.compile(settings).settings,c=cropSpec(crop),count=ints(frameCount??frozen.durationFrames,'frame count',1,3600);
   ints(pngLimit,'PNG limit',1,PNG_CAP);ints(zipLimit,'ZIP limit',22,ZIP_CAP);
   const check=()=>{if(signal?.aborted)fail('cancelled');};check();
-  const manifest={schemaVersion:1,effectId:'fx.game.loot-sparkle',backend,settings:frozen,crop:c,width:c.width,height:c.height,fps:60,count,frameFormula:'frameIndex/60',alpha:'straight-rgba8',frames:[]};
+  const manifest={schemaVersion:1,effectId:'fx.game.loot-sparkle',backend,settings:frozen,asset:assetInfo===null?null:JSON.parse(JSON.stringify(assetInfo)),crop:c,width:c.width,height:c.height,fps:60,count,frameFormula:'frameIndex/60',alpha:'straight-rgba8',frames:[]};
   let scene,primaryError;const entries=[];let total=0;
   try{
    scene=await createScene({settings:frozen,backend,crop:c});check();
@@ -81,7 +81,7 @@
     entries.push({name:file,data:bytes});manifest.frames.push({file,frame:i,timeSeconds:seconds});
     progress(i+1,count);await yieldFrame();check();
    }
-   entries.push({name:'sequence.json',data:encodeText(JSON.stringify(manifest,null,2))});
+   entries.push({name:'sequence.json',data:encodeText(JSON.stringify(manifest,null,2))},{name:'README.txt',data:encodeText('Loot Sparkle PNG sequence. 60 FPS, straight RGBA8, untrimmed. Read sequence.json for crop and animation settings. Import frames in numerical order. End time exclusive. No UI overlays.')});
    const zip=makeZip(entries,check,zipLimit);check();return {zip,manifest};
   }catch(e){primaryError=e;throw e;}
   finally{if(scene&&typeof scene.destroy==='function'){try{await scene.destroy()}catch(e){if(primaryError)primaryError.cleanupError=e;else throw e;}}}

@@ -10,7 +10,7 @@ function zip(b){const out=new Map();let at=0;while(b.readUInt32LE(at)===0x04034b
   await page.locator('#backend').selectOption(backend);await page.waitForFunction(b=>lootEditor.ready&&lootEditor.backend===b,backend);
   await page.evaluate(()=>lootEditor.seek(.25));const before=await page.evaluate(()=>({sample:lootEditor.sample,settings:lootEditor.settings}));
   const bake=()=>page.evaluate(async()=>{const r=await lootEditor.bakePng({download:false});return {zip:Array.from(r.zip),manifest:r.manifest}});
-  const r=await bake(),files=zip(Buffer.from(r.zip));A.equal(r.manifest.backend,backend);A.equal(r.manifest.count,40);A.equal(files.size,41);
+  const r=await bake(),files=zip(Buffer.from(r.zip));A.equal(r.manifest.backend,backend);A.equal(r.manifest.count,40);A.equal(files.size,42);
   const frame=i=>P.decodePng(files.get('frames/frame_'+String(i).padStart(5,'0')+'.png')),count=i=>{const q=P.countAlpha(frame(i));return q.partial+q.opaque};
   A.equal(frame(0).width,512);A.equal(frame(0).height,512);A.equal(count(0),0);A.ok(count(15)>0);A.equal(count(39),0);
   await page.evaluate(()=>lootEditor.zoom(.5));A.deepEqual((await bake()).zip,r.zip);

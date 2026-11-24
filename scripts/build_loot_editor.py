@@ -16,13 +16,13 @@ def build(root):
     html = text(local(source, "ui.html"))
 
     def tag(base, name):
-        return "<script>" + re.sub(r"</script", r"<\\/script", text(local(base, name)), flags=re.I) + "</script>"
+        return "<script id=\"" + Path(name).name + "\">" + re.sub(r"</script", r"<\\/script", text(local(base, name)), flags=re.I) + "</script>"
 
     notices = text(local(template, "licenses/pixi.txt")) + "\n" + text(local(template, "licenses/spine.txt"))
-    vendor = "<!--\n" + notices + "\n-->\n" + "\n".join(tag(template, name) for name in manifest["browserScripts"])
+    vendor = "<script type=\"text/plain\" id=\"runtimeLicenses\">" + notices + "</script>\n" + "\n".join(tag(template, name) for name in manifest["browserScripts"])
     cores = [tag(template, "src/" + name) for name in (
         "curve-core.js", "spacing-core.js", "color-core.js", "timeline-core.js", "curve-editor.js", "color-ui.js")]
-    cores += [tag(source, name) for name in ("loot-core.js", "loot-runtime.js", "loot-spine.js", "loot-export.js", "loot-bake.js")]
+    cores += [tag(source, name) for name in ("loot-core.js", "loot-runtime.js", "loot-spine.js", "loot-export.js", "loot-bake.js", "loot-export-browser.js")]
     sample = json.dumps(sample_data(template, manifest), separators=(",", ":")).replace("</", "<\\/")
     for marker, value in (("__SAMPLE_DATA__", sample), ("<!-- VENDOR -->", vendor), ("<!-- CORES -->", "\n".join(cores)),
                           ("<!-- APP -->", tag(source, "loot-editor.js"))):
