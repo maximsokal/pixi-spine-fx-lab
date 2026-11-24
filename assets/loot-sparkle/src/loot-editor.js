@@ -54,7 +54,34 @@
  const emitter=()=>cfg.emitters.find(e=>e.id===selected),layer=()=>$('layerSelect').value;
  const status=(m,err=false)=>{$('status').textContent=m;$('status').dataset.error=String(err)};
  const end=()=>((cfg.mode==='idle'?cfg.durationFrames:cfg.durationFrames-1)/60);
- function lock(v){busy=v;for(const id of ['backend','originHandle','play','reverse','sample','removeSpine','skeletonFile','atlasFile','textureFiles','allFiles','clearTextures','loadSpine','animation','skin','animationSpeed','showSpine','resetFrame','frame'])$(id).disabled=v;}
+ function lock(v){busy=v;for(const id of ['backend','originHandle','play','reverse','sample','removeSpine','skeletonFile','atlasFile','textureFiles','allFiles','clearTextures','loadSpine','animation','skin','animationSpeed','showSpine','resetFrame','frame','bakePng','bakeX','bakeY','bakeWidth','bakeHeight','bakeFrames'])$(id).disabled=v;}
+ let bakeController=null;
+ async function bakePng({download=true,crop,frameCount}={}){
+  if(busy||!fx||!backend)throw Error('Renderer is busy or unavailable');
+  const state=transport.state,settings=clone(cfg),actual=backend;
+  const factory=FxLootBake.sceneFactory({source,poseOptions:spineOptions()});
+  const controller=new AbortController();bakeController=controller;
+  pause();lock(true);$('cancelBake').disabled=false;$('bakeProgress').max=frameCount??settings.durationFrames;$('bakeProgress').value=0;
+  try{
+   const result=await FxLootExport.bakeSequence({settings,backend:actual,crop,frameCount,createScene:factory,signal:controller.signal,
+    progress(done,total){$('bakeProgress').max=total;$('bakeProgress').value=done;status('Baking '+done+'/'+total);},
+    yieldFrame:()=>new Promise(resolve=>setTimeout(resolve,0))});
+   if(download){const url=URL.createObjectURL(new Blob([result.zip],{type:'application/zip'})),a=document.createElement('a');a.href=url;a.download='Loot_Sparkle_'+result.manifest.count+'frames_PNG.zip';try{a.click()}finally{setTimeout(()=>URL.revokeObjectURL(url),30000);}}
+   status('Exported '+result.manifest.count+' transparent PNG frames');return result;
+  }catch(e){status(e.message,true);throw e}
+  finally{bakeController=null;$('cancelBake').disabled=true;lock(false);if(state.playing){transport.play(state.direction);lastTime=null;$('play').textContent='Pause';}}
+ }
+ function cancelBake(){bakeController?.abort();}
+ $('cancelBake').onclick=cancelBake;
+ $('bakePng').onclick=async()=>{
+  if(busy)return;
+  try{
+   const integer=id=>{const n=$(id);if(!n.value.trim()||!n.validity.valid||!Number.isSafeInteger(Number(n.value)))throw Error('Invalid '+id);return Number(n.value);};
+   const crop={x:integer('bakeX'),y:integer('bakeY'),width:integer('bakeWidth'),height:integer('bakeHeight')};
+   const frameCount=$('bakeFrames').value.trim()?integer('bakeFrames'):undefined;
+   await bakePng({crop,frameCount});
+  }catch(e){status(e.message,true);}
+ };
  function seek(t){
   transport.seek(Math.max(0,Math.min(end(),t)));
   const seconds=transport.state.time,frame=Math.floor(seconds*60+1e-8);
@@ -178,6 +205,6 @@
  $('backend').onchange=()=>init($('backend').value);
  paletteEditor=FxColorUi.mount($('paletteHost'),{value:cfg.palette,defaultValue:L.defaults().palette,idPrefix:'lootPalette',isLocked:()=>busy,onChange(p){edit(c=>{c.palette={...p,parameterKey:'lootColor'}})}});
  $('preset').value=JSON.stringify(cfg,null,2);refreshAll();setZoom(1);
- globalThis.lootEditor=Object.freeze({get ready(){return !!fx&&!busy},get backend(){return backend},get settings(){return clone(cfg)},get sample(){return fx?.sample},get asset(){return assetInfo()},get poses(){return clone(poses)},seek,zoom:setZoom});
+ globalThis.lootEditor=Object.freeze({get ready(){return !!fx&&!busy},get backend(){return backend},get settings(){return clone(cfg)},get sample(){return fx?.sample},get asset(){return assetInfo()},get poses(){return clone(poses)},seek,zoom:setZoom,bakePng,cancelBake});
  init('webgl2');requestAnimationFrame(tick);
 })();
