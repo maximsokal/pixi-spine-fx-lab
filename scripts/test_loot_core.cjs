@@ -10,7 +10,7 @@ test('strict defaults, detached compile and JSON restore',()=>{
  A.deepEqual(L.normalize(JSON.parse(JSON.stringify(c))),c);
  A.ok(Object.isFrozen(p.settings));c.sparkleSize=16;
  A.equal(p.settings.sparkleSize,8);
- for(const edit of [x=>x.extra=1,x=>x.sparkleSize=NaN,x=>x.sparkleCount=81,x=>x.emitters=[],x=>x.emitters.push(x.emitters[0]),x=>x.mode='bad',x=>x.durationFrames=60,x=>x.sizeCurve.domain='effectTime']){const x=L.defaults();edit(x);A.throws(()=>L.compile(x));}
+ for(const edit of [x=>x.extra=1,x=>x.sparkleSize=NaN,x=>x.sparkleCount=81,x=>x.emitters=[],x=>x.emitters.push(x.emitters[0]),x=>x.mode='bad',x=>x.durationFrames=0,x=>x.sizeCurve.domain='effectTime']){const x=L.defaults();edit(x);A.throws(()=>L.compile(x));}
 });
 test('pulse independent ages and transparent endpoint',()=>{
  const c=L.defaults(),p=L.compile(c);
@@ -82,4 +82,36 @@ test('bounds, transform scale, delay, finite geometry and separate emitters',()=
  c.emitters[0].layers.stars.timeOffset=0;c.emitters[0].x=900;const f=L.compile(c).sample(.25);
  A.equal(L.bounds(f).inside,false);A.ok(stars(f).every(s=>s.points.flat().every(Number.isFinite)));
  A.equal(L.bounds(L.compile(c).sample(39/60)).empty,true);
+});
+test('cap must reserve lifetimes instead of killing or resurrecting stars midlife',()=>{
+ for(const mode of ['pickup','idle']){
+  const c=L.defaults();c.mode=mode;c.durationFrames=mode==='idle'?60:40;c.spawnIntervalFrames=1;c.sparkleCount=2;
+  const p=L.compile(c),seen=new Map();
+  let previous=new Map();
+  for(let i=0;i<c.durationFrames*12;i++){
+   const frame=i/12,current=new Map(stars(p.sample(frame/60)).map(v=>[v.id,v]));
+   A.ok(current.size<=2);
+   for(const [id,v] of previous){
+    if(!current.has(id)&&frame<c.durationFrames-1){
+     A.ok(v.age+1/12>=c.lifetimeFrames-1e-7,'premature death '+mode+' '+id+' age '+v.age);
+
+    }
+   }
+   for(const [id,v] of current){
+    if(!previous.has(id)&&seen.has(id)&&v.age>1/12+1e-6)A.fail('resurrection '+id);
+    seen.set(id,v);
+   }
+   previous=current;
+  }
+  A.ok(seen.size>2);
+ }
+});
+test('independent finite sweep geometry and editable durations',()=>{
+ const c=L.defaults();c.durationFrames=48;c.emitters[0].layers.sweep.enabled=true;c.haloRadius=0;
+ const p=L.compile(c),s=p.sample(.25).emitters[0].layers.sweep[0];
+ A.ok(s&&Array.isArray(s.points)&&s.points.length>=4);
+ for(const [x,y] of s.points)A.ok(Math.hypot(x-256,y-256)<=c.spreadRadius+1e-7);
+ A.equal(p.sample(47/60).cost,0);
+ const loop=L.defaults();loop.mode='idle';loop.durationFrames=41;
+ const l=L.compile(loop);A.deepEqual(l.sample(0),l.sample(41/60));A.deepEqual(l.sample(0),l.sample(410/60));
 });

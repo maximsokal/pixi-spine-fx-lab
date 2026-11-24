@@ -30,8 +30,8 @@
  function normAnchor(a,layer){shape(a,['type','name']);one(a.type,layer?['inherit','world','local','bone']:['world','local','bone'],'anchor');if(typeof a.name!=='string'||a.name.length>128||(a.type==='bone'?!a.name.trim():a.name!==''))fail('invalid anchor name');return {...a};}
  function transform(v,layer){return {enabled:bool(v.enabled),visible:bool(v.visible),x:num(v.x,'x',-16384,16384),y:num(v.y,'y',-16384,16384),rotation:num(v.rotation,'rotation',-3600,3600),scale:num(v.scale,'scale',.01,20),timeOffset:num(v.timeOffset,'timeOffset',-3600,3600),seed:num(v.seed,'seed',-2147483648,2147483647,true),anchor:normAnchor(v.anchor,layer)};}
  function normalize(input){shape(input,KEYS);if(input.schemaVersion!==1)fail('schemaVersion');const c={schemaVersion:1,mode:one(input.mode,['pickup','idle'],'mode')};
-  c.durationFrames=num(input.durationFrames,'durationFrames',c.mode==='idle'?60:40,c.mode==='idle'?60:40,true);
-  for(const [k,a,b,i] of [['sparkleCount',1,80,true],['sparkleSize',1,30],['spawnIntervalFrames',1,40],['lifetimeFrames',1,39],['haloRadius',0,160],['twinkleHz',0,15],['spreadRadius',5,230],['baseGapPx',3,90],['minGapPx',3,90],['maxGapPx',3,90],['spatialJitter',0,.45],['timeJitter',0,.45],['minIntervalFrames',0,40],['groupCount',1,8,true],['groupDelayFrames',0,40],['shineDelayFrames',0,40],['seed',-2147483648,2147483647,true]])c[k]=num(input[k],k,a,b,i);
+  c.durationFrames=num(input.durationFrames,'durationFrames',2,3600,true);
+  for(const [k,a,b,i] of [['sparkleCount',1,80,true],['sparkleSize',1,30],['spawnIntervalFrames',1,40],['lifetimeFrames',1,c.durationFrames],['haloRadius',0,160],['twinkleHz',0,15],['spreadRadius',5,230],['baseGapPx',3,90],['minGapPx',3,90],['maxGapPx',3,90],['spatialJitter',0,.45],['timeJitter',0,.45],['minIntervalFrames',0,40],['groupCount',1,8,true],['groupDelayFrames',0,40],['shineDelayFrames',0,40],['seed',-2147483648,2147483647,true]])c[k]=num(input[k],k,a,b,i);
   if(c.minGapPx>c.maxGapPx)fail('invalid gap range');
   c.quality=one(input.quality,Object.keys(BUDGETS),'quality');c.distribution=one(input.distribution,['even','random','stratified','clustered'],'distribution');c.frequencySource=one(input.frequencySource,['interval','rate'],'frequencySource');
   for(const [k,key,domain,min,max,unit] of [['sizeCurve','starSize','particleAge',0,1,'multiplier'],['alphaCurve','starAlpha','particleAge',0,1,'multiplier'],['haloCurve','haloPulse','effectTime',0,1,'multiplier'],['rateCurve','emissionRate','emitterTime',0,4,'multiplier'],['intervalCurve','emissionInterval','emitterTime',.25,4,'multiplier'],['spacingCurve','spacingPx','pathPosition',3,90,'px']]){
@@ -47,8 +47,32 @@
  function ring(r){const k=.5522847498307936*r;return {schemaVersion:1,closed:true,segments:[{p0:[r,0],p1:[r,k],p2:[k,r],p3:[0,r]},{p0:[0,r],p1:[-k,r],p2:[-r,k],p3:[-r,0]},{p0:[-r,0],p1:[-r,-k],p2:[-k,-r],p3:[0,-r]},{p0:[0,-r],p1:[k,-r],p2:[r,-k],p3:[r,0]}]};}
  const active=(e,l)=>e.enabled&&e.visible&&l.enabled&&l.visible&&l.alpha>0;
  function freeze(o){if(o&&typeof o==='object'&&!Object.isFrozen(o)){Object.values(o).forEach(freeze);Object.freeze(o);}return o;}
+  // Reserve a particle's entire half-open lifetime, including both pieces
+ // of a wrapped interval. Capacity never evicts an already born star.
+ const overlap=(a,b)=>a[0]<b[1]&&b[0]<a[1];
+ function peak(spans){
+  const edges=spans.flatMap(([a,b])=>[[a,1],[b,-1]]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  let n=0,max=0;for(const [,d] of edges){n+=d;max=Math.max(max,n);}return max;
+ }
+ function reserve(births,anchors,c,period,loop,end){
+  const occupied=anchors.map(()=>[]),all=[],accepted=[];
+  for(const b of births){
+   const stop=b.frame+c.lifetimeFrames;
+   const spans=loop&&stop>period?[[b.frame,period],[0,stop-period]]:[[b.frame,Math.min(loop?period:end,stop)]];
+   if(spans.some(([a,z])=>peak([[a,z],...all.filter(x=>overlap(x,[a,z])).map(([x,y])=>[Math.max(a,x),Math.min(z,y)])])>c.sparkleCount))continue;
+   let index=-1;
+   for(let j=0;j<anchors.length;j++){
+    const i=(b.index+j)%anchors.length;
+    if(!spans.some(x=>occupied[i].some(y=>overlap(x,y)))){index=i;break;}
+   }
+   if(index<0)continue;
+   occupied[index].push(...spans);all.push(...spans);
+   accepted.push({...b,anchorIndex:index});
+  }
+  return {accepted,maxActive:peak(all),capped:accepted.length<births.length};
+ }
  function compile(input){const c=freeze(normalize(input)),period=c.durationFrames,end=period-1,loop=c.mode==='idle',budget=BUDGETS[c.quality];let reservedStars=0,reservedPrimitives=0,totalBirths=0;
-  const rows=c.emitters.map(e=>{const l=e.layers.stars,seed=c.seed^e.seed^l.seed^hash(e.id);let anchors=[],births=[],pathLength=0;
+  const rows=c.emitters.map(e=>{const l=e.layers.stars,seed=c.seed^e.seed^l.seed^hash(e.id);let anchors=[],births=[],pathLength=0,reservations={accepted:[],maxActive:0,capped:false};
    if(active(e,l)){
     const factor=c.baseGapPx/18,scale=v=>v*factor,sc=c.spacingCurve;
     const gap={...sc,valueRange:sc.valueRange.map(scale),defaultValue:scale(sc.defaultValue),keys:sc.keys.map(k=>({...k,y:scale(k.y),...(k.in?{in:[k.in[0],scale(k.in[1])]}:{}),...(k.out?{out:[k.out[0],scale(k.out[1])]}:{})}))};
@@ -69,10 +93,10 @@
     }
     births.sort((a,b)=>a.frame-b.frame||a.index-b.index);
     totalBirths+=births.length;if(totalBirths>4096)fail('event budget');
-    reservedStars+=Math.min(c.sparkleCount,anchors.length,births.length);
+    reservations=reserve(births,anchors,c,period,loop,end);reservedStars+=reservations.maxActive;
    }
    reservedPrimitives+=Number(active(e,e.layers.sweep))+Number(active(e,e.layers.halo));
-   return {id:e.id,anchors,births,pathLength,seed};
+   return {id:e.id,anchors,births,pathLength,seed,...reservations};
   });
   if(reservedStars>budget.stars||reservedStars+reservedPrimitives>budget.primitives)fail('quality budget exceeded');
   freeze(rows);
@@ -81,15 +105,15 @@
     const key=t.anchor.type==='local'?'$local':t.anchor.name;p=poses&&Object.hasOwn(poses,key)?poses[key]:null;
     if(!p||![p.x,p.y,p.rotation,p.scale].every(Number.isFinite)||p.scale<=0)return null;
    }return p?compose(p,t):null;}
-  function sample(seconds,poses={}){num(seconds,'time',0,1e7);const raw=seconds*60,frame=loop?mod(raw,period):Math.min(raw,end),diagnostics=[],emitters=[];let cost=0;
-   for(let i=0;i<c.emitters.length;i++){const e=c.emitters[i],row=rows[i],layers={stars:[],sweep:[],halo:[]},origin=resolve(e,null,poses);let capped=false;
+  function sample(seconds,poses={}){num(seconds,'time',0,1e7);const exact=seconds*60,rounded=Math.round(exact),raw=Math.abs(exact-rounded)<=6e-8?rounded:exact,frame=loop?mod(raw,period):Math.min(raw,end),diagnostics=[],emitters=[];let cost=0;
+   for(let i=0;i<c.emitters.length;i++){const e=c.emitters[i],row=rows[i],layers={stars:[],sweep:[],halo:[]},origin=resolve(e,null,poses);let capped=row.capped;
     for(const k of LAYERS){const l=e.layers[k];if(!active(e,l)||(!loop&&raw>=end))continue;const t=frame-e.timeOffset-l.timeOffset-(k==='sweep'?c.shineDelayFrames:0),local=loop?mod(t,period):t;if(!loop&&(local<0||local>=end))continue;
      const pose=resolve(l,origin,poses);if(!pose){diagnostics.push({emitterId:e.id,layer:k,reason:'missing anchor'});continue;}
      const fade=loop?1:clamp((end-frame)/6,0,1),seed=c.seed^e.seed^l.seed^hash(e.id+':'+k);
      if(k==='stars'){
-      const available=row.births.map(b=>({b,age:loop?mod(local-b.frame,period):local-b.frame})).filter(v=>v.age>=0&&v.age<c.lifetimeFrames).sort((a,b)=>a.age-b.age||a.b.index-b.b.index);
-      const used=new Set();for(const {b,age} of available){if(layers.stars.length>=c.sparkleCount){capped=true;break;}
-       const u=age/c.lifetimeFrames,a=row.anchors[b.index%row.anchors.length];if(used.has(a.distance)){capped=true;continue;}used.add(a.distance);
+      const available=row.accepted.map(b=>({b,age:loop?mod(local-b.frame,period):local-b.frame})).filter(v=>v.age>=0&&v.age<c.lifetimeFrames).sort((a,b)=>a.age-b.age||a.b.index-b.b.index);
+      for(const {b,age} of available){
+       const u=age/c.lifetimeFrames,a=row.anchors[b.anchorIndex];
        const twinkle=.75+.25*Math.cos(TAU*(c.twinkleHz*age/60+rand(seed,b.index,'phase')));
        const radius=c.sparkleSize*C.evaluate(c.sizeCurve,u)*twinkle*pose.scale,rgba=COL.sample(c.palette,u);rgba[3]*=l.alpha*C.evaluate(c.alphaCurve,u)*fade;
        if(radius<=0||rgba[3]<=0)continue;
@@ -99,7 +123,23 @@
       }
      }else{
       const u=local/(loop?period:end),rgba=COL.sample(c.palette,.5);rgba[3]*=l.alpha*fade*(k==='halo'?.45*C.evaluate(c.haloCurve,u):.55*(loop?1:Math.sin(Math.PI*u)));
-      const radius=c.haloRadius*pose.scale;if(radius>0&&rgba[3]>0)layers[k].push({id:e.id+'-'+k,x:pose.x,y:pose.y,radius,rotation:pose.rotation+360*(u+rand(seed,0,'phase')),rgba,blend:l.blend});
+            if(k==='halo'){
+       const radius=c.haloRadius*pose.scale;rgba[3]*=.85+.15*rand(seed,0,'intensity');
+       if(radius>0&&rgba[3]>0)layers[k].push({id:e.id+'-'+k,x:pose.x,y:pose.y,radius,rotation:pose.rotation,rgba,blend:l.blend});
+      }else{
+       // Finite sweep clipped to its own circular region, independent of halo.
+       // A zero-alpha endpoint avoids popping when the band wraps in idle mode.
+       const r=c.spreadRadius,center=-r+2*r*u,half=Math.min(6,r),a=clamp(center-half,-r,r),b=clamp(center+half,-r,r);
+       rgba[3]*=loop?Math.sin(Math.PI*u):1;
+       if(b>a&&rgba[3]>0){
+        const angle=(pose.rotation+(rand(seed,0,'phase')-.5)*30)*DEG,cs=Math.cos(angle),sn=Math.sin(angle);
+        const world=(x,y)=>[pose.x+(x*cs-y*sn)*pose.scale,pose.y+(x*sn+y*cs)*pose.scale];
+        const xs=Array.from({length:9},(_,i)=>a+(b-a)*i/8);
+        const top=xs.map(x=>world(x,-Math.sqrt(Math.max(0,r*r-x*x))));
+        const bottom=xs.slice().reverse().map(x=>world(x,Math.sqrt(Math.max(0,r*r-x*x))));
+        layers[k].push({id:e.id+'-'+k,x:pose.x,y:pose.y,radius:r*pose.scale,rotation:angle/DEG,points:[...top,...bottom],rgba,blend:l.blend});
+       }
+      }
      }
     }cost+=LAYERS.reduce((n,k)=>n+layers[k].length,0);emitters.push({id:e.id,layers,capped});
    }
