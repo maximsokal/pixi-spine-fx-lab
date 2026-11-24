@@ -46,7 +46,9 @@
  }
  function freeze(o){if(o&&typeof o==='object'&&!Object.isFrozen(o)){Object.values(o).forEach(freeze);Object.freeze(o);}return o;}
  function createPlan(input){const c=freeze(normalize(input)),limit=BUDGETS[c.quality],compiled=[];let peak=0;
-  for(const e of c.emitters){const times={primary:[0],secondary:births(c,e,'secondary'),particles:births(c,e,'particles')},dirs=[];if(e.enabled&&e.layers.particles.enabled&&e.layers.particles.alpha>0){for(let i=0;i<times.particles.length;i++){const a=directions(c,c.finalRadius+i*c.radialGapPx,c.seed^e.seed^e.layers.particles.seed^hash(e.id)^i,limit-peak);peak+=a.length;dirs.push(a);}}compiled.push({e,times,dirs});}
+  for(const e of c.emitters){const active=k=>e.enabled&&e.layers[k].enabled&&e.layers[k].alpha>0;
+   // Inactive layers keep their settings but cannot veto another layer's plan.
+   const times={primary:active('primary')?[0]:[],secondary:active('secondary')?births(c,e,'secondary'):[],particles:active('particles')?births(c,e,'particles'):[]},dirs=[];if(active('particles')){for(let i=0;i<times.particles.length;i++){const a=directions(c,c.finalRadius+i*c.radialGapPx,c.seed^e.seed^e.layers.particles.seed^hash(e.id)^i,limit-peak);peak+=a.length;dirs.push(a);}}compiled.push({e,times,dirs});}
   function sample(seconds){num(seconds,'time',0,1e8);const frame=seconds*60,emitters=[];let cost=0;
    for(const {e,times,dirs} of compiled){const layers={primary:[],secondary:[],particles:[]},transforms={};
     for(const k of LAYERS){const l=e.layers[k];transforms[k]={x:l.x,y:l.y,rotation:l.rotation};if(!e.enabled||!l.enabled||!l.alpha||frame>=END)continue;

@@ -102,3 +102,33 @@ test('discarded even seam candidate does not consume the particle budget',()=>{
  const p=S.createPlan(c);assert.equal(p.peakParticles,256);
  assert.equal(layer(p.sample(.45),'particles').length,256);
 });
+
+test('disabled particle schedule cannot veto a valid secondary wave',()=>{
+ const c=S.defaults();c.seed=2;c.ringCount=4;c.ringDelayFrames=12;c.timeJitter=.45;
+ assert.throws(()=>S.schedule(c,'emitter1','particles'),/schedule/);
+ const p=S.createPlan(c),a=p.sample(.5);
+ assert.ok(layer(a,'secondary').length>0);assert.equal(layer(a,'particles').length,0);assert.equal(p.peakParticles,0);
+ c.emitters[0].layers.particles.enabled=true;
+ assert.throws(()=>S.createPlan(c),/schedule/);
+ c.emitters[0].layers.particles.alpha=0;assert.deepEqual(S.sample(c,.5),a);
+});
+test('disabled secondary schedule cannot veto valid particle emission',()=>{
+ const c=S.defaults();c.seed=18;c.ringCount=4;c.ringDelayFrames=12;c.timeJitter=.45;
+ c.emitters[0].layers.particles.enabled=true;c.emitters[0].layers.secondary.enabled=false;
+ assert.throws(()=>S.schedule(c,'emitter1'),/schedule/);
+ const a=S.sample(c,.5);assert.ok(layer(a,'particles').length>0);assert.equal(layer(a,'secondary').length,0);
+ c.emitters[0].layers.secondary.enabled=true;assert.throws(()=>S.createPlan(c),/schedule/);
+ c.emitters[0].layers.secondary.alpha=0;assert.deepEqual(S.sample(c,.5),a);
+});
+test('disabled emitter consumes no temporal or particle budget but preserves settings',()=>{
+ const c=S.defaults();c.ringCount=8;c.ringDelayFrames=30;c.finalRadius=500;c.arcGapPx=2;c.quality='low';
+ c.emitters[0].layers.particles.enabled=true;c.emitters[0].enabled=false;
+ const p=S.createPlan(c);assert.equal(p.peakParticles,0);assert.equal(p.sample(.3).cost,0);
+ assert.deepEqual(p.settings,S.normalize(c));assert.equal(p.sample(.3).emitters.length,1);
+ c.emitters[0].enabled=true;assert.throws(()=>S.createPlan(c),/schedule/);
+});
+test('inactive layers still require valid schema and explicit schedule queries remain strict',()=>{
+ const c=S.defaults();c.ringCount=8;c.ringDelayFrames=30;c.emitters[0].enabled=false;
+ assert.throws(()=>S.schedule(c,'emitter1'),/schedule/);
+ c.emitters[0].layers.particles.seed=NaN;assert.throws(()=>S.createPlan(c),/seed/);
+});
