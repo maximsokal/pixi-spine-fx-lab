@@ -12,15 +12,90 @@
   minIntervalFrames:'Min interval (frames)',timeJitter:'Time jitter',spatialJitter:'Spatial jitter',timeOffset:'Delay (frames)',rotation:'Rotation (deg)'};
  let cfg=S.normalize(S.defaults()),selectedId=cfg.emitters[0].id,app=null,fx=null,curveEditor=null,paletteEditor=null;
  let busy=false,playing=false,direction=1,time=0,previous=null,drag=null,backend='webgl2';
+ let spineAsset=null,source=null,animation='',skin='',spineVisible=true,animationSpeed=1;
+ const pending={skeleton:null,atlas:null,images:new Map()};
+ function lock(value){
+  busy=value;
+  for(const id of ['backend','sample','loadSpine','removeSpine','skeletonFile','atlasFile','textureFiles','clearTextures','animation','skin','showSpine','animationSpeed'])
+   $(id).disabled=value;
+ }
+ function pose(asset,seconds,name=animation,skinName=skin){
+  if(!asset)return;
+  const m=asset.model;
+  if(skinName&&m.skeleton.skin?.name!==skinName){m.skeleton.setSkinByName(skinName);m.skeleton.setSlotsToSetupPose();}
+  if(name){
+   if(m.state.getCurrent(0)?.animation.name!==name)m.state.setAnimation(0,name,true);
+   FxTimeline.seekSpine(m,seconds*animationSpeed);
+  }else{m.state.clearTracks();m.skeleton.setToSetupPose();m.update(0);}
+  m.visible=spineVisible;
+ }
+ function populateSpine(){
+  const a=$('animation'),s=$('skin');a.replaceChildren();s.replaceChildren();
+  if(spineAsset){
+   a.add(new Option('Setup pose',''));for(const name of spineAsset.animations)a.add(new Option(name,name));
+   for(const name of spineAsset.skins)s.add(new Option(name,name));
+   a.value=animation;s.value=skin;
+   $('assetLabel').textContent=spineAsset.source.name+' · Spine '+spineAsset.version+' · '+spineAsset.pages+' atlas pages';
+  }else $('assetLabel').textContent='No Spine asset loaded';
+ }
+ function renderPending(){
+  $('pendingFiles').textContent=[pending.skeleton?.name,pending.atlas?.name,...pending.images.keys()].filter(Boolean).join(', ')||'No files selected';
+ }
+ function collect(files){
+  const skeletons=files.filter(f=>/\.(json|skel)$/i.test(f.name)),atlases=files.filter(f=>/\.atlas$/i.test(f.name));
+  if(skeletons.length>1||atlases.length>1)throw Error('Select exactly one skeleton and atlas');
+  const images=files.filter(f=>/\.(png|webp|jpe?g)$/i.test(f.name));
+  const keys=images.map(f=>f.webkitRelativePath||f.name);
+  if(new Set(keys).size!==keys.length)throw Error('Ambiguous duplicate texture names');
+  if(skeletons.length)pending.skeleton=skeletons[0];
+  if(atlases.length)pending.atlas=atlases[0];
+  for(let i=0;i<images.length;i++)pending.images.set(keys[i],images[i]);
+  renderPending();
+ }
+ async function loadSpine(nextSource){
+  if(busy||!app)return;
+  lock(true);setPlaying(false);let candidate=null;
+  try{
+   candidate=await FxShockwaveSpine.create(nextSource);
+   const nextAnimation=candidate.defaultAnimation,nextSkin=candidate.defaultSkin;
+   pose(candidate,time,nextAnimation,nextSkin);
+   app.stage.addChildAt(candidate.model,0);
+   // Validate actual render while the previous asset is still owned.
+   const previousVisible=spineAsset?.model.visible;
+   if(spineAsset)spineAsset.model.visible=false;
+   try{app.render();}catch(error){if(spineAsset)spineAsset.model.visible=previousVisible;throw error;}
+   spineAsset?.destroy();spineAsset=candidate;candidate=null;source=nextSource;
+   animation=nextAnimation;skin=nextSkin;populateSpine();status('Loaded '+source.name);
+  }catch(error){candidate?.destroy();app.render();status('Load failed: '+error.message,true);}
+  finally{lock(false);}
+ }
+ $('sample').onclick=()=>loadSpine(FxShockwaveSpine.sample(JSON.parse($('sampleData').textContent)));
+ for(const id of ['skeletonFile','atlasFile','textureFiles','allFiles'])$(id).onchange=()=>{
+  try{if(!busy)collect([...$(id).files]);}catch(e){status(e.message,true);}finally{$(id).value='';}
+ };
+ $('clearTextures').onclick=()=>{if(!busy){pending.images.clear();renderPending();}};
+ $('loadSpine').onclick=()=>loadSpine({name:pending.skeleton?.name,skeleton:pending.skeleton,atlas:pending.atlas,images:new Map(pending.images)});
+ $('removeSpine').onclick=()=>{if(busy)return;spineAsset?.destroy();spineAsset=null;source=null;animation=skin='';populateSpine();seek(time);status('Ready');};
+ $('animation').onchange=()=>{animation=$('animation').value;seek(time);};
+ $('skin').onchange=()=>{skin=$('skin').value;seek(time);};
+ $('showSpine').onchange=()=>{spineVisible=$('showSpine').checked;seek(time);};
+ $('animationSpeed').onchange=()=>{
+  const value=Number($('animationSpeed').value);
+  if(!Number.isFinite(value)||value<.1||value>4){$('animationSpeed').value=animationSpeed;status('Invalid animation speed',true);return;}
+  animationSpeed=value;seek(time);
+ };
+ $('surface').ondragover=e=>e.preventDefault();
+ $('surface').ondrop=e=>{e.preventDefault();if(!busy)try{collect([...e.dataTransfer.files]);status('Files selected; click Load preview');}catch(error){status(error.message,true);}};
+
  const selected=()=>cfg.emitters.find(e=>e.id===selectedId);
  const kind=()=>$('layerSelect').value;
  const status=(msg,error=false)=>{$('status').textContent=msg;$('status').dataset.error=String(error);};
  function syncPreset(){$('preset').value=JSON.stringify(cfg,null,2);}
  function setPlaying(value){playing=value;previous=null;$('play').textContent=value?'Pause':'Play';}
  function seek(seconds){
-  time=Math.max(0,Math.min(39/60,seconds));const frame=Math.round(time*60);
+  time=Math.max(0,Math.min(39/60,seconds));const frame=Math.floor(time*60+1e-9);
   $('frame').value=frame;$('frameLabel').textContent=frame+' / 39';
-  fx?.seek(time);app?.render();updateHandle();
+  pose(spineAsset,time);fx?.seek(time);app?.render();updateHandle();
  }
  function tick(now){
   if(playing&&!busy){if(previous!==null){
@@ -104,19 +179,20 @@
   try{edit(c=>c.emitters.push(e),true);}catch(error){selectedId=old;status(error.message,true);}
  }
  async function initialize(requested){
-  if(busy)return;busy=true;setPlaying(false);$('backend').disabled=true;
-  let next=new PIXI.Application(),nextFx;
+  if(busy)return;lock(true);setPlaying(false);
+  let next=new PIXI.Application(),nextFx,nextAsset=null;
   try{
    await next.init({width:512,height:512,resolution:1,backgroundAlpha:0,autoStart:false,
     preference:requested==='webgpu'?'webgpu':'webgl',preferWebGLVersion:requested==='webgl1'?1:2});
    const actual=next.renderer.gl?(next.renderer.gl instanceof WebGL2RenderingContext?'webgl2':'webgl1'):'webgpu';
    if(actual!==requested)throw Error('Requested '+requested+', got '+actual);
+   if(source){nextAsset=await FxShockwaveSpine.create(source);pose(nextAsset,time);next.stage.addChild(nextAsset.model);}
    nextFx=FxShockwaveRuntime.createShockwave({PIXI,host:next.stage,settings:cfg});nextFx.seek(time);next.render();
-   if(fx){fx.destroy();app.destroy(true,{children:true});}
-   app=next;fx=nextFx;backend=actual;$('surface').prepend(app.canvas);$('backendActual').textContent=actual.toUpperCase();
+   spineAsset?.destroy();if(fx){fx.destroy();app.destroy(true,{children:true});}
+   spineAsset=nextAsset;app=next;fx=nextFx;backend=actual;$('surface').prepend(app.canvas);$('backendActual').textContent=actual.toUpperCase();
    $('backend').value=backend;document.body.dataset.ready='true';status('Ready');
-  }catch(error){nextFx?.destroy();if(next.renderer)next.destroy(true,{children:true});$('backend').value=backend;status(error.message,true);}
-  finally{busy=false;$('backend').disabled=false;}
+  }catch(error){nextAsset?.destroy();nextFx?.destroy();if(next.renderer)next.destroy(true,{children:true});$('backend').value=backend;status(error.message,true);}
+  finally{lock(false);}
  }
  $('backend').onchange=()=>initialize($('backend').value);
  $('background').onchange=()=>{$('surface').className=$('background').value;};
