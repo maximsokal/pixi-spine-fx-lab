@@ -6,7 +6,7 @@ globalThis.FxEmitters=E;
 require('../assets/template/src/emitter-runtime.js');
 
 // CPU ownership oracle: actual runtime and sampler, no GPU or Spine renderer.
-function fixture(){
+function fixture({customModel,editDoc}={}){
  const filters=[],nodes=[];
  class Container{
   constructor(){
@@ -24,7 +24,7 @@ function fixture(){
   }
  }
  class Graphics extends Container{
-  clear(){return this;}circle(){return this;}fill(){return this;}stroke(){return this;}
+  clear(){this.draws=0;return this;}circle(){return this;}fill(){this.draws++;return this;}stroke(){this.draws++;return this;}
   moveTo(){return this;}lineTo(){return this;}poly(){return this;}
  }
  class BlurFilter{
@@ -32,8 +32,8 @@ function fixture(){
   destroy(){assert.ok(nodes.every(n=>!n.filters.includes(this)),'detach filter first');assert.equal(this.destroyed++,0,'double filter destroy');}
  }
  const stage=new Container(),host=new Container();stage.addChild(host);
- const model={skeleton:{},worldTransform:{apply:(p,out)=>Object.assign(out,p)}};
- const doc=E.makeExplosionPreset();doc.enabled=true;
+ const model=customModel||{skeleton:{},worldTransform:{apply:(p,out)=>Object.assign(out,p)}};
+ const doc=E.makeExplosionPreset();doc.enabled=true;editDoc?.(doc);
  const runtime=globalThis.FxEmitterRuntime.createEmitterLayers({PIXI:{Container,Graphics,BlurFilter},app:{stage},host,model,settings:doc,bounds:{}});
  const record=(eid,lid)=>runtime.nodes.get(eid).layers.get(lid);
  const edit=(eid,lid,type)=>{const next=E.deserialize(E.serialize(runtime.document));
@@ -71,4 +71,67 @@ test('unchanged postprocess and ordinary type transitions reuse resources',()=>{
  assert.equal(f.record(eid,post),r);assert.equal(r.filter,filter);assert.equal(filter.destroyed,0);
  assert.equal(f.record(eid,glow),g);assert.equal(g.filter,null);assert.equal(f.filters.length,count);
  f.runtime.destroy();assert.ok(f.filters.every(v=>v.destroyed===1));assert.deepEqual(f.stage.children,[f.host]);
+});
+
+// Each emitter validates its own anchor even when sharing a Spine slot wrapper.
+function slotFixture({fallback='hide',occupied=false}={}){
+ const bone={active:true,worldX:10,worldY:20,a:1,b:0,c:0,d:1};
+ let attachment=null,exists=true;
+ const slot={bone,getAttachment:()=>attachment};
+ const bindings=new Map();let added=0,removed=0;
+ const callerObject={callerOwned:true};if(occupied)bindings.set('body',callerObject);
+ const model={skeleton:{findSlot:name=>exists&&name==='body'?slot:null},
+  worldTransform:{apply:(p,out)=>Object.assign(out,p)},
+  addSlotObject(name,wrapper,options){assert.equal(name,'body');assert.equal(options.followAttachmentTimeline,false);
+   assert.ok(!bindings.has(name));bindings.set(name,wrapper);added++;},
+  getSlotObject:name=>bindings.get(name),
+  removeSlotObject(name,wrapper){assert.equal(bindings.get(name),wrapper);bindings.delete(name);removed++;}};
+ const setAttachment=name=>{attachment=name?{name,computeWorldVertices(_slot,vertices){vertices.set([0,0,2,0,2,2,0,2]);}}:null;};
+ setAttachment('bodyA');
+ const f=fixture({customModel:model,editDoc(doc){
+  for(const [i,e] of doc.emitters.entries()){
+   e.layers=e.layers.filter(l=>l.type==='glow');e.placement='slot';e.fallback=fallback;
+   e.anchor=i===0?{type:'attachment',name:'bodyA',slot:'body'}:{type:'slot',name:'body'};
+  }
+ }});
+ return {...f,bone,bindings,setAttachment,removeSlot(){exists=false;},restoreSlot(){exists=true;},
+  get added(){return added;},get removed(){return removed;},callerObject};
+}
+function assertFrame(f,ids){
+ const frame=f.runtime.seek(1.2);
+ assert.deepEqual(frame.visibleLayers,ids);
+ assert.equal(frame.cost,ids.length);
+ assert.deepEqual(f.runtime.snapshot.layers.map(l=>l.id),ids);
+ assert.equal(f.runtime.snapshot.cost,ids.length);
+ for(const [eid,lid] of [['emitter1','emitter1_glow'],['emitter2','emitter2_glow']]){
+  const layer=f.record(eid,lid),visible=ids.includes(lid);
+  assert.equal(layer.container.visible,visible);
+  assert.equal(layer.graphics.draws,visible?1:0);
+ }
+ return frame;
+}
+test('missing or changed attachment hides only its named emitter and restores on return',()=>{
+ const f=slotFixture();assertFrame(f,['emitter1_glow','emitter2_glow']);const wrapper=f.bindings.get('body');
+ f.setAttachment('bodyB');let frame=assertFrame(f,['emitter2_glow']);
+ assert.ok(frame.diagnostics.some(d=>d.emitterId==='emitter1'&&d.code==='missing-attachment'));
+ f.setAttachment(null);assertFrame(f,['emitter2_glow']);
+ f.setAttachment('bodyA');assertFrame(f,['emitter1_glow','emitter2_glow']);
+ assert.equal(f.bindings.get('body'),wrapper);assert.equal(f.added,1);f.runtime.destroy();assert.equal(f.removed,1);
+});
+test('inactive slot bone hides both emitters and restores without reallocating wrapper',()=>{
+ const f=slotFixture();const wrapper=f.bindings.get('body');f.bone.active=false;
+ const frame=assertFrame(f,[]);assert.equal(frame.diagnostics.filter(d=>d.code==='missing-slot').length,2);
+ f.bone.active=true;assertFrame(f,['emitter1_glow','emitter2_glow']);
+ assert.equal(f.bindings.get('body'),wrapper);assert.equal(f.added,1);f.runtime.destroy();
+});
+test('missing slot is not rendered even with front fallback and is absent from bake metadata',()=>{
+ const f=slotFixture({fallback:'front'});f.removeSlot();
+ const frame=assertFrame(f,[]);assert.equal(frame.diagnostics.filter(d=>d.code==='missing-slot').length,2);
+ f.restoreSlot();assertFrame(f,['emitter1_glow','emitter2_glow']);f.runtime.destroy();
+});
+test('occupied slot uses front fallback only for resolved anchors and preserves caller object',()=>{
+ const f=slotFixture({fallback:'front',occupied:true});
+ assertFrame(f,['emitter1_glow','emitter2_glow']);f.setAttachment('bodyB');
+ assertFrame(f,['emitter2_glow']);assert.equal(f.added,0);f.runtime.destroy();
+ assert.equal(f.bindings.get('body'),f.callerObject);assert.equal(f.removed,0);
 });

@@ -104,9 +104,13 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     if(e.placement==='behind')return groups.behind;
     if(e.placement==='front')return groups.front;
     const slot=e.anchor.type==='attachment'?e.anchor.slot:e.anchor.name;
-    if(!model.skeleton?.findSlot(slot)) {
-      diagnose('missing-slot',e,'Slot for interleaving does not exist: '+slot);
-      return e.fallback==='front'?groups.front:null;
+    const target=model.skeleton?.findSlot(slot);
+    if(!target?.bone?.active){
+      diagnose('missing-slot',e,'Slot not found/active: '+slot);return null;
+    }
+    // A shared slot wrapper cannot follow each child's named attachment.
+    if(e.anchor.type==='attachment'&&target.getAttachment?.()?.name!==e.anchor.name){
+      diagnose('missing-attachment',e,'Active attachment not found: '+e.anchor.name);return null;
     }
     return slotParent(slot,e)||(e.fallback==='front'?groups.front:null);
   }
@@ -183,13 +187,13 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     if(dead)return;
     clock=time;
     const snapshot=E.sample(doc,Math.max(0,time));
-    last=snapshot;
     diagnostics=[];
+    const visibleIds=new Set();
     const byId=new Map(snapshot.layers.map(l=>[l.id,l]));
     for(const e of doc.emitters){
       const state=owned.get(e.id);if(!state)continue;
       const parent=parentFor(e);
-      const world=e.placement==='slot'&&parent!==groups.front?{x:e.x,y:e.y}:anchorWorld(e);
+      const world=parent?(e.placement==='slot'&&parent!==groups.front?{x:e.x,y:e.y}:anchorWorld(e)):null;
       const ready=Boolean(parent&&world);
       if(parent&&state.container.parent!==parent)parent.addChild(state.container);
       state.container.visible=ready&&doc.enabled&&e.enabled&&e.visible;
@@ -203,12 +207,16 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
         if(!record)continue;
         record.container.visible=state.container.visible&&Boolean(item);
         record.graphics.clear();
-        if(!item||!ready)continue;
+        if(!record.container.visible)continue;
+        visibleIds.add(l.id);
         const color=parseInt(l.color.slice(1),16);
         for(const shape of item.primitives)drawPrimitive(record.graphics,shape,shape.color?parseInt(shape.color.slice(1),16):color);
       }
     }
-    return {time,visibleLayers:[...byId.keys()],cost:snapshot.cost,diagnostics:diagnostics.slice()};
+    // The sampler is pose-independent; expose only layers eligible to render here.
+    const layers=snapshot.layers.filter(l=>visibleIds.has(l.id));
+    last={...snapshot,layers,cost:layers.reduce((n,l)=>n+l.cost,0),diagnostics:diagnostics.slice()};
+    return {time,visibleLayers:layers.map(l=>l.id),cost:last.cost,diagnostics:diagnostics.slice()};
   }
   function scenePositionForEmitter(id){
     const e=doc.emitters.find(v=>v.id===id),state=owned.get(id);
