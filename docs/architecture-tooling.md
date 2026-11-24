@@ -56,6 +56,12 @@ $env:STATIK_BIN = 'C:\tools\statik\target\release\statik.exe'
 
 The 11 blueprint tests and 9 effect-validation tests passed. Full Python discovery also attempted two archive-verification modules, but those require absent external files `discover/steam-baked.zip` and `discover/wind-burst.zip`; these are not tracked fixtures in this checkout. Six targeted Node checks passed (curves, wind, waterfall, torch, PNG parsing, and bubble alpha); additional package-export tests require extracted ZIP arguments that were not present. Browser/PNG smoke tests were not run because Playwright is not installed. The template built to a temporary HTML and `verify_project.py` passed (8 protected files, 30 controls, HTML checked). There is no TypeScript type check or conventional production app build to run here.
 
+### Local discovery and browser archive QA (#74)
+
+Run `python -m unittest discover -s scripts` for Python discovery. The Steam Jet and Wind Gust package validators are explicit CLI checks; importing them must not inspect archives or invoke npm. For real browser-generated archives, separately run `python scripts/test_steam_packages.py <steam-qa-directory>` and `python scripts/test_wind_packages.py <wind-qa-directory>`. Missing or invalid archives remain errors. Do not treat successful unit discovery as evidence of real PNG, ZIP or offline Vite build parity.
+
+Targeted verification on Python 3.13.5: the three-file local snapshot (two original validators verified by Git blob SHA plus the new regression suite) produced 3 failures before the fix and 5/5 passing tests after it. Full repository discovery and real browser archives were not run in this environment because the full checkout and browser-generated fixtures were unavailable. The earlier baseline above is historical.
+
 ## CI proposal
 
 Start with an informational GitHub Actions job: use `actions/setup-node` with Node 24, `npm ci`, install Rust stable, check out statik at the recorded revision into a temporary tools directory, build it with `cargo build --release`, then run `npm run arch:check` and upload the DOT/JSON reports. Do not fail the job for Knip/statik findings until their dynamic-entry baseline has been reviewed. The current dependency-cruiser baseline is clean and its rules have a passing negative test; promote that step to blocking only after maintainers approve the rules. Add browser test dependencies separately rather than pretending the current checkout has a TypeScript build or a configured Playwright suite.
