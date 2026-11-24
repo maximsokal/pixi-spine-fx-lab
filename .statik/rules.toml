@@ -1,0 +1,65 @@
+[scope.browser_runtime]
+include = ["assets/*/src/**/*.js"]
+role = "entry_point"
+
+[scope.repository_tools]
+include = ["scripts/**/*.cjs"]
+role = "entry_point"
+
+[scope.analyzer_config]
+include = [".dependency-cruiser.cjs"]
+role = "entry_point"
+
+[entry_points]
+patterns = ["assets/*/src/**/*.js", "scripts/**/*.cjs", ".dependency-cruiser.cjs"]
+
+[[rules]]
+id = "no-file-import-cycles"
+severity = "info"
+description = "Avoid cycles between statically resolved source modules."
+rationale = "The shipped browser modules use CommonJS require fallbacks and globalThis registration; statik currently does not resolve those references, so this rule is advisory only."
+
+[rules.cycle_policy]
+pattern = ["assets/*/src/**/*.js", "scripts/**/*.cjs"]
+max_cycle_length = 0
+
+[[rules]]
+id = "shared-template-core-does-not-depend-on-effects"
+severity = "info"
+description = "Shared template core modules must not depend on individual effect implementations."
+rationale = "Curves, spacing, path, color, timeline, and emitter utilities are shared infrastructure. This rule only sees imports statik resolves."
+
+[rules.boundary]
+from = [
+  "assets/template/src/curve-core.js",
+  "assets/template/src/spacing-core.js",
+  "assets/template/src/path-core.js",
+  "assets/template/src/color-core.js",
+  "assets/template/src/timeline-core.js",
+  "assets/template/src/emitter-core.js"
+]
+deny = [
+  "assets/embers-sparks/src/**",
+  "assets/fire-explosion/src/**",
+  "assets/fireball-projectile/src/**",
+  "assets/heat-haze/src/**",
+  "assets/rainfall/src/**",
+  "assets/rising-bubbles/src/**",
+  "assets/smoke-plume/src/**",
+  "assets/steam-jet/src/**",
+  "assets/torch-flame/src/**",
+  "assets/water-ripples/src/**",
+  "assets/water-splash/src/**",
+  "assets/waterfall/src/**",
+  "assets/wind-gust/src/**"
+]
+
+[[rules]]
+id = "browser-runtime-does-not-depend-on-repository-scripts"
+severity = "info"
+description = "Browser runtime code must not import build or test tooling."
+rationale = "Build and test scripts may depend on runtime sources, but the browser modules must remain portable."
+
+[rules.boundary]
+from = ["assets/*/src/**/*.js"]
+deny = ["scripts/**"]

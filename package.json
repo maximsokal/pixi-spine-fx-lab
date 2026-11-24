@@ -1,0 +1,25 @@
+{
+  "name": "pixi-spine-fx-lab-architecture-tools",
+  "private": true,
+  "description": "Development-only architecture analysis tools for the Pixi Spine FX Lab repository.",
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+  },
+  "scripts": {
+    "arch:deps": "depcruise assets/template/src assets/embers-sparks/src assets/fire-explosion/src assets/fireball-projectile/src assets/heat-haze/src assets/rainfall/src assets/rising-bubbles/src assets/smoke-plume/src assets/steam-jet/src assets/torch-flame/src assets/water-ripples/src assets/water-splash/src assets/waterfall/src assets/wind-gust/src scripts --config .dependency-cruiser.cjs",
+    "arch:graph": "depcruise assets/template/src assets/embers-sparks/src assets/fire-explosion/src assets/fireball-projectile/src assets/heat-haze/src assets/rainfall/src assets/rising-bubbles/src assets/smoke-plume/src assets/steam-jet/src assets/torch-flame/src assets/water-ripples/src assets/water-splash/src assets/waterfall/src assets/wind-gust/src scripts --config .dependency-cruiser.cjs --output-type dot --output-to docs/architecture-dependency-graph.dot",
+    "arch:unused": "knip",
+    "arch:unused:production": "knip --production",
+    "arch:statik:index": "node scripts/run-statik.cjs index . --exclude \"assets/template/vendor/**\"",
+    "arch:statik": "node scripts/run-statik.cjs lint",
+    "arch:statik:summary": "node scripts/run-statik.cjs summary --by-directory --format json",
+    "arch:statik:cycles": "node scripts/run-statik.cjs cycles --format json",
+    "arch:statik:dead-code": "node scripts/run-statik.cjs dead-code",
+    "arch:statik:impact": "node scripts/run-statik.cjs impact",
+    "arch:check": "npm run arch:deps && npm run arch:unused && npm run arch:statik:index && npm run arch:statik"
+  },
+  "devDependencies": {
+    "dependency-cruiser": "18.9.0",
+    "knip": "6.48.0"
+  }
+}

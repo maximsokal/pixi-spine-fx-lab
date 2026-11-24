@@ -132,3 +132,7 @@ Validation status: the burn baseline passes the bundled smoke test on WebGL and 
 - The sample artwork in `assets/template/sample/` is all rights reserved and is included for demonstration only. See [NOTICE.md](NOTICE.md).
 
 This repository is not affiliated with Esoteric Software or the PixiJS project.
+
+## Repository architecture checks
+
+The repository includes pinned dependency-cruiser and Knip checks. See [docs/architecture-tooling.md](docs/architecture-tooling.md) for scope, commands, statik installation, known dynamic-reference limitations, baseline results, and the proposed CI rollout. These are repository-maintenance tools; they are not dependencies of the offline editor.

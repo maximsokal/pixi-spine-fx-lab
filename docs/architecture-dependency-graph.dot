@@ -1,0 +1,928 @@
+strict digraph "dependency-cruiser output"{
+    rankdir="LR" splines="true" overlap="false" nodesep="0.16" ranksep="0.18" fontname="Helvetica-bold" fontsize="9" style="rounded,bold,filled" fillcolor="#ffffff" compound="true"
+    node [shape="box" style="rounded, filled" height="0.2" color="black" fillcolor="#ffffcc" fontcolor="black" fontname="Helvetica" fontsize="9"]
+    edge [arrowhead="normal" arrowsize="0.6" penwidth="2.0" color="#00000033" fontname="Helvetica" fontsize="9"]
+
+    subgraph "cluster_assert" {label="assert" "assert/strict" [label=<strict> tooltip="strict" URL="https://nodejs.org/api/assert.html" color="grey" fontcolor="grey"] }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/embers-sparks" {label="embers-sparks" subgraph "cluster_assets/embers-sparks/src" {label="src" "assets/embers-sparks/src/embers-core.js" [label=<embers-core.js> tooltip="embers-core.js" URL="assets/embers-sparks/src/embers-core.js" ] } } }
+    "assets/embers-sparks/src/embers-core.js" -> "assets/template/src/color-core.js"
+    "assets/embers-sparks/src/embers-core.js" -> "assets/template/src/curve-core.js"
+    "assets/embers-sparks/src/embers-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/embers-sparks" {label="embers-sparks" subgraph "cluster_assets/embers-sparks/src" {label="src" "assets/embers-sparks/src/embers-editor.js" [label=<embers-editor.js> tooltip="embers-editor.js" URL="assets/embers-sparks/src/embers-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/embers-sparks" {label="embers-sparks" subgraph "cluster_assets/embers-sparks/src" {label="src" "assets/embers-sparks/src/embers-export.js" [label=<embers-export.js> tooltip="embers-export.js" URL="assets/embers-sparks/src/embers-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/embers-sparks" {label="embers-sparks" subgraph "cluster_assets/embers-sparks/src" {label="src" "assets/embers-sparks/src/embers-runtime.js" [label=<embers-runtime.js> tooltip="embers-runtime.js" URL="assets/embers-sparks/src/embers-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/embers-sparks" {label="embers-sparks" subgraph "cluster_assets/embers-sparks/src" {label="src" "assets/embers-sparks/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/embers-sparks/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/fire-explosion" {label="fire-explosion" subgraph "cluster_assets/fire-explosion/src" {label="src" "assets/fire-explosion/src/explosion-core.js" [label=<explosion-core.js> tooltip="explosion-core.js" URL="assets/fire-explosion/src/explosion-core.js" ] } } }
+    "assets/fire-explosion/src/explosion-core.js" -> "assets/template/src/color-core.js"
+    "assets/fire-explosion/src/explosion-core.js" -> "assets/template/src/curve-core.js"
+    "assets/fire-explosion/src/explosion-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/fire-explosion" {label="fire-explosion" subgraph "cluster_assets/fire-explosion/src" {label="src" "assets/fire-explosion/src/explosion-editor.js" [label=<explosion-editor.js> tooltip="explosion-editor.js" URL="assets/fire-explosion/src/explosion-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/fire-explosion" {label="fire-explosion" subgraph "cluster_assets/fire-explosion/src" {label="src" "assets/fire-explosion/src/explosion-export.js" [label=<explosion-export.js> tooltip="explosion-export.js" URL="assets/fire-explosion/src/explosion-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/fire-explosion" {label="fire-explosion" subgraph "cluster_assets/fire-explosion/src" {label="src" "assets/fire-explosion/src/explosion-runtime.js" [label=<explosion-runtime.js> tooltip="explosion-runtime.js" URL="assets/fire-explosion/src/explosion-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/fire-explosion" {label="fire-explosion" subgraph "cluster_assets/fire-explosion/src" {label="src" "assets/fire-explosion/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/fire-explosion/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/fireball-projectile" {label="fireball-projectile" subgraph "cluster_assets/fireball-projectile/src" {label="src" "assets/fireball-projectile/src/projectile-core.js" [label=<projectile-core.js> tooltip="projectile-core.js" URL="assets/fireball-projectile/src/projectile-core.js" ] } } }
+    "assets/fireball-projectile/src/projectile-core.js" -> "assets/template/src/color-core.js"
+    "assets/fireball-projectile/src/projectile-core.js" -> "assets/template/src/curve-core.js"
+    "assets/fireball-projectile/src/projectile-core.js" -> "assets/template/src/path-core.js"
+    "assets/fireball-projectile/src/projectile-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/fireball-projectile" {label="fireball-projectile" subgraph "cluster_assets/fireball-projectile/src" {label="src" "assets/fireball-projectile/src/projectile-editor.js" [label=<projectile-editor.js> tooltip="projectile-editor.js" URL="assets/fireball-projectile/src/projectile-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/fireball-projectile" {label="fireball-projectile" subgraph "cluster_assets/fireball-projectile/src" {label="src" "assets/fireball-projectile/src/projectile-export.js" [label=<projectile-export.js> tooltip="projectile-export.js" URL="assets/fireball-projectile/src/projectile-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/fireball-projectile" {label="fireball-projectile" subgraph "cluster_assets/fireball-projectile/src" {label="src" "assets/fireball-projectile/src/projectile-runtime.js" [label=<projectile-runtime.js> tooltip="projectile-runtime.js" URL="assets/fireball-projectile/src/projectile-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/fireball-projectile" {label="fireball-projectile" subgraph "cluster_assets/fireball-projectile/src" {label="src" "assets/fireball-projectile/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/fireball-projectile/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/heat-haze" {label="heat-haze" subgraph "cluster_assets/heat-haze/src" {label="src" "assets/heat-haze/src/haze-core.js" [label=<haze-core.js> tooltip="haze-core.js" URL="assets/heat-haze/src/haze-core.js" ] } } }
+    "assets/heat-haze/src/haze-core.js" -> "assets/template/src/color-core.js"
+    "assets/heat-haze/src/haze-core.js" -> "assets/template/src/curve-core.js"
+    "assets/heat-haze/src/haze-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/heat-haze" {label="heat-haze" subgraph "cluster_assets/heat-haze/src" {label="src" "assets/heat-haze/src/haze-editor.js" [label=<haze-editor.js> tooltip="haze-editor.js" URL="assets/heat-haze/src/haze-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/heat-haze" {label="heat-haze" subgraph "cluster_assets/heat-haze/src" {label="src" "assets/heat-haze/src/haze-export.js" [label=<haze-export.js> tooltip="haze-export.js" URL="assets/heat-haze/src/haze-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/heat-haze" {label="heat-haze" subgraph "cluster_assets/heat-haze/src" {label="src" "assets/heat-haze/src/haze-runtime.js" [label=<haze-runtime.js> tooltip="haze-runtime.js" URL="assets/heat-haze/src/haze-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/heat-haze" {label="heat-haze" subgraph "cluster_assets/heat-haze/src" {label="src" "assets/heat-haze/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/heat-haze/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/rainfall" {label="rainfall" subgraph "cluster_assets/rainfall/src" {label="src" "assets/rainfall/src/rain-core.js" [label=<rain-core.js> tooltip="rain-core.js" URL="assets/rainfall/src/rain-core.js" ] } } }
+    "assets/rainfall/src/rain-core.js" -> "assets/template/src/color-core.js"
+    "assets/rainfall/src/rain-core.js" -> "assets/template/src/curve-core.js"
+    "assets/rainfall/src/rain-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/rainfall" {label="rainfall" subgraph "cluster_assets/rainfall/src" {label="src" "assets/rainfall/src/rain-editor.js" [label=<rain-editor.js> tooltip="rain-editor.js" URL="assets/rainfall/src/rain-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/rainfall" {label="rainfall" subgraph "cluster_assets/rainfall/src" {label="src" "assets/rainfall/src/rain-export.js" [label=<rain-export.js> tooltip="rain-export.js" URL="assets/rainfall/src/rain-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/rainfall" {label="rainfall" subgraph "cluster_assets/rainfall/src" {label="src" "assets/rainfall/src/rain-runtime.js" [label=<rain-runtime.js> tooltip="rain-runtime.js" URL="assets/rainfall/src/rain-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/rainfall" {label="rainfall" subgraph "cluster_assets/rainfall/src" {label="src" "assets/rainfall/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/rainfall/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/rising-bubbles" {label="rising-bubbles" subgraph "cluster_assets/rising-bubbles/src" {label="src" "assets/rising-bubbles/src/bubbles-core.js" [label=<bubbles-core.js> tooltip="bubbles-core.js" URL="assets/rising-bubbles/src/bubbles-core.js" ] } } }
+    "assets/rising-bubbles/src/bubbles-core.js" -> "assets/template/src/color-core.js"
+    "assets/rising-bubbles/src/bubbles-core.js" -> "assets/template/src/curve-core.js"
+    "assets/rising-bubbles/src/bubbles-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/rising-bubbles" {label="rising-bubbles" subgraph "cluster_assets/rising-bubbles/src" {label="src" "assets/rising-bubbles/src/bubbles-editor.js" [label=<bubbles-editor.js> tooltip="bubbles-editor.js" URL="assets/rising-bubbles/src/bubbles-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/rising-bubbles" {label="rising-bubbles" subgraph "cluster_assets/rising-bubbles/src" {label="src" "assets/rising-bubbles/src/bubbles-export.js" [label=<bubbles-export.js> tooltip="bubbles-export.js" URL="assets/rising-bubbles/src/bubbles-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/rising-bubbles" {label="rising-bubbles" subgraph "cluster_assets/rising-bubbles/src" {label="src" "assets/rising-bubbles/src/bubbles-runtime.js" [label=<bubbles-runtime.js> tooltip="bubbles-runtime.js" URL="assets/rising-bubbles/src/bubbles-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/rising-bubbles" {label="rising-bubbles" subgraph "cluster_assets/rising-bubbles/src" {label="src" "assets/rising-bubbles/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/rising-bubbles/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/smoke-plume" {label="smoke-plume" subgraph "cluster_assets/smoke-plume/src" {label="src" "assets/smoke-plume/src/smoke-core.js" [label=<smoke-core.js> tooltip="smoke-core.js" URL="assets/smoke-plume/src/smoke-core.js" ] } } }
+    "assets/smoke-plume/src/smoke-core.js" -> "assets/template/src/color-core.js"
+    "assets/smoke-plume/src/smoke-core.js" -> "assets/template/src/curve-core.js"
+    "assets/smoke-plume/src/smoke-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/smoke-plume" {label="smoke-plume" subgraph "cluster_assets/smoke-plume/src" {label="src" "assets/smoke-plume/src/smoke-editor.js" [label=<smoke-editor.js> tooltip="smoke-editor.js" URL="assets/smoke-plume/src/smoke-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/smoke-plume" {label="smoke-plume" subgraph "cluster_assets/smoke-plume/src" {label="src" "assets/smoke-plume/src/smoke-export.js" [label=<smoke-export.js> tooltip="smoke-export.js" URL="assets/smoke-plume/src/smoke-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/smoke-plume" {label="smoke-plume" subgraph "cluster_assets/smoke-plume/src" {label="src" "assets/smoke-plume/src/smoke-runtime.js" [label=<smoke-runtime.js> tooltip="smoke-runtime.js" URL="assets/smoke-plume/src/smoke-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/smoke-plume" {label="smoke-plume" subgraph "cluster_assets/smoke-plume/src" {label="src" "assets/smoke-plume/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/smoke-plume/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/steam-jet" {label="steam-jet" subgraph "cluster_assets/steam-jet/src" {label="src" "assets/steam-jet/src/steam-core.js" [label=<steam-core.js> tooltip="steam-core.js" URL="assets/steam-jet/src/steam-core.js" ] } } }
+    "assets/steam-jet/src/steam-core.js" -> "assets/template/src/color-core.js"
+    "assets/steam-jet/src/steam-core.js" -> "assets/template/src/curve-core.js"
+    "assets/steam-jet/src/steam-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/steam-jet" {label="steam-jet" subgraph "cluster_assets/steam-jet/src" {label="src" "assets/steam-jet/src/steam-editor.js" [label=<steam-editor.js> tooltip="steam-editor.js" URL="assets/steam-jet/src/steam-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/steam-jet" {label="steam-jet" subgraph "cluster_assets/steam-jet/src" {label="src" "assets/steam-jet/src/steam-export.js" [label=<steam-export.js> tooltip="steam-export.js" URL="assets/steam-jet/src/steam-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/steam-jet" {label="steam-jet" subgraph "cluster_assets/steam-jet/src" {label="src" "assets/steam-jet/src/steam-runtime.js" [label=<steam-runtime.js> tooltip="steam-runtime.js" URL="assets/steam-jet/src/steam-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/steam-jet" {label="steam-jet" subgraph "cluster_assets/steam-jet/src" {label="src" "assets/steam-jet/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/steam-jet/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/color-core.js" [label=<color-core.js> tooltip="color-core.js" URL="assets/template/src/color-core.js" ] } } }
+    "assets/template/src/color-core.js" -> "assets/template/src/curve-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/color-ui.js" [label=<color-ui.js> tooltip="color-ui.js" URL="assets/template/src/color-ui.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/curve-core.js" [label=<curve-core.js> tooltip="curve-core.js" URL="assets/template/src/curve-core.js" ] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/curve-editor.js" [label=<curve-editor.js> tooltip="curve-editor.js" URL="assets/template/src/curve-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/effect-core.js" [label=<effect-core.js> tooltip="effect-core.js" URL="assets/template/src/effect-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/emitter-core.js" [label=<emitter-core.js> tooltip="emitter-core.js" URL="assets/template/src/emitter-core.js" ] } } }
+    "assets/template/src/emitter-core.js" -> "assets/template/src/color-core.js"
+    "assets/template/src/emitter-core.js" -> "assets/template/src/curve-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/emitter-runtime.js" [label=<emitter-runtime.js> tooltip="emitter-runtime.js" URL="assets/template/src/emitter-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/emitter-ui.js" [label=<emitter-ui.js> tooltip="emitter-ui.js" URL="assets/template/src/emitter-ui.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/export-ui.js" [label=<export-ui.js> tooltip="export-ui.js" URL="assets/template/src/export-ui.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/path-core.js" [label=<path-core.js> tooltip="path-core.js" URL="assets/template/src/path-core.js" ] } } }
+    "assets/template/src/path-core.js" -> "assets/template/src/curve-core.js"
+    "assets/template/src/path-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/spacing-core.js" [label=<spacing-core.js> tooltip="spacing-core.js" URL="assets/template/src/spacing-core.js" ] } } }
+    "assets/template/src/spacing-core.js" -> "assets/template/src/curve-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/spacing-ui.js" [label=<spacing-ui.js> tooltip="spacing-ui.js" URL="assets/template/src/spacing-ui.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/template" {label="template" subgraph "cluster_assets/template/src" {label="src" "assets/template/src/timeline-core.js" [label=<timeline-core.js> tooltip="timeline-core.js" URL="assets/template/src/timeline-core.js" ] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/torch-flame" {label="torch-flame" subgraph "cluster_assets/torch-flame/src" {label="src" "assets/torch-flame/src/torch-core.js" [label=<torch-core.js> tooltip="torch-core.js" URL="assets/torch-flame/src/torch-core.js" ] } } }
+    "assets/torch-flame/src/torch-core.js" -> "assets/template/src/color-core.js"
+    "assets/torch-flame/src/torch-core.js" -> "assets/template/src/curve-core.js"
+    "assets/torch-flame/src/torch-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/torch-flame" {label="torch-flame" subgraph "cluster_assets/torch-flame/src" {label="src" "assets/torch-flame/src/torch-editor.js" [label=<torch-editor.js> tooltip="torch-editor.js" URL="assets/torch-flame/src/torch-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/torch-flame" {label="torch-flame" subgraph "cluster_assets/torch-flame/src" {label="src" "assets/torch-flame/src/torch-export.js" [label=<torch-export.js> tooltip="torch-export.js" URL="assets/torch-flame/src/torch-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/torch-flame" {label="torch-flame" subgraph "cluster_assets/torch-flame/src" {label="src" "assets/torch-flame/src/torch-runtime.js" [label=<torch-runtime.js> tooltip="torch-runtime.js" URL="assets/torch-flame/src/torch-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/torch-flame" {label="torch-flame" subgraph "cluster_assets/torch-flame/src" {label="src" "assets/torch-flame/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/torch-flame/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/water-ripples" {label="water-ripples" subgraph "cluster_assets/water-ripples/src" {label="src" "assets/water-ripples/src/ripples-core.js" [label=<ripples-core.js> tooltip="ripples-core.js" URL="assets/water-ripples/src/ripples-core.js" ] } } }
+    "assets/water-ripples/src/ripples-core.js" -> "assets/template/src/color-core.js"
+    "assets/water-ripples/src/ripples-core.js" -> "assets/template/src/curve-core.js"
+    "assets/water-ripples/src/ripples-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/water-ripples" {label="water-ripples" subgraph "cluster_assets/water-ripples/src" {label="src" "assets/water-ripples/src/ripples-editor.js" [label=<ripples-editor.js> tooltip="ripples-editor.js" URL="assets/water-ripples/src/ripples-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/water-ripples" {label="water-ripples" subgraph "cluster_assets/water-ripples/src" {label="src" "assets/water-ripples/src/ripples-export.js" [label=<ripples-export.js> tooltip="ripples-export.js" URL="assets/water-ripples/src/ripples-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/water-ripples" {label="water-ripples" subgraph "cluster_assets/water-ripples/src" {label="src" "assets/water-ripples/src/ripples-runtime.js" [label=<ripples-runtime.js> tooltip="ripples-runtime.js" URL="assets/water-ripples/src/ripples-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/water-ripples" {label="water-ripples" subgraph "cluster_assets/water-ripples/src" {label="src" "assets/water-ripples/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/water-ripples/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/water-splash" {label="water-splash" subgraph "cluster_assets/water-splash/src" {label="src" "assets/water-splash/src/splash-core.js" [label=<splash-core.js> tooltip="splash-core.js" URL="assets/water-splash/src/splash-core.js" ] } } }
+    "assets/water-splash/src/splash-core.js" -> "assets/template/src/color-core.js"
+    "assets/water-splash/src/splash-core.js" -> "assets/template/src/curve-core.js"
+    "assets/water-splash/src/splash-core.js" -> "assets/template/src/path-core.js"
+    "assets/water-splash/src/splash-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/water-splash" {label="water-splash" subgraph "cluster_assets/water-splash/src" {label="src" "assets/water-splash/src/splash-editor.js" [label=<splash-editor.js> tooltip="splash-editor.js" URL="assets/water-splash/src/splash-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/water-splash" {label="water-splash" subgraph "cluster_assets/water-splash/src" {label="src" "assets/water-splash/src/splash-export.js" [label=<splash-export.js> tooltip="splash-export.js" URL="assets/water-splash/src/splash-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/water-splash" {label="water-splash" subgraph "cluster_assets/water-splash/src" {label="src" "assets/water-splash/src/splash-runtime.js" [label=<splash-runtime.js> tooltip="splash-runtime.js" URL="assets/water-splash/src/splash-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/water-splash" {label="water-splash" subgraph "cluster_assets/water-splash/src" {label="src" "assets/water-splash/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/water-splash/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/waterfall" {label="waterfall" subgraph "cluster_assets/waterfall/src" {label="src" "assets/waterfall/src/waterfall-core.js" [label=<waterfall-core.js> tooltip="waterfall-core.js" URL="assets/waterfall/src/waterfall-core.js" ] } } }
+    "assets/waterfall/src/waterfall-core.js" -> "assets/template/src/color-core.js"
+    "assets/waterfall/src/waterfall-core.js" -> "assets/template/src/curve-core.js"
+    "assets/waterfall/src/waterfall-core.js" -> "assets/template/src/path-core.js"
+    "assets/waterfall/src/waterfall-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/waterfall" {label="waterfall" subgraph "cluster_assets/waterfall/src" {label="src" "assets/waterfall/src/waterfall-editor.js" [label=<waterfall-editor.js> tooltip="waterfall-editor.js" URL="assets/waterfall/src/waterfall-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/waterfall" {label="waterfall" subgraph "cluster_assets/waterfall/src" {label="src" "assets/waterfall/src/waterfall-export.js" [label=<waterfall-export.js> tooltip="waterfall-export.js" URL="assets/waterfall/src/waterfall-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/waterfall" {label="waterfall" subgraph "cluster_assets/waterfall/src" {label="src" "assets/waterfall/src/waterfall-runtime.js" [label=<waterfall-runtime.js> tooltip="waterfall-runtime.js" URL="assets/waterfall/src/waterfall-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/waterfall" {label="waterfall" subgraph "cluster_assets/waterfall/src" {label="src" "assets/waterfall/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/waterfall/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/wind-gust" {label="wind-gust" subgraph "cluster_assets/wind-gust/src" {label="src" "assets/wind-gust/src/wind-core.js" [label=<wind-core.js> tooltip="wind-core.js" URL="assets/wind-gust/src/wind-core.js" ] } } }
+    "assets/wind-gust/src/wind-core.js" -> "assets/template/src/color-core.js"
+    "assets/wind-gust/src/wind-core.js" -> "assets/template/src/curve-core.js"
+    "assets/wind-gust/src/wind-core.js" -> "assets/template/src/path-core.js"
+    "assets/wind-gust/src/wind-core.js" -> "assets/template/src/spacing-core.js"
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/wind-gust" {label="wind-gust" subgraph "cluster_assets/wind-gust/src" {label="src" "assets/wind-gust/src/wind-editor.js" [label=<wind-editor.js> tooltip="wind-editor.js" URL="assets/wind-gust/src/wind-editor.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/wind-gust" {label="wind-gust" subgraph "cluster_assets/wind-gust/src" {label="src" "assets/wind-gust/src/wind-export.js" [label=<wind-export.js> tooltip="wind-export.js" URL="assets/wind-gust/src/wind-export.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/wind-gust" {label="wind-gust" subgraph "cluster_assets/wind-gust/src" {label="src" "assets/wind-gust/src/wind-runtime.js" [label=<wind-runtime.js> tooltip="wind-runtime.js" URL="assets/wind-gust/src/wind-runtime.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_assets" {label="assets" subgraph "cluster_assets/wind-gust" {label="wind-gust" subgraph "cluster_assets/wind-gust/src" {label="src" "assets/wind-gust/src/zip-core.js" [label=<zip-core.js> tooltip="zip-core.js" URL="assets/wind-gust/src/zip-core.js" fillcolor="#ccffcc"] } } }
+    "child_process" [label=<child_process> tooltip="child_process" URL="https://nodejs.org/api/child_process.html" color="grey" fontcolor="grey"]
+    "crypto" [label=<crypto> tooltip="crypto" URL="https://nodejs.org/api/crypto.html" color="grey" fontcolor="grey"]
+    "fs" [label=<fs> tooltip="fs" URL="https://nodejs.org/api/fs.html" color="grey" fontcolor="grey"]
+    "os" [label=<os> tooltip="os" URL="https://nodejs.org/api/os.html" color="grey" fontcolor="grey"]
+    "path" [label=<path> tooltip="path" URL="https://nodejs.org/api/path.html" color="grey" fontcolor="grey"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/compare_color_legacy.cjs" [label=<compare_color_legacy.cjs> tooltip="compare_color_legacy.cjs" URL="scripts/compare_color_legacy.cjs" ] }
+    "scripts/compare_color_legacy.cjs" -> "scripts/test_png_pma.cjs"
+    "scripts/compare_color_legacy.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/compare_color_legacy.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/compare_color_metadata.cjs" [label=<compare_color_metadata.cjs> tooltip="compare_color_metadata.cjs" URL="scripts/compare_color_metadata.cjs" ] }
+    "scripts/compare_color_metadata.cjs" -> "assets/template/src/color-core.js"
+    "scripts/compare_color_metadata.cjs" -> "scripts/test_png_pma.cjs"
+    "scripts/compare_color_metadata.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/compare_color_metadata.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/compare_png_pma.cjs" [label=<compare_png_pma.cjs> tooltip="compare_png_pma.cjs" URL="scripts/compare_png_pma.cjs" ] }
+    "scripts/compare_png_pma.cjs" -> "scripts/test_png_pma.cjs"
+    "scripts/compare_png_pma.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/compare_png_pma.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/compare_spacing_metadata.cjs" [label=<compare_spacing_metadata.cjs> tooltip="compare_spacing_metadata.cjs" URL="scripts/compare_spacing_metadata.cjs" ] }
+    "scripts/compare_spacing_metadata.cjs" -> "scripts/test_png_pma.cjs"
+    "scripts/compare_spacing_metadata.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/compare_spacing_metadata.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/fx_visual_png.cjs" [label=<fx_visual_png.cjs> tooltip="fx_visual_png.cjs" URL="scripts/fx_visual_png.cjs" ] }
+    "scripts/fx_visual_png.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/fx_visual_png.cjs" -> "zlib" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/run-statik.cjs" [label=<run-statik.cjs> tooltip="run-statik.cjs" URL="scripts/run-statik.cjs" ] }
+    "scripts/run-statik.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/smoke_editor.cjs" [label=<smoke_editor.cjs> tooltip="smoke_editor.cjs" URL="scripts/smoke_editor.cjs" ] }
+    "scripts/smoke_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/smoke_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/smoke_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/smoke_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bake_lifecycle.cjs" [label=<test_bake_lifecycle.cjs> tooltip="test_bake_lifecycle.cjs" URL="scripts/test_bake_lifecycle.cjs" ] }
+    "scripts/test_bake_lifecycle.cjs" -> "scripts/test_png_pma.cjs"
+    "scripts/test_bake_lifecycle.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bake_lifecycle.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_bake_lifecycle.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_bake_lifecycle.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_bake_lifecycle.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_alpha.cjs" [label=<test_bubbles_alpha.cjs> tooltip="test_bubbles_alpha.cjs" URL="scripts/test_bubbles_alpha.cjs" ] }
+    "scripts/test_bubbles_alpha.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_bubbles_alpha.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_alpha.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_alpha.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_core.cjs" [label=<test_bubbles_core.cjs> tooltip="test_bubbles_core.cjs" URL="scripts/test_bubbles_core.cjs" ] }
+    "scripts/test_bubbles_core.cjs" -> "assets/rising-bubbles/src/bubbles-core.js"
+    "scripts/test_bubbles_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_developer.cjs" [label=<test_bubbles_developer.cjs> tooltip="test_bubbles_developer.cjs" URL="scripts/test_bubbles_developer.cjs" ] }
+    "scripts/test_bubbles_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_bubbles_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_developer.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_drag_zoom.cjs" [label=<test_bubbles_drag_zoom.cjs> tooltip="test_bubbles_drag_zoom.cjs" URL="scripts/test_bubbles_drag_zoom.cjs" ] }
+    "scripts/test_bubbles_drag_zoom.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_drag_zoom.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_drag_zoom.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_editor.cjs" [label=<test_bubbles_editor.cjs> tooltip="test_bubbles_editor.cjs" URL="scripts/test_bubbles_editor.cjs" ] }
+    "scripts/test_bubbles_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_bubbles_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_editor.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_evidence.cjs" [label=<test_bubbles_evidence.cjs> tooltip="test_bubbles_evidence.cjs" URL="scripts/test_bubbles_evidence.cjs" ] }
+    "scripts/test_bubbles_evidence.cjs" -> "assets/rising-bubbles/src/bubbles-core.js"
+    "scripts/test_bubbles_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_bubbles_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_export.cjs" [label=<test_bubbles_export.cjs> tooltip="test_bubbles_export.cjs" URL="scripts/test_bubbles_export.cjs" ] }
+    "scripts/test_bubbles_export.cjs" -> "assets/rising-bubbles/src/bubbles-core.js"
+    "scripts/test_bubbles_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_export.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_lifecycle.cjs" [label=<test_bubbles_lifecycle.cjs> tooltip="test_bubbles_lifecycle.cjs" URL="scripts/test_bubbles_lifecycle.cjs" ] }
+    "scripts/test_bubbles_lifecycle.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_lifecycle.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_lifecycle.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_packages.cjs" [label=<test_bubbles_packages.cjs> tooltip="test_bubbles_packages.cjs" URL="scripts/test_bubbles_packages.cjs" ] }
+    "scripts/test_bubbles_packages.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_packages.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_packages.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_packages.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_particles.cjs" [label=<test_bubbles_particles.cjs> tooltip="test_bubbles_particles.cjs" URL="scripts/test_bubbles_particles.cjs" ] }
+    "scripts/test_bubbles_particles.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_bubbles_particles.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_particles.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_particles.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_png_zip.cjs" [label=<test_bubbles_png_zip.cjs> tooltip="test_bubbles_png_zip.cjs" URL="scripts/test_bubbles_png_zip.cjs" ] }
+    "scripts/test_bubbles_png_zip.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_bubbles_png_zip.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_png_zip.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_png_zip.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_repeat_zip.cjs" [label=<test_bubbles_repeat_zip.cjs> tooltip="test_bubbles_repeat_zip.cjs" URL="scripts/test_bubbles_repeat_zip.cjs" ] }
+    "scripts/test_bubbles_repeat_zip.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_repeat_zip.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_repeat_zip.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_roi.cjs" [label=<test_bubbles_roi.cjs> tooltip="test_bubbles_roi.cjs" URL="scripts/test_bubbles_roi.cjs" ] }
+    "scripts/test_bubbles_roi.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_roi.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_roi.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_smoke.cjs" [label=<test_bubbles_smoke.cjs> tooltip="test_bubbles_smoke.cjs" URL="scripts/test_bubbles_smoke.cjs" ] }
+    "scripts/test_bubbles_smoke.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_smoke.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_smoke.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_smoke.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_smoke.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_bubbles_spine.cjs" [label=<test_bubbles_spine.cjs> tooltip="test_bubbles_spine.cjs" URL="scripts/test_bubbles_spine.cjs" ] }
+    "scripts/test_bubbles_spine.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_spine.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_bubbles_spine.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_color_editor.cjs" [label=<test_color_editor.cjs> tooltip="test_color_editor.cjs" URL="scripts/test_color_editor.cjs" ] }
+    "scripts/test_color_editor.cjs" -> "assets/template/src/color-core.js"
+    "scripts/test_color_editor.cjs" -> "scripts/test_png_pma.cjs"
+    "scripts/test_color_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_color_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_color_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_color_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_color_emitters.cjs" [label=<test_color_emitters.cjs> tooltip="test_color_emitters.cjs" URL="scripts/test_color_emitters.cjs" ] }
+    "scripts/test_color_emitters.cjs" -> "assets/template/src/color-core.js"
+    "scripts/test_color_emitters.cjs" -> "assets/template/src/emitter-core.js"
+    "scripts/test_color_emitters.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_colors.cjs" [label=<test_colors.cjs> tooltip="test_colors.cjs" URL="scripts/test_colors.cjs" ] }
+    "scripts/test_colors.cjs" -> "assets/template/src/color-core.js"
+    "scripts/test_colors.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_curve_editor.cjs" [label=<test_curve_editor.cjs> tooltip="test_curve_editor.cjs" URL="scripts/test_curve_editor.cjs" ] }
+    "scripts/test_curve_editor.cjs" -> "assets/template/src/curve-core.js"
+    "scripts/test_curve_editor.cjs" -> "scripts/test_png_pma.cjs"
+    "scripts/test_curve_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_curve_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_curve_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_curve_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_curves.cjs" [label=<test_curves.cjs> tooltip="test_curves.cjs" URL="scripts/test_curves.cjs" ] }
+    "scripts/test_curves.cjs" -> "assets/template/src/curve-core.js"
+    "scripts/test_curves.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_effect_visual.cjs" [label=<test_effect_visual.cjs> tooltip="test_effect_visual.cjs" URL="scripts/test_effect_visual.cjs" ] }
+    "scripts/test_effect_visual.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_effect_visual.cjs" -> "scripts/test_png_pma.cjs"
+    "scripts/test_effect_visual.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_effect_visual.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_effect_visual.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_effect_visual.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_effect_visual.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_effect_visual.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_effect_visual.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_embers_core.cjs" [label=<test_embers_core.cjs> tooltip="test_embers_core.cjs" URL="scripts/test_embers_core.cjs" ] }
+    "scripts/test_embers_core.cjs" -> "assets/embers-sparks/src/embers-core.js"
+    "scripts/test_embers_core.cjs" -> "assets/template/src/curve-core.js"
+    "scripts/test_embers_core.cjs" -> "assets/template/src/spacing-core.js"
+    "scripts/test_embers_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_embers_developer.cjs" [label=<test_embers_developer.cjs> tooltip="test_embers_developer.cjs" URL="scripts/test_embers_developer.cjs" ] }
+    "scripts/test_embers_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_embers_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_developer.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_embers_editor.cjs" [label=<test_embers_editor.cjs> tooltip="test_embers_editor.cjs" URL="scripts/test_embers_editor.cjs" ] }
+    "scripts/test_embers_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_embers_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_embers_evidence.cjs" [label=<test_embers_evidence.cjs> tooltip="test_embers_evidence.cjs" URL="scripts/test_embers_evidence.cjs" ] }
+    "scripts/test_embers_evidence.cjs" -> "assets/embers-sparks/src/embers-core.js"
+    "scripts/test_embers_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_embers_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_embers_export.cjs" [label=<test_embers_export.cjs> tooltip="test_embers_export.cjs" URL="scripts/test_embers_export.cjs" ] }
+    "scripts/test_embers_export.cjs" -> "assets/embers-sparks/src/embers-core.js"
+    "scripts/test_embers_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_export.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_embers_lifecycle.cjs" [label=<test_embers_lifecycle.cjs> tooltip="test_embers_lifecycle.cjs" URL="scripts/test_embers_lifecycle.cjs" ] }
+    "scripts/test_embers_lifecycle.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_lifecycle.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_embers_lifecycle.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_emitter_editor.cjs" [label=<test_emitter_editor.cjs> tooltip="test_emitter_editor.cjs" URL="scripts/test_emitter_editor.cjs" ] }
+    "scripts/test_emitter_editor.cjs" -> "assets/template/src/emitter-core.js"
+    "scripts/test_emitter_editor.cjs" -> "scripts/test_png_pma.cjs"
+    "scripts/test_emitter_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_emitter_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_emitter_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_emitter_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_emitters.cjs" [label=<test_emitters.cjs> tooltip="test_emitters.cjs" URL="scripts/test_emitters.cjs" ] }
+    "scripts/test_emitters.cjs" -> "assets/template/src/emitter-core.js"
+    "scripts/test_emitters.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_explosion_core.cjs" [label=<test_explosion_core.cjs> tooltip="test_explosion_core.cjs" URL="scripts/test_explosion_core.cjs" ] }
+    "scripts/test_explosion_core.cjs" -> "assets/fire-explosion/src/explosion-core.js"
+    "scripts/test_explosion_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_explosion_developer.cjs" [label=<test_explosion_developer.cjs> tooltip="test_explosion_developer.cjs" URL="scripts/test_explosion_developer.cjs" ] }
+    "scripts/test_explosion_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_explosion_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_developer.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_explosion_editor.cjs" [label=<test_explosion_editor.cjs> tooltip="test_explosion_editor.cjs" URL="scripts/test_explosion_editor.cjs" ] }
+    "scripts/test_explosion_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_explosion_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_explosion_evidence.cjs" [label=<test_explosion_evidence.cjs> tooltip="test_explosion_evidence.cjs" URL="scripts/test_explosion_evidence.cjs" ] }
+    "scripts/test_explosion_evidence.cjs" -> "assets/fire-explosion/src/explosion-core.js"
+    "scripts/test_explosion_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_explosion_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_explosion_export.cjs" [label=<test_explosion_export.cjs> tooltip="test_explosion_export.cjs" URL="scripts/test_explosion_export.cjs" ] }
+    "scripts/test_explosion_export.cjs" -> "assets/fire-explosion/src/explosion-core.js"
+    "scripts/test_explosion_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_export.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_explosion_lifecycle.cjs" [label=<test_explosion_lifecycle.cjs> tooltip="test_explosion_lifecycle.cjs" URL="scripts/test_explosion_lifecycle.cjs" ] }
+    "scripts/test_explosion_lifecycle.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_lifecycle.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_explosion_lifecycle.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_fx_visual_png.cjs" [label=<test_fx_visual_png.cjs> tooltip="test_fx_visual_png.cjs" URL="scripts/test_fx_visual_png.cjs" ] }
+    "scripts/test_fx_visual_png.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_fx_visual_png.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_fx_visual_png.cjs" -> "zlib" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_haze_background.cjs" [label=<test_haze_background.cjs> tooltip="test_haze_background.cjs" URL="scripts/test_haze_background.cjs" ] }
+    "scripts/test_haze_background.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_haze_background.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_background.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_background.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_haze_core.cjs" [label=<test_haze_core.cjs> tooltip="test_haze_core.cjs" URL="scripts/test_haze_core.cjs" ] }
+    "scripts/test_haze_core.cjs" -> "assets/heat-haze/src/haze-core.js"
+    "scripts/test_haze_core.cjs" -> "assets/template/src/spacing-core.js"
+    "scripts/test_haze_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_haze_developer.cjs" [label=<test_haze_developer.cjs> tooltip="test_haze_developer.cjs" URL="scripts/test_haze_developer.cjs" ] }
+    "scripts/test_haze_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_haze_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_developer.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_haze_editor.cjs" [label=<test_haze_editor.cjs> tooltip="test_haze_editor.cjs" URL="scripts/test_haze_editor.cjs" ] }
+    "scripts/test_haze_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_haze_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_editor.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_haze_evidence.cjs" [label=<test_haze_evidence.cjs> tooltip="test_haze_evidence.cjs" URL="scripts/test_haze_evidence.cjs" ] }
+    "scripts/test_haze_evidence.cjs" -> "assets/heat-haze/src/haze-core.js"
+    "scripts/test_haze_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_haze_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_haze_export.cjs" [label=<test_haze_export.cjs> tooltip="test_haze_export.cjs" URL="scripts/test_haze_export.cjs" ] }
+    "scripts/test_haze_export.cjs" -> "assets/heat-haze/src/haze-core.js"
+    "scripts/test_haze_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_export.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_haze_lifecycle.cjs" [label=<test_haze_lifecycle.cjs> tooltip="test_haze_lifecycle.cjs" URL="scripts/test_haze_lifecycle.cjs" ] }
+    "scripts/test_haze_lifecycle.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_lifecycle.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_lifecycle.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_haze_roi.cjs" [label=<test_haze_roi.cjs> tooltip="test_haze_roi.cjs" URL="scripts/test_haze_roi.cjs" ] }
+    "scripts/test_haze_roi.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_haze_roi.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_roi.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_roi.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_haze_spine.cjs" [label=<test_haze_spine.cjs> tooltip="test_haze_spine.cjs" URL="scripts/test_haze_spine.cjs" ] }
+    "scripts/test_haze_spine.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_spine.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_haze_spine.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_path_browser.cjs" [label=<test_path_browser.cjs> tooltip="test_path_browser.cjs" URL="scripts/test_path_browser.cjs" ] }
+    "scripts/test_path_browser.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_path_browser.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_path_browser.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_path_browser.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_path_browser.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_path_browser.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_path_browser.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_path_export.cjs" [label=<test_path_export.cjs> tooltip="test_path_export.cjs" URL="scripts/test_path_export.cjs" ] }
+    "scripts/test_path_export.cjs" -> "assets/template/src/path-core.js"
+    "scripts/test_path_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_path_export.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_path_export.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_path_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_path_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_path_geometry.cjs" [label=<test_path_geometry.cjs> tooltip="test_path_geometry.cjs" URL="scripts/test_path_geometry.cjs" ] }
+    "scripts/test_path_geometry.cjs" -> "assets/template/src/path-core.js"
+    "scripts/test_path_geometry.cjs" -> "assets/template/src/spacing-core.js"
+    "scripts/test_path_geometry.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_png_pma.cjs" [label=<test_png_pma.cjs> tooltip="test_png_pma.cjs" URL="scripts/test_png_pma.cjs" ] }
+    "scripts/test_png_pma.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_png_pma.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_png_pma.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_png_pma.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    "scripts/test_png_pma.cjs" -> "zlib" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_projectile_core.cjs" [label=<test_projectile_core.cjs> tooltip="test_projectile_core.cjs" URL="scripts/test_projectile_core.cjs" ] }
+    "scripts/test_projectile_core.cjs" -> "assets/fireball-projectile/src/projectile-core.js"
+    "scripts/test_projectile_core.cjs" -> "assets/template/src/spacing-core.js"
+    "scripts/test_projectile_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_projectile_developer.cjs" [label=<test_projectile_developer.cjs> tooltip="test_projectile_developer.cjs" URL="scripts/test_projectile_developer.cjs" ] }
+    "scripts/test_projectile_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_projectile_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_developer.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_projectile_editor.cjs" [label=<test_projectile_editor.cjs> tooltip="test_projectile_editor.cjs" URL="scripts/test_projectile_editor.cjs" ] }
+    "scripts/test_projectile_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_projectile_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_projectile_evidence.cjs" [label=<test_projectile_evidence.cjs> tooltip="test_projectile_evidence.cjs" URL="scripts/test_projectile_evidence.cjs" ] }
+    "scripts/test_projectile_evidence.cjs" -> "assets/fireball-projectile/src/projectile-core.js"
+    "scripts/test_projectile_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_projectile_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_projectile_export.cjs" [label=<test_projectile_export.cjs> tooltip="test_projectile_export.cjs" URL="scripts/test_projectile_export.cjs" ] }
+    "scripts/test_projectile_export.cjs" -> "assets/fireball-projectile/src/projectile-core.js"
+    "scripts/test_projectile_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_export.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_projectile_lifecycle.cjs" [label=<test_projectile_lifecycle.cjs> tooltip="test_projectile_lifecycle.cjs" URL="scripts/test_projectile_lifecycle.cjs" ] }
+    "scripts/test_projectile_lifecycle.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_lifecycle.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_projectile_lifecycle.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_rain_alpha.cjs" [label=<test_rain_alpha.cjs> tooltip="test_rain_alpha.cjs" URL="scripts/test_rain_alpha.cjs" ] }
+    "scripts/test_rain_alpha.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_rain_alpha.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_alpha.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_alpha.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_rain_core.cjs" [label=<test_rain_core.cjs> tooltip="test_rain_core.cjs" URL="scripts/test_rain_core.cjs" ] }
+    "scripts/test_rain_core.cjs" -> "assets/rainfall/src/rain-core.js"
+    "scripts/test_rain_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_rain_developer.cjs" [label=<test_rain_developer.cjs> tooltip="test_rain_developer.cjs" URL="scripts/test_rain_developer.cjs" ] }
+    "scripts/test_rain_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_rain_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_developer.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_rain_editor.cjs" [label=<test_rain_editor.cjs> tooltip="test_rain_editor.cjs" URL="scripts/test_rain_editor.cjs" ] }
+    "scripts/test_rain_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_rain_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_rain_evidence.cjs" [label=<test_rain_evidence.cjs> tooltip="test_rain_evidence.cjs" URL="scripts/test_rain_evidence.cjs" ] }
+    "scripts/test_rain_evidence.cjs" -> "assets/rainfall/src/rain-core.js"
+    "scripts/test_rain_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_rain_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_rain_export.cjs" [label=<test_rain_export.cjs> tooltip="test_rain_export.cjs" URL="scripts/test_rain_export.cjs" ] }
+    "scripts/test_rain_export.cjs" -> "assets/rainfall/src/rain-core.js"
+    "scripts/test_rain_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_export.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_rain_lifecycle.cjs" [label=<test_rain_lifecycle.cjs> tooltip="test_rain_lifecycle.cjs" URL="scripts/test_rain_lifecycle.cjs" ] }
+    "scripts/test_rain_lifecycle.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_lifecycle.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_lifecycle.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_rain_packages.cjs" [label=<test_rain_packages.cjs> tooltip="test_rain_packages.cjs" URL="scripts/test_rain_packages.cjs" ] }
+    "scripts/test_rain_packages.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_packages.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_packages.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_packages.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_rain_particles.cjs" [label=<test_rain_particles.cjs> tooltip="test_rain_particles.cjs" URL="scripts/test_rain_particles.cjs" ] }
+    "scripts/test_rain_particles.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_rain_particles.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_particles.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_particles.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_rain_png_zip.cjs" [label=<test_rain_png_zip.cjs> tooltip="test_rain_png_zip.cjs" URL="scripts/test_rain_png_zip.cjs" ] }
+    "scripts/test_rain_png_zip.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_rain_png_zip.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_png_zip.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_png_zip.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_rain_roi.cjs" [label=<test_rain_roi.cjs> tooltip="test_rain_roi.cjs" URL="scripts/test_rain_roi.cjs" ] }
+    "scripts/test_rain_roi.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_roi.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_roi.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_rain_spine.cjs" [label=<test_rain_spine.cjs> tooltip="test_rain_spine.cjs" URL="scripts/test_rain_spine.cjs" ] }
+    "scripts/test_rain_spine.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_spine.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_rain_spine.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_alpha.cjs" [label=<test_ripples_alpha.cjs> tooltip="test_ripples_alpha.cjs" URL="scripts/test_ripples_alpha.cjs" ] }
+    "scripts/test_ripples_alpha.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_ripples_alpha.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_alpha.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_alpha.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_color_canary.cjs" [label=<test_ripples_color_canary.cjs> tooltip="test_ripples_color_canary.cjs" URL="scripts/test_ripples_color_canary.cjs" ] }
+    "scripts/test_ripples_color_canary.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_color_canary.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_core.cjs" [label=<test_ripples_core.cjs> tooltip="test_ripples_core.cjs" URL="scripts/test_ripples_core.cjs" ] }
+    "scripts/test_ripples_core.cjs" -> "assets/water-ripples/src/ripples-core.js"
+    "scripts/test_ripples_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_developer.cjs" [label=<test_ripples_developer.cjs> tooltip="test_ripples_developer.cjs" URL="scripts/test_ripples_developer.cjs" ] }
+    "scripts/test_ripples_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_ripples_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_developer.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_editor.cjs" [label=<test_ripples_editor.cjs> tooltip="test_ripples_editor.cjs" URL="scripts/test_ripples_editor.cjs" ] }
+    "scripts/test_ripples_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_ripples_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_evidence.cjs" [label=<test_ripples_evidence.cjs> tooltip="test_ripples_evidence.cjs" URL="scripts/test_ripples_evidence.cjs" ] }
+    "scripts/test_ripples_evidence.cjs" -> "assets/water-ripples/src/ripples-core.js"
+    "scripts/test_ripples_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_ripples_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_export.cjs" [label=<test_ripples_export.cjs> tooltip="test_ripples_export.cjs" URL="scripts/test_ripples_export.cjs" ] }
+    "scripts/test_ripples_export.cjs" -> "assets/water-ripples/src/ripples-core.js"
+    "scripts/test_ripples_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_export.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_lifecycle.cjs" [label=<test_ripples_lifecycle.cjs> tooltip="test_ripples_lifecycle.cjs" URL="scripts/test_ripples_lifecycle.cjs" ] }
+    "scripts/test_ripples_lifecycle.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_lifecycle.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_lifecycle.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_mesh.cjs" [label=<test_ripples_mesh.cjs> tooltip="test_ripples_mesh.cjs" URL="scripts/test_ripples_mesh.cjs" ] }
+    "scripts/test_ripples_mesh.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_ripples_mesh.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_mesh.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_mesh.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_packages.cjs" [label=<test_ripples_packages.cjs> tooltip="test_ripples_packages.cjs" URL="scripts/test_ripples_packages.cjs" ] }
+    "scripts/test_ripples_packages.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_packages.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_packages.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_packages.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_png_zip.cjs" [label=<test_ripples_png_zip.cjs> tooltip="test_ripples_png_zip.cjs" URL="scripts/test_ripples_png_zip.cjs" ] }
+    "scripts/test_ripples_png_zip.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_ripples_png_zip.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_png_zip.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_png_zip.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_roi.cjs" [label=<test_ripples_roi.cjs> tooltip="test_ripples_roi.cjs" URL="scripts/test_ripples_roi.cjs" ] }
+    "scripts/test_ripples_roi.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_roi.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_roi.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_ripples_spine.cjs" [label=<test_ripples_spine.cjs> tooltip="test_ripples_spine.cjs" URL="scripts/test_ripples_spine.cjs" ] }
+    "scripts/test_ripples_spine.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_spine.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_ripples_spine.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_smoke_core.cjs" [label=<test_smoke_core.cjs> tooltip="test_smoke_core.cjs" URL="scripts/test_smoke_core.cjs" ] }
+    "scripts/test_smoke_core.cjs" -> "assets/smoke-plume/src/smoke-core.js"
+    "scripts/test_smoke_core.cjs" -> "assets/template/src/spacing-core.js"
+    "scripts/test_smoke_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_smoke_developer.cjs" [label=<test_smoke_developer.cjs> tooltip="test_smoke_developer.cjs" URL="scripts/test_smoke_developer.cjs" ] }
+    "scripts/test_smoke_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_smoke_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_developer.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_smoke_editor.cjs" [label=<test_smoke_editor.cjs> tooltip="test_smoke_editor.cjs" URL="scripts/test_smoke_editor.cjs" ] }
+    "scripts/test_smoke_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_smoke_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_smoke_evidence.cjs" [label=<test_smoke_evidence.cjs> tooltip="test_smoke_evidence.cjs" URL="scripts/test_smoke_evidence.cjs" ] }
+    "scripts/test_smoke_evidence.cjs" -> "assets/smoke-plume/src/smoke-core.js"
+    "scripts/test_smoke_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_smoke_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_smoke_export.cjs" [label=<test_smoke_export.cjs> tooltip="test_smoke_export.cjs" URL="scripts/test_smoke_export.cjs" ] }
+    "scripts/test_smoke_export.cjs" -> "assets/smoke-plume/src/smoke-core.js"
+    "scripts/test_smoke_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_export.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_smoke_lifecycle.cjs" [label=<test_smoke_lifecycle.cjs> tooltip="test_smoke_lifecycle.cjs" URL="scripts/test_smoke_lifecycle.cjs" ] }
+    "scripts/test_smoke_lifecycle.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_lifecycle.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_smoke_lifecycle.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_spacing.cjs" [label=<test_spacing.cjs> tooltip="test_spacing.cjs" URL="scripts/test_spacing.cjs" ] }
+    "scripts/test_spacing.cjs" -> "assets/template/src/curve-core.js"
+    "scripts/test_spacing.cjs" -> "assets/template/src/spacing-core.js"
+    "scripts/test_spacing.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_spacing_editor.cjs" [label=<test_spacing_editor.cjs> tooltip="test_spacing_editor.cjs" URL="scripts/test_spacing_editor.cjs" ] }
+    "scripts/test_spacing_editor.cjs" -> "assets/template/src/spacing-core.js"
+    "scripts/test_spacing_editor.cjs" -> "scripts/test_png_pma.cjs"
+    "scripts/test_spacing_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_spacing_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_spacing_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_spacing_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_splash_alpha.cjs" [label=<test_splash_alpha.cjs> tooltip="test_splash_alpha.cjs" URL="scripts/test_splash_alpha.cjs" ] }
+    "scripts/test_splash_alpha.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_splash_alpha.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_alpha.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_alpha.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_splash_core.cjs" [label=<test_splash_core.cjs> tooltip="test_splash_core.cjs" URL="scripts/test_splash_core.cjs" ] }
+    "scripts/test_splash_core.cjs" -> "assets/water-splash/src/splash-core.js"
+    "scripts/test_splash_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_splash_developer.cjs" [label=<test_splash_developer.cjs> tooltip="test_splash_developer.cjs" URL="scripts/test_splash_developer.cjs" ] }
+    "scripts/test_splash_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_splash_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_developer.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_splash_editor.cjs" [label=<test_splash_editor.cjs> tooltip="test_splash_editor.cjs" URL="scripts/test_splash_editor.cjs" ] }
+    "scripts/test_splash_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_splash_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_splash_evidence.cjs" [label=<test_splash_evidence.cjs> tooltip="test_splash_evidence.cjs" URL="scripts/test_splash_evidence.cjs" ] }
+    "scripts/test_splash_evidence.cjs" -> "assets/water-splash/src/splash-core.js"
+    "scripts/test_splash_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_splash_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_splash_export.cjs" [label=<test_splash_export.cjs> tooltip="test_splash_export.cjs" URL="scripts/test_splash_export.cjs" ] }
+    "scripts/test_splash_export.cjs" -> "assets/water-splash/src/splash-core.js"
+    "scripts/test_splash_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_export.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_splash_lifecycle.cjs" [label=<test_splash_lifecycle.cjs> tooltip="test_splash_lifecycle.cjs" URL="scripts/test_splash_lifecycle.cjs" ] }
+    "scripts/test_splash_lifecycle.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_lifecycle.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_lifecycle.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_splash_packages.cjs" [label=<test_splash_packages.cjs> tooltip="test_splash_packages.cjs" URL="scripts/test_splash_packages.cjs" ] }
+    "scripts/test_splash_packages.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_packages.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_packages.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_packages.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_splash_png_zip.cjs" [label=<test_splash_png_zip.cjs> tooltip="test_splash_png_zip.cjs" URL="scripts/test_splash_png_zip.cjs" ] }
+    "scripts/test_splash_png_zip.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_splash_png_zip.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_png_zip.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_png_zip.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_splash_roi.cjs" [label=<test_splash_roi.cjs> tooltip="test_splash_roi.cjs" URL="scripts/test_splash_roi.cjs" ] }
+    "scripts/test_splash_roi.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_roi.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_roi.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_splash_runtime.cjs" [label=<test_splash_runtime.cjs> tooltip="test_splash_runtime.cjs" URL="scripts/test_splash_runtime.cjs" ] }
+    "scripts/test_splash_runtime.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_splash_runtime.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_runtime.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_runtime.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_splash_spine.cjs" [label=<test_splash_spine.cjs> tooltip="test_splash_spine.cjs" URL="scripts/test_splash_spine.cjs" ] }
+    "scripts/test_splash_spine.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_spine.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_splash_spine.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_steam_core.cjs" [label=<test_steam_core.cjs> tooltip="test_steam_core.cjs" URL="scripts/test_steam_core.cjs" ] }
+    "scripts/test_steam_core.cjs" -> "assets/steam-jet/src/steam-core.js"
+    "scripts/test_steam_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_steam_developer.cjs" [label=<test_steam_developer.cjs> tooltip="test_steam_developer.cjs" URL="scripts/test_steam_developer.cjs" ] }
+    "scripts/test_steam_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_steam_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_developer.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_developer.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_steam_editor.cjs" [label=<test_steam_editor.cjs> tooltip="test_steam_editor.cjs" URL="scripts/test_steam_editor.cjs" ] }
+    "scripts/test_steam_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_steam_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_steam_evidence.cjs" [label=<test_steam_evidence.cjs> tooltip="test_steam_evidence.cjs" URL="scripts/test_steam_evidence.cjs" ] }
+    "scripts/test_steam_evidence.cjs" -> "assets/steam-jet/src/steam-core.js"
+    "scripts/test_steam_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_steam_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_evidence.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_steam_export.cjs" [label=<test_steam_export.cjs> tooltip="test_steam_export.cjs" URL="scripts/test_steam_export.cjs" ] }
+    "scripts/test_steam_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_steam_full_bake.cjs" [label=<test_steam_full_bake.cjs> tooltip="test_steam_full_bake.cjs" URL="scripts/test_steam_full_bake.cjs" ] }
+    "scripts/test_steam_full_bake.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_full_bake.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_full_bake.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_full_bake.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_full_bake.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_steam_layers.cjs" [label=<test_steam_layers.cjs> tooltip="test_steam_layers.cjs" URL="scripts/test_steam_layers.cjs" ] }
+    "scripts/test_steam_layers.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_layers.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_layers.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_steam_particles.cjs" [label=<test_steam_particles.cjs> tooltip="test_steam_particles.cjs" URL="scripts/test_steam_particles.cjs" ] }
+    "scripts/test_steam_particles.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_steam_particles.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_particles.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_particles.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_steam_png_zip.cjs" [label=<test_steam_png_zip.cjs> tooltip="test_steam_png_zip.cjs" URL="scripts/test_steam_png_zip.cjs" ] }
+    "scripts/test_steam_png_zip.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_steam_png_zip.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_png_zip.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_steam_png_zip.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_timeline.cjs" [label=<test_timeline.cjs> tooltip="test_timeline.cjs" URL="scripts/test_timeline.cjs" ] }
+    "scripts/test_timeline.cjs" -> "assets/template/src/timeline-core.js"
+    "scripts/test_timeline.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_timeline_editor.cjs" [label=<test_timeline_editor.cjs> tooltip="test_timeline_editor.cjs" URL="scripts/test_timeline_editor.cjs" ] }
+    "scripts/test_timeline_editor.cjs" -> "scripts/test_png_pma.cjs"
+    "scripts/test_timeline_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_timeline_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_timeline_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_timeline_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_timeline_limits.cjs" [label=<test_timeline_limits.cjs> tooltip="test_timeline_limits.cjs" URL="scripts/test_timeline_limits.cjs" ] }
+    "scripts/test_timeline_limits.cjs" -> "scripts/test_png_pma.cjs"
+    "scripts/test_timeline_limits.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_timeline_limits.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_timeline_limits.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_timeline_limits.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_torch_core.cjs" [label=<test_torch_core.cjs> tooltip="test_torch_core.cjs" URL="scripts/test_torch_core.cjs" ] }
+    "scripts/test_torch_core.cjs" -> "assets/torch-flame/src/torch-core.js"
+    "scripts/test_torch_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_torch_developer.cjs" [label=<test_torch_developer.cjs> tooltip="test_torch_developer.cjs" URL="scripts/test_torch_developer.cjs" ] }
+    "scripts/test_torch_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_torch_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_developer.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_torch_editor.cjs" [label=<test_torch_editor.cjs> tooltip="test_torch_editor.cjs" URL="scripts/test_torch_editor.cjs" ] }
+    "scripts/test_torch_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_torch_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_torch_evidence.cjs" [label=<test_torch_evidence.cjs> tooltip="test_torch_evidence.cjs" URL="scripts/test_torch_evidence.cjs" ] }
+    "scripts/test_torch_evidence.cjs" -> "assets/torch-flame/src/torch-core.js"
+    "scripts/test_torch_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_torch_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_torch_export.cjs" [label=<test_torch_export.cjs> tooltip="test_torch_export.cjs" URL="scripts/test_torch_export.cjs" ] }
+    "scripts/test_torch_export.cjs" -> "assets/torch-flame/src/torch-core.js"
+    "scripts/test_torch_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_export.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_torch_lifecycle.cjs" [label=<test_torch_lifecycle.cjs> tooltip="test_torch_lifecycle.cjs" URL="scripts/test_torch_lifecycle.cjs" ] }
+    "scripts/test_torch_lifecycle.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_lifecycle.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_torch_lifecycle.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_alpha.cjs" [label=<test_waterfall_alpha.cjs> tooltip="test_waterfall_alpha.cjs" URL="scripts/test_waterfall_alpha.cjs" ] }
+    "scripts/test_waterfall_alpha.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_waterfall_alpha.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_alpha.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_alpha.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_core.cjs" [label=<test_waterfall_core.cjs> tooltip="test_waterfall_core.cjs" URL="scripts/test_waterfall_core.cjs" ] }
+    "scripts/test_waterfall_core.cjs" -> "assets/waterfall/src/waterfall-core.js"
+    "scripts/test_waterfall_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_developer.cjs" [label=<test_waterfall_developer.cjs> tooltip="test_waterfall_developer.cjs" URL="scripts/test_waterfall_developer.cjs" ] }
+    "scripts/test_waterfall_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_waterfall_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_developer.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_drag_zoom.cjs" [label=<test_waterfall_drag_zoom.cjs> tooltip="test_waterfall_drag_zoom.cjs" URL="scripts/test_waterfall_drag_zoom.cjs" ] }
+    "scripts/test_waterfall_drag_zoom.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_drag_zoom.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_drag_zoom.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_editor.cjs" [label=<test_waterfall_editor.cjs> tooltip="test_waterfall_editor.cjs" URL="scripts/test_waterfall_editor.cjs" ] }
+    "scripts/test_waterfall_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_waterfall_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_editor.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_editor.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_evidence.cjs" [label=<test_waterfall_evidence.cjs> tooltip="test_waterfall_evidence.cjs" URL="scripts/test_waterfall_evidence.cjs" ] }
+    "scripts/test_waterfall_evidence.cjs" -> "assets/waterfall/src/waterfall-core.js"
+    "scripts/test_waterfall_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_waterfall_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_export.cjs" [label=<test_waterfall_export.cjs> tooltip="test_waterfall_export.cjs" URL="scripts/test_waterfall_export.cjs" ] }
+    "scripts/test_waterfall_export.cjs" -> "assets/waterfall/src/waterfall-core.js"
+    "scripts/test_waterfall_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_export.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_lifecycle.cjs" [label=<test_waterfall_lifecycle.cjs> tooltip="test_waterfall_lifecycle.cjs" URL="scripts/test_waterfall_lifecycle.cjs" ] }
+    "scripts/test_waterfall_lifecycle.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_lifecycle.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_lifecycle.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_mesh.cjs" [label=<test_waterfall_mesh.cjs> tooltip="test_waterfall_mesh.cjs" URL="scripts/test_waterfall_mesh.cjs" ] }
+    "scripts/test_waterfall_mesh.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_waterfall_mesh.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_mesh.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_mesh.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_packages.cjs" [label=<test_waterfall_packages.cjs> tooltip="test_waterfall_packages.cjs" URL="scripts/test_waterfall_packages.cjs" ] }
+    "scripts/test_waterfall_packages.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_packages.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_packages.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_packages.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_png_zip.cjs" [label=<test_waterfall_png_zip.cjs> tooltip="test_waterfall_png_zip.cjs" URL="scripts/test_waterfall_png_zip.cjs" ] }
+    "scripts/test_waterfall_png_zip.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_waterfall_png_zip.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_png_zip.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_png_zip.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_repeat_zip.cjs" [label=<test_waterfall_repeat_zip.cjs> tooltip="test_waterfall_repeat_zip.cjs" URL="scripts/test_waterfall_repeat_zip.cjs" ] }
+    "scripts/test_waterfall_repeat_zip.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_repeat_zip.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_repeat_zip.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_roi.cjs" [label=<test_waterfall_roi.cjs> tooltip="test_waterfall_roi.cjs" URL="scripts/test_waterfall_roi.cjs" ] }
+    "scripts/test_waterfall_roi.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_roi.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_roi.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_smoke.cjs" [label=<test_waterfall_smoke.cjs> tooltip="test_waterfall_smoke.cjs" URL="scripts/test_waterfall_smoke.cjs" ] }
+    "scripts/test_waterfall_smoke.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_smoke.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_smoke.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_smoke.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_smoke.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_waterfall_spine.cjs" [label=<test_waterfall_spine.cjs> tooltip="test_waterfall_spine.cjs" URL="scripts/test_waterfall_spine.cjs" ] }
+    "scripts/test_waterfall_spine.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_spine.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_waterfall_spine.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_wind_core.cjs" [label=<test_wind_core.cjs> tooltip="test_wind_core.cjs" URL="scripts/test_wind_core.cjs" ] }
+    "scripts/test_wind_core.cjs" -> "assets/wind-gust/src/wind-core.js"
+    "scripts/test_wind_core.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_wind_developer.cjs" [label=<test_wind_developer.cjs> tooltip="test_wind_developer.cjs" URL="scripts/test_wind_developer.cjs" ] }
+    "scripts/test_wind_developer.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_wind_developer.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_developer.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_developer.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_developer.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_wind_editor.cjs" [label=<test_wind_editor.cjs> tooltip="test_wind_editor.cjs" URL="scripts/test_wind_editor.cjs" ] }
+    "scripts/test_wind_editor.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_wind_editor.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_editor.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_editor.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_wind_evidence.cjs" [label=<test_wind_evidence.cjs> tooltip="test_wind_evidence.cjs" URL="scripts/test_wind_evidence.cjs" ] }
+    "scripts/test_wind_evidence.cjs" -> "assets/wind-gust/src/wind-core.js"
+    "scripts/test_wind_evidence.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_wind_evidence.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_evidence.cjs" -> "child_process" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_evidence.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_evidence.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_evidence.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_evidence.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_evidence.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_wind_export.cjs" [label=<test_wind_export.cjs> tooltip="test_wind_export.cjs" URL="scripts/test_wind_export.cjs" ] }
+    "scripts/test_wind_export.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_export.cjs" -> "crypto" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_export.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_export.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_wind_full_bake.cjs" [label=<test_wind_full_bake.cjs> tooltip="test_wind_full_bake.cjs" URL="scripts/test_wind_full_bake.cjs" ] }
+    "scripts/test_wind_full_bake.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_full_bake.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_full_bake.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_full_bake.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_full_bake.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_wind_gpu.cjs" [label=<test_wind_gpu.cjs> tooltip="test_wind_gpu.cjs" URL="scripts/test_wind_gpu.cjs" ] }
+    "scripts/test_wind_gpu.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_wind_gpu.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_gpu.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_gpu.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_wind_layers.cjs" [label=<test_wind_layers.cjs> tooltip="test_wind_layers.cjs" URL="scripts/test_wind_layers.cjs" ] }
+    "scripts/test_wind_layers.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_layers.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_layers.cjs" -> "url" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_scripts" {label="scripts" "scripts/test_wind_png_zip.cjs" [label=<test_wind_png_zip.cjs> tooltip="test_wind_png_zip.cjs" URL="scripts/test_wind_png_zip.cjs" ] }
+    "scripts/test_wind_png_zip.cjs" -> "scripts/fx_visual_png.cjs"
+    "scripts/test_wind_png_zip.cjs" -> "assert/strict" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_png_zip.cjs" -> "fs" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_png_zip.cjs" -> "os" [style="dashed" penwidth="1.0"]
+    "scripts/test_wind_png_zip.cjs" -> "path" [style="dashed" penwidth="1.0"]
+    "url" [label=<url> tooltip="url" URL="https://nodejs.org/api/url.html" color="grey" fontcolor="grey"]
+    "zlib" [label=<zlib> tooltip="zlib" URL="https://nodejs.org/api/zlib.html" color="grey" fontcolor="grey"]
+}
