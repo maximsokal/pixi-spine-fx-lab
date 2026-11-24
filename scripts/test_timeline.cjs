@@ -147,3 +147,65 @@ test('default 60 FPS still canonicalizes timestamps within one nanosecond',()=>{
  assert.equal(result.seconds,1);assert.equal(result.frame,60);assert.equal(result.fraction,0);
  assert.equal(probe.snapshot.parts.length,0);
 });
+
+// #90: validate replay time limits before invoking caller callbacks.
+for(const limit of [NaN,Infinity,-Infinity,'1',null,-1,1e6+1]){
+ test('invalid replay maxSeconds '+String(limit)+' rejected before capture',()=>{
+  let captures=0;
+  assert.throws(()=>T.createReplay({maxSeconds:limit,capture:()=>{captures++;return {}},restore:()=>{},step:()=>{}}),/maxSeconds/);
+  assert.equal(captures,0);
+ });
+}
+test('valid replay limits preserve zero, fractional and default bounds',()=>{
+ for(const limit of [0,1,3600,1e6]){
+  const p=replayProbe(60,limit);
+  assert.equal(p.instance.seek(0).seconds,0);
+  assert.throws(()=>p.instance.seek(limit+1),/seek seconds/);
+  assert.equal(p.snapshot.steps.length,0);
+ }
+});
+
+function failureProbe(){
+ let state={steps:[],parts:[],renders:[]},failure=null,restoreFails=false;
+ function inject(kind){if(failure===kind){failure=null;throw Error('injected '+kind);}}
+ const instance=T.createReplay({checkpointEvery:1,maxCheckpoints:3,
+  capture:()=>{inject('capture');return state},
+  restore:v=>{if(restoreFails)throw Error('injected restore');state=v;},
+  step:(dt,time,index)=>{state.steps.push(index);inject('step');},
+  partial:(dt,time)=>{state.parts.push(time);inject('partial');},
+  render:time=>{state.renders.push(time);inject('render');}});
+ return {instance,fail(kind){failure=kind;},failRestore(value){restoreFails=value;},
+  snapshot:()=>structuredClone({state,time:instance.time,frame:instance.frame,checkpoints:instance.checkpointFrames})};
+}
+for(const [kind,target] of [['step',1/60],['partial',.01],['render',.1]]){
+ test('failed '+kind+' preserves pre-seek CPU state and retry matches clean run',()=>{
+  const p=failureProbe(),clean=failureProbe(),before=p.snapshot();
+  p.fail(kind);assert.throws(()=>p.instance.seek(target),new RegExp('injected '+kind));
+  assert.deepEqual(p.snapshot(),before);
+  p.instance.seek(target);clean.instance.seek(target);
+  assert.deepEqual(p.snapshot(),clean.snapshot());
+ });
+}
+test('failed backward seek restores prior fractional state and checkpoint history',()=>{
+ const p=failureProbe(),clean=failureProbe();
+ for(const q of [p,clean])q.instance.seek(.105);
+ const before=p.snapshot();p.fail('partial');assert.throws(()=>p.instance.seek(.02),/injected partial/);
+ assert.deepEqual(p.snapshot(),before);
+ for(const q of [p,clean])q.instance.seek(.125);
+ assert.deepEqual(p.snapshot(),clean.snapshot());
+});
+test('failed render after checkpoint eviction restores evicted checkpoint keys and state',()=>{
+ const p=failureProbe(),clean=failureProbe();
+ for(const q of [p,clean])q.instance.seek(2/60);
+ const before=p.snapshot();p.fail('render');assert.throws(()=>p.instance.seek(8/60),/injected render/);
+ assert.deepEqual(p.snapshot(),before);
+ for(const q of [p,clean])q.instance.seek(1/60);
+ assert.deepEqual(p.snapshot(),clean.snapshot());
+});
+test('failed restore reports both errors and blocks retry until explicit recovery',()=>{
+ const p=failureProbe();p.fail('step');p.failRestore(true);
+ assert.throws(()=>p.instance.seek(1/60),err=>err instanceof AggregateError&&err.errors[0].message==='injected step'&&err.errors[1].message==='injected restore');
+ p.failRestore(false);assert.throws(()=>p.instance.seek(1/60),/invalidate|rebase/);
+ p.instance.invalidate();assert.equal(p.instance.time,0);
+ p.instance.seek(1/60);assert.deepEqual(p.snapshot().state.steps,[1]);
+});

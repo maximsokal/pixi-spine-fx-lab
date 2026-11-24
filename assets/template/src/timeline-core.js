@@ -101,9 +101,10 @@
      !Number.isSafeInteger(checkpointEvery)||checkpointEvery<1||
      !Number.isSafeInteger(maxCheckpoints)||maxCheckpoints<2||maxCheckpoints>64)
     throw new RangeError('invalid replay limits');
+  num(maxSeconds,'maxSeconds');
   const clone=state=>structuredClone(state);
   let initial=clone(capture()),frame=0,at=0,fractional=false,whole=null;
-  const checks=new Map([[0,clone(initial)]]);
+  let checks=new Map([[0,clone(initial)]]),broken=false;
   function save(n){
    if(n%checkpointEvery)return;
    checks.set(n,clone(capture()));
@@ -121,6 +122,7 @@
    restore(clone(checks.get(n)));frame=n;at=n/fps;fractional=false;
   }
   function seek(seconds){
+   if(broken)throw Error('Replay restore failed; invalidate or rebase before seeking');
    num(seconds,'seek seconds',0,maxSeconds);
    const snapped=canonicalSeconds(seconds);
    if(snapped<=maxSeconds)seconds=snapped;
@@ -130,24 +132,36 @@
    if(target/fps>seconds)target--;
    else if((target+1)/fps<=seconds)target++;
    const leftover=seconds-target/fps;
-   rollback();
-   if(target<frame)rewind(target);
-   for(let i=frame+1;i<=target;i++){
-    step(1/fps,i/fps,i);frame=i;at=i/fps;save(i);
+   // Snapshot the caller's CPU state once, and share immutable checkpoint
+   // values in the shallow map copy. Failed callbacks cannot advance replay.
+   const prior={state:clone(capture()),frame,at,fractional,whole,checks:new Map(checks)};
+   try{
+    rollback();
+    if(target<frame)rewind(target);
+    for(let i=frame+1;i<=target;i++){
+     step(1/fps,i/fps,i);frame=i;at=i/fps;save(i);
+    }
+    whole=clone(capture());
+    if(leftover>0){partial?.(leftover,seconds,target);fractional=true;}
+    at=seconds;
+    render?.(seconds);
+    return Object.freeze({seconds,frame:target,fraction:leftover,checkpointCount:checks.size});
+   }catch(error){
+    ({frame,at,fractional,whole,checks}=prior);
+    try{restore(prior.state);}catch(restoreError){
+     broken=true;
+     throw new AggregateError([error,restoreError],'Replay seek and CPU state restoration failed');
+    }
+    throw error;
    }
-   whole=clone(capture());
-   if(leftover>0){partial?.(leftover,seconds,target);fractional=true;}
-   at=seconds;
-   render?.(seconds);
-   return Object.freeze({seconds,frame:target,fraction:leftover,checkpointCount:checks.size});
   }
   function invalidate(){
    restore(clone(initial));frame=0;at=0;fractional=false;whole=null;checks.clear();
-   checks.set(0,clone(initial));render?.(0);
+   checks.set(0,clone(initial));render?.(0);broken=false;
   }
   function rebase(){
    initial=clone(capture());frame=0;at=0;fractional=false;whole=null;
-   checks.clear();checks.set(0,clone(initial));
+   checks.clear();checks.set(0,clone(initial));broken=false;
   }
   return {seek,invalidate,rebase,get time(){return at;},get frame(){return frame;},
    get checkpointFrames(){return [...checks.keys()].sort((a,b)=>a-b)},
