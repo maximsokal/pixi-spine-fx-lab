@@ -6,8 +6,8 @@ globalThis.FxEmitters=E;
 require('../assets/template/src/emitter-runtime.js');
 
 // CPU ownership oracle: actual runtime and sampler, no GPU or Spine renderer.
-function fixture({customModel,editDoc}={}){
- const filters=[],nodes=[];
+function fixture({customModel,editDoc,defer=false,noBlur=false,failFilterAt=0,failGraphicsAt=0}={}){
+ const filters=[],nodes=[];let graphicsAttempts=0,filterAttempts=0;
  class Container{
   constructor(){
    nodes.push(this);this.children=[];this.parent=null;this.filters=[];this.destroyed=0;
@@ -24,17 +24,20 @@ function fixture({customModel,editDoc}={}){
   }
  }
  class Graphics extends Container{
+  constructor(){if(++graphicsAttempts===failGraphicsAt)throw Error('graphics allocation failed');super();}
   clear(){this.draws=0;return this;}circle(){return this;}fill(){this.draws++;return this;}stroke(){this.draws++;return this;}
   moveTo(){return this;}lineTo(){return this;}poly(){return this;}
  }
  class BlurFilter{
-  constructor(options){this.options=options;this.destroyed=0;filters.push(this);}
+  constructor(options){if(++filterAttempts===failFilterAt)throw Error('filter allocation failed');this.options=options;this.destroyed=0;filters.push(this);}
   destroy(){assert.ok(nodes.every(n=>!n.filters.includes(this)),'detach filter first');assert.equal(this.destroyed++,0,'double filter destroy');}
  }
  const stage=new Container(),host=new Container();stage.addChild(host);
  const model=customModel||{skeleton:{},worldTransform:{apply:(p,out)=>Object.assign(out,p)}};
  const doc=E.makeExplosionPreset();doc.enabled=true;editDoc?.(doc);
- const runtime=globalThis.FxEmitterRuntime.createEmitterLayers({PIXI:{Container,Graphics,BlurFilter},app:{stage},host,model,settings:doc,bounds:{}});
+ const start=()=>globalThis.FxEmitterRuntime.createEmitterLayers({PIXI:{Container,Graphics,...(noBlur?{}:{BlurFilter})},app:{stage},host,model,settings:doc,bounds:{}});
+ if(defer)return {start,stage,host,filters,nodes};
+ const runtime=start();
  const record=(eid,lid)=>runtime.nodes.get(eid).layers.get(lid);
  const edit=(eid,lid,type)=>{const next=E.deserialize(E.serialize(runtime.document));
   next.emitters.find(e=>e.id===eid).layers.find(l=>l.id===lid).type=type;runtime.configure(next);};
@@ -134,4 +137,36 @@ test('occupied slot uses front fallback only for resolved anchors and preserves 
  assertFrame(f,['emitter1_glow','emitter2_glow']);f.setAttachment('bodyB');
  assertFrame(f,['emitter2_glow']);assert.equal(f.added,0);f.runtime.destroy();
  assert.equal(f.bindings.get('body'),f.callerObject);assert.equal(f.removed,0);
+});
+
+// Factory failures must not strand resources when no runtime is returned.
+function assertClean(f){
+ assert.deepEqual(f.stage.children,[f.host]);
+ assert.ok(f.nodes.filter(n=>n!==f.stage&&n!==f.host).every(n=>n.destroyed===1));
+ assert.ok(f.filters.every(filter=>filter.destroyed===1));
+ assert.equal(f.host.destroyed,0);assert.equal(f.stage.destroyed,0);
+}
+test('missing BlurFilter is rejected before any owned allocation',()=>{
+ const f=fixture({defer:true,noBlur:true});
+ assert.throws(f.start,/BlurFilter unavailable/);assert.equal(f.nodes.length,2);assertClean(f);
+});
+test('second filter constructor failure disposes earlier allocations',()=>{
+ const f=fixture({defer:true,failFilterAt:2});
+ assert.throws(f.start,/filter allocation failed/);assert.equal(f.filters.length,1);assertClean(f);
+});
+test('graphics constructor failure disposes its partially created layer container',()=>{
+ const f=fixture({defer:true,failGraphicsAt:8});
+ assert.throws(f.start,/graphics allocation failed/);assert.equal(f.filters.length,1);assertClean(f);
+});
+test('initial seek failure releases resources and preserves caller host',()=>{
+ const model={skeleton:{},worldTransform:{apply(){throw Error('pose transform failed');}}};
+ const f=fixture({defer:true,customModel:model,editDoc(doc){doc.emitters[0].anchor={type:'skeleton',name:''};}});
+ assert.throws(f.start,/pose transform failed/);assertClean(f);
+});
+test('configure with unavailable BlurFilter leaves the previous document and nodes unchanged',()=>{
+ const f=fixture({noBlur:true,editDoc(doc){for(const e of doc.emitters)e.layers=e.layers.filter(l=>l.type!=='postprocess');}});
+ const previous=f.runtime.document,record=f.record(eid,glow),count=f.nodes.length;
+ assert.throws(()=>f.edit(eid,glow,'postprocess'),/BlurFilter unavailable/);
+ assert.equal(f.runtime.document,previous);assert.equal(f.record(eid,glow),record);
+ assert.equal(record.filter,null);assert.equal(f.nodes.length,count);f.runtime.seek(1.2);f.runtime.destroy();assertClean(f);
 });

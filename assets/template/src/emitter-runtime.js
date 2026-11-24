@@ -9,11 +9,14 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
   if(host.parent!==stage||host.x||host.y||host.rotation||host.scale.x!==1||host.scale.y!==1)
     throw Error('Emitter FX requires an identity-transform host directly under stage');
   let doc=E.normalize(settings),rect={...bounds},clock=0,dead=false,diagnostics=[];
+  function requireFilters(value){
+    if(typeof PIXI.BlurFilter!=='function'&&value.emitters.some(e=>e.layers.some(l=>l.type==='postprocess')))
+      throw Error('PixiJS BlurFilter unavailable for postprocess layer');
+  }
+  requireFilters(doc);
   const groups={behind:new PIXI.Container(),front:new PIXI.Container()};
   groups.behind.label='FX emitters behind Spine';groups.front.label='FX emitters in front of Spine';
   groups.behind.sortableChildren=groups.front.sortableChildren=true;
-  stage.addChildAt(groups.behind,stage.getChildIndex(host));
-  stage.addChild(groups.front);
   const owned=new Map(),slotGroups=new Map();
   let last={time:0,layers:[],cost:0};
   function diagnose(code,emitter,message){diagnostics.push({code,emitterId:emitter.id,message});}
@@ -132,11 +135,13 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
       for(const layer of e.layers){
         let record=state.layers.get(layer.id);
         if(!record){
-          const container=new PIXI.Container(),graphics=new PIXI.Graphics();
-          container.label='FX layer '+layer.id;
-          container.addChild(graphics);
-          record={container,graphics,filter:null};
+          const container=new PIXI.Container();
+          // Register ownership before the next allocation can fail.
+          record={container,graphics:null,filter:null};
           state.layers.set(layer.id,record);
+          container.label='FX layer '+layer.id;
+          record.graphics=new PIXI.Graphics();
+          container.addChild(record.graphics);
           state.container.addChild(container);
         }
         // Imported settings can change a layer's type without changing its ID.
@@ -254,6 +259,7 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
   function configure(value){
     if(dead)throw Error('Emitter runtime destroyed');
     const next=E.normalize(value);
+    requireFilters(next);
     doc=next;setup();seek(clock);
   }
   function setBounds(value){rect={...value};seek(clock);}
@@ -268,7 +274,15 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     for(const slot of [...slotGroups.keys()])dropSlot(slot);
     groups.behind.destroy({children:true});groups.front.destroy({children:true});
   }
-  setup();seek(0);
+  try{
+    stage.addChildAt(groups.behind,stage.getChildIndex(host));
+    stage.addChild(groups.front);
+    setup();seek(0);
+  }catch(error){
+    try{destroy();}
+    catch(cleanupError){throw new AggregateError([error,cleanupError],'Emitter initialization and cleanup failed');}
+    throw error;
+  }
   return {seek,configure,setBounds,destroy,
     get document(){return doc},get clock(){return clock},
     get diagnostics(){return diagnostics.slice()},
