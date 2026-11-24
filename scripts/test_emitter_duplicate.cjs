@@ -95,3 +95,61 @@ test('ordinary duplicate preserves independent settings and normal offset',()=>{
  assert.equal(copy.name,original.name+' copy');assert.notEqual(copy.id,original.id);
  assert.deepEqual(original,E.normalize(doc).emitters[0]);
 });
+
+// Add/remove operations must respect the same document and selection contract.
+for(const button of ['fxEmitterAdd','fxEmitterDelete','fxEmitterLayerAdd','fxEmitterLayerDelete']){
+ test('locked '+button+' preserves the document and selection',()=>{
+  const doc=E.makeExplosionPreset(),probe=mount(doc);
+  probe.select('fxEmitterSelect','emitter2');
+  probe.select('fxEmitterLayerSelect','emitter2_sparks');
+  const before=JSON.stringify(probe.ui.getSelected());probe.lock();probe.click(button);
+  assert.equal(probe.changes.length,0);assert.deepEqual(probe.ui.document,E.normalize(doc));
+  assert.equal(JSON.stringify(probe.ui.getSelected()),before);
+  assert.match(probe.control('fxEmitterStatus').textContent,/baking\/loading/);
+ });
+}
+test('reject adding seven default layers when only six slots remain',()=>{
+ const doc=withLayers(58),probe=mount(doc),before=JSON.stringify(probe.ui.getSelected());
+ probe.click('fxEmitterAdd');
+ assert.equal(probe.changes.length,0);assert.deepEqual(probe.ui.document,E.normalize(doc));
+ assert.equal(JSON.stringify(probe.ui.getSelected()),before);
+ assert.match(probe.control('fxEmitterStatus').textContent,/64/);
+});
+test('allow adding an emitter at exactly 64 total layers',()=>{
+ const probe=mount(withLayers(57));probe.click('fxEmitterAdd');
+ assert.equal(probe.changes.length,1);assert.equal(probe.ui.document.emitters.length,2);
+ assert.equal(probe.ui.document.emitters.flatMap(e=>e.layers).length,64);
+});
+test('new emitter and its layers avoid imported IDs',()=>{
+ const doc=single(),e=doc.emitters[0];e.id='custom';
+ e.layers[0].id='emitter1';e.layers[1].id='emitter2_glow';
+ const probe=mount(doc);probe.click('fxEmitterAdd');
+ assert.equal(probe.changes.length,1,probe.control('fxEmitterStatus').textContent);
+ const ids=allIds(probe.ui.document);assert.equal(new Set(ids).size,ids.length);
+ assert.deepEqual(probe.ui.document.emitters[0],E.normalize(doc).emitters[0]);
+});
+test('new layer cannot reuse an imported emitter ID',()=>{
+ const doc=single();doc.emitters[0].id='layer1';const probe=mount(doc);
+ probe.click('fxEmitterLayerAdd');assert.equal(probe.changes.length,1);
+ const ids=allIds(probe.ui.document);assert.equal(new Set(ids).size,ids.length);
+});
+test('refresh to an empty document clears both selection IDs',()=>{
+ const probe=mount(single());probe.ui.refresh({...single(),emitters:[]});
+ assert.equal(probe.ui.getSelected().emitterId,null);
+ assert.equal(probe.ui.getSelected().layerId,null);
+});
+test('remove selected emitter and last layer selects only surviving IDs',()=>{
+ const probe=mount(E.makeExplosionPreset());probe.select('fxEmitterSelect','emitter2');
+ probe.click('fxEmitterDelete');assert.equal(probe.ui.getSelected().emitterId,'emitter1');
+ for(let i=0;i<7;i++)probe.click('fxEmitterLayerDelete');
+ assert.equal(probe.ui.document.emitters[0].layers.length,0);
+ assert.equal(probe.ui.getSelected().layerId,null);
+ probe.click('fxEmitterDelete');assert.equal(probe.ui.document.emitters.length,0);
+ assert.equal(probe.ui.getSelected().emitterId,null);assert.equal(probe.ui.getSelected().layerId,null);
+});
+test('full layer budget reports refusal without changing selection',()=>{
+ const probe=mount(withLayers(64)),before=JSON.stringify(probe.ui.getSelected());
+ probe.click('fxEmitterLayerAdd');assert.equal(probe.changes.length,0);
+ assert.equal(JSON.stringify(probe.ui.getSelected()),before);
+ assert.match(probe.control('fxEmitterStatus').textContent,/64/);
+});

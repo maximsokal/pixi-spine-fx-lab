@@ -29,6 +29,7 @@ function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
   document.head.append(styles);
   const clone=()=>E.deserialize(E.serialize(doc));
   const unique=(prefix,ids)=>{let v;do{v=prefix+(++counter)}while(ids.has(v));return v;};
+  const documentIds=copy=>new Set(copy.emitters.flatMap(e=>[e.id,...e.layers.map(l=>l.id)]));
   const activeEmitter=()=>doc.emitters.find(e=>e.id===selected);
   const activeLayer=()=>activeEmitter()?.layers.find(l=>l.id===selectedLayer);
   function commit(changed,reason='Updated'){
@@ -81,12 +82,19 @@ function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
     const b=node('button',{type:'button',id},label);b.addEventListener('click',callback);return b;
   }
   function addEmitter(){
+    if(isLocked?.())return void(status.textContent='Finish baking/loading before changing emitters.');
     const copy=clone();
     if(copy.emitters.length>=E.MAX_EMITTERS)return void(status.textContent='Maximum 16 emitters.');
     const instance=E.newEmitter(copy.emitters.length);
-    instance.id=unique('emitter',new Set(copy.emitters.map(e=>e.id)));
+    if(copy.emitters.reduce((n,e)=>n+e.layers.length,0)+instance.layers.length>E.MAX_LAYERS)
+      return void(status.textContent='Maximum 64 layers.');
+    const ids=documentIds(copy);
+    instance.id=unique('emitter',ids);ids.add(instance.id);
     instance.name='Emitter '+(copy.emitters.length+1);
-    for(const layer of instance.layers)layer.id=instance.id+'_'+layer.type;
+    for(const layer of instance.layers){
+      const preferred=instance.id+'_'+layer.type;
+      layer.id=ids.has(preferred)?unique('layer',ids):preferred;ids.add(layer.id);
+    }
     selected=instance.id;selectedLayer=instance.layers[0].id;
     copy.emitters.push(instance);commit(copy,'Emitter added');
   }
@@ -99,7 +107,7 @@ function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
       return void(status.textContent='Maximum 64 layers.');
     const duplicated=JSON.parse(JSON.stringify(source));
     // Layer type is not identity: multiple layers of the same type are valid.
-    const ids=new Set(copy.emitters.flatMap(e=>[e.id,...e.layers.map(l=>l.id)]));
+    const ids=documentIds(copy);
     const fresh=prefix=>{const id=unique(prefix,ids);ids.add(id);return id;};
     duplicated.id=fresh('emitter');
     duplicated.name=source.name.slice(0,91).replace(/[\uD800-\uDBFF]$/,'')+' copy';
@@ -114,18 +122,23 @@ function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
     }
   }
   function deleteEmitter(){
+    if(isLocked?.())return void(status.textContent='Finish baking/loading before changing emitters.');
     const copy=clone();copy.emitters=copy.emitters.filter(e=>e.id!==selected);
     selected=copy.emitters[0]?.id||null;selectedLayer=copy.emitters[0]?.layers[0]?.id||null;
     commit(copy,'Emitter deleted and owned layers disposed');
   }
   function addLayer(type){
+    if(isLocked?.())return void(status.textContent='Finish baking/loading before changing emitters.');
     const copy=clone(),em=copy.emitters.find(e=>e.id===selected);
-    if(!em||copy.emitters.reduce((n,e)=>n+e.layers.length,0)>=E.MAX_LAYERS)return;
+    if(!em)return;
+    if(copy.emitters.reduce((n,e)=>n+e.layers.length,0)>=E.MAX_LAYERS)
+      return void(status.textContent='Maximum 64 layers.');
     const layer=E.newLayer(type,em.id,em.layers.length);
-    layer.id=unique('layer',new Set(copy.emitters.flatMap(e=>e.layers.map(l=>l.id))));
+    layer.id=unique('layer',documentIds(copy));
     selectedLayer=layer.id;em.layers.push(layer);commit(copy,'Layer added');
   }
   function deleteLayer(){
+    if(isLocked?.())return void(status.textContent='Finish baking/loading before changing emitters.');
     const copy=clone(),em=copy.emitters.find(e=>e.id===selected);
     if(!em)return;
     em.layers=em.layers.filter(l=>l.id!==selectedLayer);
@@ -142,7 +155,7 @@ function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
       button('fxEmitterDuplicate','Duplicate',duplicateEmitter),
       button('fxEmitterDelete','Remove',deleteEmitter));
     controls.append(actions);
-    if(!doc.emitters.length){status.textContent='No emitters. Add one to start.';return;}
+    if(!doc.emitters.length){selected=null;selectedLayer=null;status.textContent='No emitters. Add one to start.';return;}
     if(!activeEmitter())selected=doc.emitters[0].id;
     const emitter=activeEmitter();
     controls.append(line('Selected emitter',
