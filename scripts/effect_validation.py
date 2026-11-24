@@ -216,9 +216,10 @@ def validate_report(report, root, evidence_dir):
     ids=[c["id"] for c in checks]
     require(all(isinstance(x,str) and re.fullmatch(r"[a-z][A-Za-z0-9._-]+",x) for x in ids)
             and len(ids)==len(set(ids)), "invalid or duplicate check ID")
-    required_checks={f"phase.{x}" for x in refs[report["effectId"]]["phases"]}
-    required_checks.update(f"parameter.{x}" for x in refs[report["effectId"]]["parameters"])
-    required_checks.add("backend.actual")
+    # Bind required IDs to their semantic roles, not a caller-selected kind.
+    phase_checks={f"phase.{x}" for x in refs[report["effectId"]]["phases"]}
+    parameter_checks={f"parameter.{x}" for x in refs[report["effectId"]]["parameters"]}
+    required_checks=phase_checks | parameter_checks | {"backend.actual"}
     require(required_checks<=set(ids),
             "missing per-effect phase/parameter/backend coverage: "+
             ", ".join(sorted(required_checks-set(ids))))
@@ -227,6 +228,12 @@ def validate_report(report, root, evidence_dir):
         statuses.append(c["status"])
         require(c["status"] in STATUS, "invalid check status")
         require(c["kind"] in KINDS, "invalid check kind")
+        if c["id"] in phase_checks:
+            require(c["kind"]=="visual", "required phase must be visual: "+c["id"])
+        elif c["id"] in parameter_checks:
+            require(c["kind"] in ("visual","numeric"), "required parameter must be visual or numeric: "+c["id"])
+        elif c["id"]=="backend.actual":
+            require(c["kind"]=="backend", "backend.actual must have backend kind")
         require(isinstance(c["expected"],str) and c["expected"].strip(),
                 "missing expected measurement")
         require(isinstance(c["tolerance"],dict), "missing numeric/color tolerance")
@@ -246,6 +253,17 @@ def validate_report(report, root, evidence_dir):
             require(c["evidence"], "visual PASS/FAIL requires screenshot")
         if c["status"]=="PASS" and c["kind"]=="visual":
             measured=c["actual"]
+            if c["id"] in phase_checks:
+                require(isinstance(measured,dict) and
+                        any(k in measured for k in ("changedPixels","visiblePixels")),
+                        "phase PASS requires measured pixels: "+c["id"])
+                for key in ("changedPixels","visiblePixels"):
+                    if key in measured:
+                        require(type(measured[key]) is int and measured[key]>=0,
+                                "invalid phase pixel count: "+c["id"])
+            if "changedPixelsMin" in c["tolerance"]:
+                require(isinstance(measured,dict) and "changedPixels" in measured,
+                        "missing changedPixels for declared threshold: "+c["id"])
             if isinstance(measured,dict) and "changedPixels" in measured:
                 limit=c["tolerance"].get("changedPixelsMin",0)
                 require(type(measured["changedPixels"]) is int and

@@ -73,6 +73,28 @@ class ReportContractTests(unittest.TestCase):
         with self.assertRaises(fxv.ValidationError):
             fxv.validate_report(payload, ROOT, self.dir)
 
+    def test_required_check_kinds_cannot_bypass_evidence(self):
+        cases = [
+            lambda p: p["checks"][0].update(kind="numeric", evidence=[], actual={"claimed": True}),
+            lambda p: p["checks"][0].update(kind="asset", evidence=[], actual="OK"),
+            lambda p: p["checks"][3].update(kind="export", evidence=[], actual="OK"),
+            lambda p: p["checks"][-1].update(kind="numeric"),
+            lambda p: p["checks"][3].update(actual={"claimed": True}),
+            lambda p: p["checks"][0].update(actual="looks fine"),
+            lambda p: p["checks"][0].update(actual={"visiblePixels": -1}),
+            lambda p: p["checks"][0].update(actual={"visiblePixels": True}),
+        ]
+        for i, mutate in enumerate(cases):
+            with self.subTest(case=i):
+                self.check_bad(mutate)
+
+    def test_numeric_parameter_and_transparent_phase_are_valid(self):
+        p = copy.deepcopy(self.report)
+        p["checks"][0].update(actual={"visiblePixels": 0})
+        p["checks"][3].update(kind="numeric", actual={"before": 1, "after": 2},
+                              tolerance={}, evidence=[])
+        self.assertEqual(fxv.validate_report(p, ROOT, self.dir)["status"], "PASS")
+
     def test_accepted_report(self):
         record = fxv.validate_report(self.report, ROOT, self.dir)
         self.assertEqual(record["status"], "PASS")
