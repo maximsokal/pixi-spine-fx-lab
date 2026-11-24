@@ -64,7 +64,17 @@ function decodePng(input){
   return [...pixels.subarray((y*width+x)*4,(y*width+x)*4+4)];
  }};
 }
+function validatePixels(png){
+ assert.ok(png&&Number.isSafeInteger(png.width)&&Number.isSafeInteger(png.height)&&
+  png.width>=1&&png.height>=1&&png.width*png.height<=16000000,'valid bounded pixel dimensions');
+ assert.ok(png.pixels instanceof Uint8Array&&png.pixels.length===png.width*png.height*4,
+  'exact RGBA8 pixel buffer');
+}
 function comparePixels(a,b,{step=3,channelTolerance=2}={}){
+ validatePixels(a);validatePixels(b);
+ assert.ok(Number.isSafeInteger(step)&&step>=1,'positive integer pixel step');
+ assert.ok(Number.isFinite(channelTolerance)&&channelTolerance>=0&&channelTolerance<=255,
+  'channelTolerance must be finite and between 0 and 255');
  assert.equal(a.width,b.width);assert.equal(a.height,b.height);
  let changed=0,total=0,sumAbs=0;
  for(let y=0;y<a.height;y+=step)for(let x=0;x<a.width;x+=step){
@@ -77,6 +87,7 @@ function comparePixels(a,b,{step=3,channelTolerance=2}={}){
          step,channelTolerance};
 }
 function countAlpha(png){
+ validatePixels(png);
  let transparent=0,partial=0,opaque=0;
  for(let i=3;i<png.pixels.length;i+=4){const a=png.pixels[i];if(a===0)transparent++;else if(a===255)opaque++;else partial++;}
  return {transparent,partial,opaque};

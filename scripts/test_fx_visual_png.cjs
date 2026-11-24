@@ -70,3 +70,48 @@ test('reject tRNS before IHDR',()=>{
 test('reject tRNS in RGBA8',()=>{
  assert.throws(()=>decodePng(insertChunk(fixture(6,source),transparentKey)),/tRNS/);
 });
+
+// Invalid QA input must fail rather than hide changes or hang a test run.
+for(const step of [NaN,Infinity,1.5,'2']){
+ test('reject invalid pixel step '+String(step),()=>{
+  assert.throws(()=>comparePixels(rgb,rgba,{step}),/step/);
+ });
+}
+for(const step of [0,-1]){
+ test('reject nonpositive pixel step '+step+' without hanging',()=>{
+  const {spawnSync}=require('node:child_process');
+  const script='const assert=require("node:assert/strict");'+
+   'const {comparePixels}=require('+JSON.stringify(require.resolve('./fx_visual_png.cjs'))+');'+
+   'const p={width:1,height:1,pixels:Buffer.alloc(4)};'+
+   'assert.throws(()=>comparePixels(p,p,{step:'+step+'}),/step/);';
+  const result=spawnSync(process.execPath,['-e',script],{encoding:'utf8',timeout:1500});
+  assert.ifError(result.error);
+  assert.equal(result.status,0,result.stderr);
+ });
+}
+for(const channelTolerance of [NaN,Infinity,-1,256,'2']){
+ test('reject invalid channel tolerance '+String(channelTolerance),()=>{
+  assert.throws(()=>comparePixels(rgb,rgba,{channelTolerance}),/channelTolerance/);
+ });
+}
+for(const [name,invalid] of [
+ ['short buffer',{...rgba,pixels:rgba.pixels.subarray(0,4)}],
+ ['long buffer',{...rgba,pixels:Buffer.alloc(12)}],
+ ['non-byte array',{...rgba,pixels:[...rgba.pixels]}],
+ ['zero width',{width:0,height:1,pixels:Buffer.alloc(0)}],
+ ['fractional height',{width:2,height:0.5,pixels:Buffer.alloc(4)}],
+]){
+ test('reject '+name+' in comparison and alpha counts',()=>{
+  assert.throws(()=>comparePixels(invalid,invalid),/RGBA|dimensions/);
+  assert.throws(()=>comparePixels(rgb,invalid),/RGBA|dimensions/);
+  assert.throws(()=>countAlpha(invalid),/RGBA|dimensions/);
+ });
+}
+test('valid pixel metrics retain exact sampling and fractional tolerance',()=>{
+ assert.deepEqual(comparePixels(rgb,rgba,{step:1,channelTolerance:190.5}),{
+  changedPixels:1,sampledPixels:2,meanAbsoluteChannelDelta:191/8,step:1,channelTolerance:190.5,
+ });
+ assert.equal(comparePixels(rgb,rgba,{step:20,channelTolerance:191}).sampledPixels,1);
+ assert.equal(comparePixels(rgb,rgba,{step:20,channelTolerance:191}).changedPixels,0);
+ assert.deepEqual(countAlpha({...rgba,pixels:new Uint8Array(rgba.pixels)}),{transparent:0,partial:1,opaque:1});
+});
