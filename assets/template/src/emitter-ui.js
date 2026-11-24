@@ -91,14 +91,27 @@ function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
     copy.emitters.push(instance);commit(copy,'Emitter added');
   }
   function duplicateEmitter(){
+    if(isLocked?.())return void(status.textContent='Finish baking/loading before changing emitters.');
     const copy=clone(),source=copy.emitters.find(e=>e.id===selected);
-    if(!source||copy.emitters.length>=E.MAX_EMITTERS)return;
+    if(!source)return;
+    if(copy.emitters.length>=E.MAX_EMITTERS)return void(status.textContent='Maximum 16 emitters.');
+    if(copy.emitters.reduce((n,e)=>n+e.layers.length,0)+source.layers.length>E.MAX_LAYERS)
+      return void(status.textContent='Maximum 64 layers.');
     const duplicated=JSON.parse(JSON.stringify(source));
-    duplicated.id=unique('emitter',new Set(copy.emitters.map(e=>e.id)));
-    duplicated.name=source.name+' copy';duplicated.x+=32;duplicated.seed++;
-    duplicated.layers.forEach(l=>l.id=duplicated.id+'_'+l.type);
+    // Layer type is not identity: multiple layers of the same type are valid.
+    const ids=new Set(copy.emitters.flatMap(e=>[e.id,...e.layers.map(l=>l.id)]));
+    const fresh=prefix=>{const id=unique(prefix,ids);ids.add(id);return id;};
+    duplicated.id=fresh('emitter');
+    duplicated.name=source.name.slice(0,91).replace(/[\uD800-\uDBFF]$/,'')+' copy';
+    duplicated.x+=source.x<=16384-32?32:-32;
+    duplicated.seed=(source.seed+1)|0;
+    duplicated.layers.forEach(l=>l.id=fresh('layer'));
+    const oldSelected=selected,oldLayer=selectedLayer;
     selected=duplicated.id;selectedLayer=duplicated.layers[0]?.id||null;
-    copy.emitters.push(duplicated);commit(copy,'Emitter duplicated with independent seed');
+    copy.emitters.push(duplicated);
+    if(!commit(copy,'Emitter duplicated with independent seed')){
+      selected=oldSelected;selectedLayer=oldLayer;
+    }
   }
   function deleteEmitter(){
     const copy=clone();copy.emitters=copy.emitters.filter(e=>e.id!==selected);
