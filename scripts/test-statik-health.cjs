@@ -9,6 +9,7 @@ const path = require('node:path');
 // Synthetic process responses based on pinned Statik's Rust JSON structs.
 // These tests verify our gate, not real Statik coverage.
 const gate = path.join(__dirname, 'run-statik-health.cjs');
+const { runHealth } = require('./run-statik-health.cjs');
 const fixtureSource = `
 const [command, ...args] = process.argv.slice(2);
 const mode = process.env.FIXTURE_MODE;
@@ -37,25 +38,29 @@ function run(mode) {
   try {
     const fixture = path.join(cwd, 'fixture.cjs');
     writeFileSync(fixture, fixtureSource);
-    const args = mode === 'absent' ? [gate] : ['-e', `process.exitCode = require(${JSON.stringify(gate)}).runHealth(process.execPath, [${JSON.stringify(fixture)}]);`];
+    const args = mode === 'absent' ? [gate] : [__filename, '--fixture', fixture];
     return spawnSync(process.execPath, args, { cwd, encoding: 'utf8', timeout: 10000, env: { ...process.env, STATIK_BIN: path.join(cwd, 'missing-binary'), FIXTURE_MODE: mode } });
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 }
-for (const [mode, code, label] of [
-  ['healthy', 0, 'PASS'], ['empty', 2, 'DEGRADED'], ['roots', 2, 'DEGRADED'],
-  ['missing-edge', 2, 'DEGRADED'], ['wrong-root', 2, 'DEGRADED'], ['indirect', 2, 'DEGRADED'],
-  ['malformed', 1, 'ERROR'], ['bad-count', 1, 'ERROR'], ['absent', 2, 'UNVERIFIED'],
-  ['crash', 1, 'ERROR'], ['lint-failure', 1, 'ERROR'],
-]) {
-  test(`health gate: ${mode}`, () => {
-    const r = run(mode);
-    assert.ifError(r.error);
-    const output = r.stdout + r.stderr;
-    assert.equal(r.status, code, output);
-    assert.match(output, new RegExp('Statik health: ' + label));
-    if (label !== 'PASS') assert.doesNotMatch(output, /Statik health: PASS/);
-    if (mode === 'healthy' || mode === 'lint-failure') assert.match(output, /fixture lint ran/);
-    else assert.doesNotMatch(output, /fixture lint ran/);
-    if (mode === 'crash') assert.match(output, /fixture crash/);
-  });
+if (process.argv[2] === '--fixture') {
+  process.exitCode = runHealth(process.execPath, [process.argv[3]]);
+} else {
+  for (const [mode, code, label] of [
+    ['healthy', 0, 'PASS'], ['empty', 2, 'DEGRADED'], ['roots', 2, 'DEGRADED'],
+    ['missing-edge', 2, 'DEGRADED'], ['wrong-root', 2, 'DEGRADED'], ['indirect', 2, 'DEGRADED'],
+    ['malformed', 1, 'ERROR'], ['bad-count', 1, 'ERROR'], ['absent', 2, 'UNVERIFIED'],
+    ['crash', 1, 'ERROR'], ['lint-failure', 1, 'ERROR'],
+  ]) {
+    test(`health gate: ${mode}`, () => {
+      const r = run(mode);
+      assert.ifError(r.error);
+      const output = r.stdout + r.stderr;
+      assert.equal(r.status, code, output);
+      assert.match(output, new RegExp('Statik health: ' + label));
+      if (label !== 'PASS') assert.doesNotMatch(output, /Statik health: PASS/);
+      if (mode === 'healthy' || mode === 'lint-failure') assert.match(output, /fixture lint ran/);
+      else assert.doesNotMatch(output, /fixture lint ran/);
+      if (mode === 'crash') assert.match(output, /fixture crash/);
+    });
+  }
 }
