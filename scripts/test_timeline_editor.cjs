@@ -92,6 +92,43 @@ async function main(){
   console.log('PASS TIMELINE SEEK/FPS/REVERSE/LOOP',JSON.stringify({backend,
     particlesAt30:unit.at30.p.length,checkpoints:unit.checkpointFrames.length,
     paused:true,fps:[30,60,120]}));
+  // Exercise the real Burn FX consumer, not only a synthetic replay object.
+  // External Spine pose changes are not transactional; compare pose after retry,
+  // and only require the owned CPU state to roll back immediately.
+  const recovery=await page.evaluate(()=>{
+   const cpu=()=>JSON.parse(JSON.stringify({time:fx.absoluteTime,progress:fx.progress,
+    particles:fx.particles,points:fx.emitterPoints,emissions:fx.spacingEmitted,
+    checkpoints:fx.checkpointFrames}));
+   const pose=()=>model.skeleton.bones.map(b=>[b.worldX,b.worldY,b.a,b.b,b.c,b.d]);
+   const normal={progressAt,poseAt:poseAtLive};
+   const start=.105;
+   const reset=()=>{fx.invalidateReplay();fx.seek(start,normal);};
+   const cases=[];
+   for(const [kind,target] of [['step',.2],['partial',.205],['render',.2]]){
+    reset();fx.seek(target,normal);const expected=cpu(),expectedPose=pose();
+    reset();const before=cpu();let calls=0,caught=null;
+    try{fx.seek(target,{progressAt,poseAt(t){
+     poseAtLive(t);
+     if(t===target&&++calls===(kind==='step'?1:2))throw Error('injected '+kind);
+     // Fractional partial has one call before the final render.
+     if(kind==='partial'&&t===target&&calls===1)throw Error('injected '+kind);
+    }});}catch(error){caught=error.message;}
+    const restored=JSON.stringify(cpu())===JSON.stringify(before);
+    fx.seek(target,normal);
+    cases.push({kind,caught,restored,retryCpu:JSON.stringify(cpu())===JSON.stringify(expected),
+     retryPose:JSON.stringify(pose())===JSON.stringify(expectedPose),particles:expected.particles.length});
+   }
+   setProgress(progressAt(.5),.5);
+   return cases;
+  });
+  for(const result of recovery){
+   assert.equal(result.caught,'injected '+result.kind,JSON.stringify(result));
+   assert.ok(result.particles>0,'recovery must exercise nonempty particles');
+   assert.equal(result.restored,true,JSON.stringify(result));
+   assert.equal(result.retryCpu,true,JSON.stringify(result));
+   assert.equal(result.retryPose,true,JSON.stringify(result));
+  }
+  console.log('PASS REAL BURN REPLAY FAILURE RECOVERY',JSON.stringify(recovery));
   // A fixed preview snapshot, including source skeleton animation time, is restored after bake.
   await page.locator('#animPlay').uncheck();
   await page.evaluate(()=>{cfg.spacingEnabled=false;syncUniforms();setProgress(progress);});
