@@ -27,11 +27,20 @@
    atlas=new spine.TextureAtlas(await source.atlas.text());
    if(!atlas.pages.length)throw Error('Atlas has no pages');
    const normalize=s=>s.replace(/\\/g,'/'),entries=[...source.images].map(([k,v])=>[normalize(k),v]);
+   // Resolve every page before decoding textures. One selected entry may not
+   // silently satisfy multiple pages, even through a basename fallback.
+   const pageNames=new Set(),used=new Set();
    const pages=atlas.pages.map(page=>{
-    const name=normalize(page.name),exact=entries.filter(([k])=>k===name);
+    const name=normalize(page.name);
+    if(pageNames.has(name))throw Error('Duplicate atlas page '+page.name);
+    pageNames.add(name);
+    const exact=entries.filter(([k])=>k===name);
     const matches=exact.length?exact:entries.filter(([k])=>k.split('/').at(-1)===name.split('/').at(-1));
     if(matches.length!==1)throw Error((matches.length?'Ambiguous':'Missing')+' atlas page '+page.name);
-    return [page,matches[0][1]];
+    const [key,blob]=matches[0];
+    if(used.has(key))throw Error('Texture reused by multiple atlas pages '+page.name);
+    used.add(key);
+    return [page,blob];
    });
    for(const [page,blob] of pages){
     const url=URL.createObjectURL(blob),img=new Image();
