@@ -1,0 +1,71 @@
+'use strict';
+const A=require('node:assert/strict'),path=require('node:path'),os=require('node:os'),fs=require('node:fs');
+const {execFileSync}=require('node:child_process'),{pathToFileURL}=require('node:url');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const repo=path.resolve(__dirname,'..');
+async function main(){
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'shockwave-editor-'));
+ let browser;
+ try{
+  const html=path.join(dir,'Shockwave_Lab.html');
+  execFileSync(process.env.PYTHON||'python',[path.join(repo,'scripts/build_shockwave_editor.py'),'--output',html],{stdio:'inherit'});
+  browser=await chromium.launch({headless:true,...(process.env.BROWSER_EXECUTABLE?{executablePath:process.env.BROWSER_EXECUTABLE}:{}),args:['--no-sandbox']});
+  const page=await browser.newPage({viewport:{width:1280,height:900},offline:true,acceptDownloads:true});
+  const errors=[],network=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/^https?:/.test(r.url()))network.push(r.url())});
+  await page.goto(pathToFileURL(html).href);await page.waitForFunction(()=>document.body.dataset.ready==='true');
+  const state=()=>page.evaluate(()=>JSON.parse(document.getElementById('preset').value));
+  const change=async(id,v)=>{await page.locator('#'+id).evaluate((el,v)=>{el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}));},String(v))};
+  await change('frame',20);await change('p-finalRadius',180);
+  A.equal((await state()).finalRadius,180);
+  const before=await page.locator('#surface canvas').screenshot();
+  await change('p-ringWidth',24);
+  const after=await page.locator('#surface canvas').screenshot();A.ok(!before.equals(after));
+  await change('p-finalRadius',1);A.equal((await state()).finalRadius,180);
+  await page.locator('#addEmitter').click();A.equal((await state()).emitters.length,2);
+  await change('e-x',300);A.equal((await state()).emitters[1].x,300);
+  await page.locator('#layerSelect').selectOption('particles');
+  await page.locator('#l-enabled').check();A.equal((await state()).emitters[1].layers.particles.enabled,true);
+  await page.locator('#zoom').selectOption('0.5');
+  const handle=page.locator('#originHandle');const b=await handle.boundingBox();
+  await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2+10,b.y+b.height/2+5);await page.mouse.up();
+  const moved=(await state()).emitters[1].layers.particles;A.ok(Math.abs(moved.x-20)<2&&Math.abs(moved.y-10)<2,JSON.stringify(moved));
+  await page.locator('#curveSelect').selectOption('widthCurve');
+  await page.locator('#shockCurveMode').selectOption('stepped');
+  A.equal((await state()).widthCurve.keys[0].mode,'stepped');
+  await page.locator('#shockPalettePanel summary').click();
+  await change('shockPaletteColor','#ff0000');
+  A.deepEqual((await state()).palette.stops[0].rgba.slice(0,3),[255,0,0]);
+  await page.locator('#shockPalettePreset').selectOption('magical');
+  A.equal((await state()).palette.parameterKey,'shockColor');
+  await page.locator('#duplicateEmitter').click();A.equal((await state()).emitters.length,3);
+  await page.locator('#duplicateEmitter').click();A.equal((await state()).emitters.length,4);
+  A.equal(await page.locator('#addEmitter').isDisabled(),true);
+  await page.locator('#removeEmitter').click();A.equal((await state()).emitters.length,3);
+  await page.locator('#removeEmitter').click();A.equal((await state()).emitters.length,2);
+  await page.locator('#zoom').selectOption('1');
+  await page.setViewportSize({width:390,height:844});
+  const mobile=await page.locator('#surface').boundingBox();A.ok(Math.abs(mobile.width-mobile.height)<1,JSON.stringify(mobile));
+  await page.setViewportSize({width:1280,height:900});
+  const saved=await state();
+  await page.locator('#resetSettings').click();A.equal((await state()).emitters.length,1);
+  await page.locator('#preset').fill(JSON.stringify(saved));await page.locator('#applyPreset').click();
+  A.deepEqual(await state(),saved);
+  const bad=structuredClone(saved);bad.schemaVersion=999;
+  await page.locator('#preset').fill(JSON.stringify(bad));await page.locator('#applyPreset').click();
+  A.equal(await page.locator('#status').getAttribute('data-error'),'true');
+  await page.locator('#syncPreset').click();A.deepEqual(await state(),saved);
+  await change('frame',39);A.equal(await page.locator('#frameLabel').textContent(),'39 / 39');
+  await page.locator('#resetFrame').click();A.equal(await page.locator('#frame').inputValue(),'0');
+  await page.locator('#play').click();await page.waitForFunction(()=>document.getElementById('frame').value==='39');A.equal(await page.locator('#play').textContent(),'Play');
+  await page.locator('#reverse').click();await page.waitForFunction(()=>document.getElementById('frame').value==='0'&&document.getElementById('play').textContent==='Play');
+  for(const backend of ['webgl1','webgpu','webgl2']){
+   await page.locator('#backend').selectOption(backend);
+   await page.waitForFunction(b=>document.getElementById('backendActual').textContent===b.toUpperCase()&&!document.getElementById('backend').disabled,backend);
+   A.deepEqual(await state(),saved);
+   A.equal(await page.locator('#surface canvas').count(),1);
+  }
+  A.deepEqual(errors,[]);A.deepEqual(network,[]);
+  console.log('PASS GAME-05 standalone artist controls, curves, preset rollback, zoom-correct drag, transport and offline preview');
+ }finally{if(browser)await browser.close();fs.rmSync(dir,{recursive:true,force:true});}
+}
+main().catch(e=>{console.error(e.stack||e);process.exitCode=1});
