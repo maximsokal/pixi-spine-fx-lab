@@ -1,6 +1,8 @@
 # AIR-02 — Snowfall
 
-**Status:** specification-only. Issue #24. No runnable editor, renderer, PNG bake or developer ZIP has been verified.
+**Status:** implementation candidate pending real-GPU and export acceptance (machine-readable lifecycle remains specification-only until the evidence gate passes). Issue #24.
+
+Build the independent editor from the full repository with `python scripts/build_snow_editor.py --output Snowfall_Lab.html`. Numerical core, native particle runtime, editor, isolated PNG bake and developer ZIP source paths are present under `assets/snowfall/src/`. The assembly and CPU contracts have been tested; actual browser startup, WebGL1/2/WebGPU raster, pixel-alpha parity, PNG ZIP and both Vite builds still require real-runtime verification. The fixed 512×512 field intentionally clips flakes entering/leaving its bounds. Run `node --test scripts/test_snow_core.cjs scripts/test_snow_schedule.cjs scripts/test_snow_runtime.cjs scripts/test_snow_editor.cjs` and `python scripts/test_snow_builder.py` before browser acceptance.
 
 ## Visual and numerical contract
 
