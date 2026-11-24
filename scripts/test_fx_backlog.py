@@ -17,7 +17,7 @@ class BacklogTests(unittest.TestCase):
         rows = B.validate(self.data, self.registry)
         self.assertEqual([r['issue'] for r in rows], list(range(11, 52)))
         self.assertEqual(len(self.data['core']), 8)
-        self.assertEqual(sum(r['localEffectId'] is not None for r in rows), 14)
+        self.assertEqual(sum(r['localEffectId'] is not None for r in rows), 15)
 
     def test_exact_selection_never_substitutes_a_similar_effect(self):
         for key in ('GAME-02', 'game-02', '41', 'Hit Sparks'):

@@ -39,7 +39,7 @@ save();
     try{actual=scene.backend;for(const [id,time] of times){const frame=await scene.readFrame(time),png=await FxLootExport.encodePng(frame);captures[id]={time,settings:config,png:Array.from(png)};}}
     finally{scene.destroy()}
    }
-   await collect(settings,[['start',0],['birth',7/60],['peak',17/60],['fade',36/60],['end',39/60],['repeat',17/60]]);
+   await collect(settings,[['start',0],['birth',10/60],['peak',17/60],['fade',36/60],['end',39/60],['repeat',17/60]]);
    for(const k of ['stars','halo','sweep','none'])await collect(only(k),[[k,.25]]);
    await collect(all,[['all',.25]]);
    for(const k of ['stars','halo','sweep']){const c=copy(all);c.emitters[0].layers[k].enabled=false;await collect(c,[['without-'+k,.25]]);}
@@ -49,6 +49,10 @@ save();
   },backend);
   report.actualBackend=result.actual;report.networkRequests=network;report.pageErrors=errors;
   A.equal(result.actual,backend);A.deepEqual(network,[]);A.deepEqual(errors,[]);
+    // First birth has subpixel geometry at f7; it need not cover a pixel.
+  const L=require('../assets/loot-sparkle/src/loot-core.js'),first=L.compile(L.defaults()).sample(7/60).emitters[0].layers.stars;
+  A.equal(first.length,1);A.equal(first[0].age,1);A.ok(first[0].radius>0&&first[0].radius<1);
+  report.checks.firstBirth={age:first[0].age,radius:first[0].radius};
   const decoded={};
   for(const [id,v] of Object.entries(result.captures)){
    const bytes=Buffer.from(v.png),image=decodePng(bytes),file=id+'.png';

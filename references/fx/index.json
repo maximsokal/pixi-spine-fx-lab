@@ -409,6 +409,25 @@
         6,
         7
       ]
+    },
+    {
+      "effectId": "fx.game.loot-sparkle",
+      "category": "game",
+      "path": "references/fx/game/loot-sparkle.md",
+      "keywords": [
+        "loot sparkle",
+        "pickup highlight",
+        "reward sparkle",
+        "pickup sparkle"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
     }
   ]
 }

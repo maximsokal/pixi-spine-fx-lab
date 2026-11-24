@@ -21,7 +21,7 @@ class BlueprintTests(unittest.TestCase):
     def test_registry_is_small_and_complete(self):
         self.assertEqual(self.catalog["blueprintSchemaVersion"], 1)
         self.assertEqual(set(self.catalog["categories"]), {"fire", "ice", "game", "water", "air"})
-        self.assertEqual(len(self.blueprints), 17)
+        self.assertEqual(len(self.blueprints), 18)
         self.assertEqual(set(self.blueprints), {
             "fx.fire.burn-transition", "fx.fire.torch-flame",
             "fx.fire.fire-explosion", "fx.fire.fireball-projectile",
@@ -29,20 +29,21 @@ class BlueprintTests(unittest.TestCase):
             "fx.fire.smoke-plume",
             "fx.fire.heat-haze",
             "fx.water.water-splash", "fx.water.rainfall", "fx.water.water-ripples", "fx.water.waterfall", "fx.water.rising-bubbles", "fx.water.steam-jet", "fx.air.wind-gust",
-            "fx.ice.frost-dissolve", "fx.game.hit-flash", "fx.air.snowfall"})
-        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 17)
-        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 17)
+            "fx.ice.frost-dissolve", "fx.game.hit-flash", "fx.air.snowfall", "fx.game.loot-sparkle"})
+        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 18)
+        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 18)
         expected = {"fire":[3,4,5,6,7], "ice":[3,6,7], "game":[3,7], "water":[3,4,10,5,6,7], "air":[3,4,10,5,6,7]}
         for row in self.catalog["entries"]:
             if row["effectId"]=="fx.fire.fireball-projectile":
                 self.assertEqual(row["dependsOnCoreIssues"],[3,4,10,5,6,7])
-            elif row["effectId"] in ("fx.water.rainfall","fx.water.water-ripples","fx.water.rising-bubbles","fx.water.steam-jet","fx.air.snowfall"):
+            elif row["effectId"] in ("fx.game.loot-sparkle","fx.water.rainfall","fx.water.water-ripples","fx.water.rising-bubbles","fx.water.steam-jet","fx.air.snowfall"):
                 self.assertEqual(row["dependsOnCoreIssues"],[3,4,5,6,7])
             else:
                 self.assertEqual(row["dependsOnCoreIssues"],expected[row["category"]])
 
     def test_routing_and_exact_contracts(self):
         cases = [
+            ("Create loot sparkle around pickup", "fx.game.loot-sparkle", {"parameters","curves","spacing","emitters","colors","timeline"}),
             ("Create soft snowfall with drifting snowflakes", "fx.air.snowfall",
              {"parameters", "curves", "spacing", "emitters", "colors", "timeline"}),
             ("Build an organic fire burn transition with sparks", "fx.fire.burn-transition",

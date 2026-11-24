@@ -21,6 +21,7 @@ The small [index.json](index.json) is the machine-readable routing index. Each e
 | AIR | [Snowfall](air/snowfall.md) | **Implementation candidate (acceptance pending)**, independently anchored pre-rolled near/far snow and optional wind swirls | parameters, curves, spacing, emitters, colors, timeline |
 | ICE | [Frost dissolve](ice/frost-dissolve.md) | **Specification only**, not a shipped editor | parameters, curves, colors, timeline |
 | GAME | [Hit flash](game/hit-flash.md) | **Specification only**, not a shipped editor | parameters, curves, timeline |
+| GAME | [Loot Sparkle](game/loot-sparkle.md) | **Reference implementation**, independent 40-frame pickup and 60-frame idle sparkle; build offline editor with Python | parameters, curves, spacing, emitters, colors, timeline |
 
 ## Deterministic route for an agent
 
