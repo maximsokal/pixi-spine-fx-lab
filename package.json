@@ -6,8 +6,8 @@
     "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
   },
   "scripts": {
-    "arch:deps": "depcruise assets/template/src assets/embers-sparks/src assets/fire-explosion/src assets/fireball-projectile/src assets/heat-haze/src assets/rainfall/src assets/rising-bubbles/src assets/smoke-plume/src assets/steam-jet/src assets/torch-flame/src assets/water-ripples/src assets/water-splash/src assets/waterfall/src assets/wind-gust/src scripts --config .dependency-cruiser.cjs",
-    "arch:graph": "depcruise assets/template/src assets/embers-sparks/src assets/fire-explosion/src assets/fireball-projectile/src assets/heat-haze/src assets/rainfall/src assets/rising-bubbles/src assets/smoke-plume/src assets/steam-jet/src assets/torch-flame/src assets/water-ripples/src assets/water-splash/src assets/waterfall/src assets/wind-gust/src scripts --config .dependency-cruiser.cjs --output-type dot --output-to docs/architecture-dependency-graph.dot",
+    "arch:deps": "depcruise \"assets/*/src\" scripts --config .dependency-cruiser.cjs",
+    "arch:graph": "depcruise \"assets/*/src\" scripts --config .dependency-cruiser.cjs --output-type dot --output-to docs/architecture-dependency-graph.dot",
     "arch:unused": "knip",
     "arch:unused:production": "knip --production",
     "arch:statik:index": "node scripts/run-statik.cjs index . --exclude \"assets/template/vendor/**\"",
@@ -18,7 +18,8 @@
     "arch:statik:impact": "node scripts/run-statik.cjs impact",
     "arch:statik:health": "node scripts/run-statik-health.cjs",
     "arch:statik:test": "node --test scripts/test-statik-health.cjs",
-    "arch:check": "npm run arch:deps && npm run arch:unused && npm run arch:statik:health"
+    "arch:check": "npm run arch:deps && npm run arch:unused && npm run arch:statik:health",
+    "arch:deps:test": "node --test scripts/test-dependency-coverage.cjs"
   },
   "devDependencies": {
     "dependency-cruiser": "18.9.0",
