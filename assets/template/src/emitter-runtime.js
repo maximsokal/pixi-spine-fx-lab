@@ -53,7 +53,12 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     wrapper.label='FX slot '+slot;
     wrapper.sortableChildren=true;
     try{model.addSlotObject(slot,wrapper,{followAttachmentTimeline:false})}
-    catch(error){wrapper.destroy();diagnose('slot-error',e,String(error.message||error));return null;}
+    catch(error){
+      // Spine registers the wrapper before updating its initial slot pose.
+      // An update failure must not leave a destroyed object in its registry.
+      if(model.getSlotObject(slot)===wrapper)model.removeSlotObject(slot,wrapper);
+      wrapper.destroy();diagnose('slot-error',e,String(error.message||error));return null;
+    }
     slotGroups.set(slot,{wrapper});return wrapper;
   }
   function anchorWorld(e){

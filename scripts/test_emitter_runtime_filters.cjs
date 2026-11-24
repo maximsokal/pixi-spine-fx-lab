@@ -77,7 +77,7 @@ test('unchanged postprocess and ordinary type transitions reuse resources',()=>{
 });
 
 // Each emitter validates its own anchor even when sharing a Spine slot wrapper.
-function slotFixture({fallback='hide',occupied=false,noLookup=false}={}){
+function slotFixture({fallback='hide',occupied=false,noLookup=false,failInsertion='none'}={}){
  const bone={active:true,worldX:10,worldY:20,a:1,b:0,c:0,d:1};
  let attachment=null,exists=true;
  const slot={bone,getAttachment:()=>attachment};
@@ -86,7 +86,11 @@ function slotFixture({fallback='hide',occupied=false,noLookup=false}={}){
  const model={skeleton:{findSlot:name=>exists&&name==='body'?slot:null},
   worldTransform:{apply:(p,out)=>Object.assign(out,p)},
   addSlotObject(name,wrapper,options){assert.equal(name,'body');assert.equal(options.followAttachmentTimeline,false);
-   assert.ok(!bindings.has(name));bindings.set(name,wrapper);added++;},
+   assert.ok(!bindings.has(name));
+   if(failInsertion==='before')throw Error('slot insertion failed');
+   bindings.set(name,wrapper);added++;
+   if(failInsertion==='foreign')bindings.set(name,callerObject);
+   if(failInsertion!=='none')throw Error('slot insertion failed');},
   ...(noLookup?{}:{getSlotObject:name=>bindings.get(name)}),
   removeSlotObject(name,wrapper){assert.equal(bindings.get(name),wrapper);bindings.delete(name);removed++;}};
  const setAttachment=name=>{attachment=name?{name,computeWorldVertices(_slot,vertices){vertices.set([0,0,2,0,2,2,0,2]);}}:null;};
@@ -98,7 +102,7 @@ function slotFixture({fallback='hide',occupied=false,noLookup=false}={}){
   }
  }});
  return {...f,bone,bindings,setAttachment,removeSlot(){exists=false;},restoreSlot(){exists=true;},
-  get added(){return added;},get removed(){return removed;},callerObject};
+  enableInsertion(){failInsertion='none';},get added(){return added;},get removed(){return removed;},callerObject};
 }
 function assertFrame(f,ids){
  const frame=f.runtime.seek(1.2);
@@ -198,4 +202,29 @@ test('unverifiable slot ownership refuses insertion and preserves caller binding
  const frame=assertFrame(f,[]);assert.ok(frame.diagnostics.some(d=>d.code==='slot-unsupported'));
  assert.equal(f.added,0);assert.equal(f.bindings.get('body'),f.callerObject);
  f.runtime.destroy();assert.equal(f.removed,0);
+});
+
+// Spine registers a slot object before its initial pose update can throw.
+for(const fallback of ['hide','front']){
+ test('failed registered slot insertion clears ownership and recovers with '+fallback+' fallback',()=>{
+  const f=slotFixture({fallback,failInsertion:'after'}),record=f.record(eid,glow);
+  assert.equal(f.bindings.has('body'),false,'failed insertion left a stale Spine binding');
+  const frame=assertFrame(f,fallback==='front'?['emitter1_glow','emitter2_glow']:[]);
+  assert.equal(frame.diagnostics.filter(d=>d.code==='slot-error').length,2);
+  assert.equal(f.bindings.size,0);assert.equal(f.removed,4);
+  f.enableInsertion();assertFrame(f,['emitter1_glow','emitter2_glow']);
+  const wrapper=f.bindings.get('body');assert.ok(wrapper);assert.equal(f.record(eid,glow),record);
+  assert.equal(record.container.parent.parent,wrapper);assert.equal(f.added,5);
+  f.runtime.destroy();assert.equal(f.removed,5);assert.equal(f.bindings.size,0);assertClean(f);
+ });
+}
+test('failure before registration destroys wrapper without removing a binding',()=>{
+ const f=slotFixture({failInsertion:'before'});assertFrame(f,[]);
+ assert.equal(f.bindings.size,0);assert.equal(f.removed,0);assert.equal(f.added,0);
+ f.enableInsertion();assertFrame(f,['emitter1_glow','emitter2_glow']);f.runtime.destroy();assertClean(f);
+});
+test('failed insertion cannot remove a replacement caller object',()=>{
+ const f=slotFixture({failInsertion:'foreign'});assertFrame(f,[]);
+ assert.equal(f.bindings.get('body'),f.callerObject);assert.equal(f.removed,0);
+ f.runtime.destroy();assert.equal(f.bindings.get('body'),f.callerObject);assertClean(f);
 });
