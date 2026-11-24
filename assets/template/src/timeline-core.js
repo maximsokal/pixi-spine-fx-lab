@@ -122,10 +122,14 @@
   }
   function seek(seconds){
    num(seconds,'seek seconds',0,maxSeconds);
-   seconds=canonicalSeconds(seconds);
-   const target=Math.floor(seconds*fps+eps),wholeTime=target/fps;
-   let leftover=seconds-wholeTime;
-   if(Math.abs(leftover)<eps)leftover=0;
+   const snapped=canonicalSeconds(seconds);
+   if(snapped<=maxSeconds)seconds=snapped;
+   // Compare actual frame timestamps: multiplying by fps can round in either
+   // direction, and an epsilon in frame units can advance physics too early.
+   let target=Math.floor(seconds*fps);
+   if(target/fps>seconds)target--;
+   else if((target+1)/fps<=seconds)target++;
+   const leftover=seconds-target/fps;
    rollback();
    if(target<frame)rewind(target);
    for(let i=frame+1;i<=target;i++){

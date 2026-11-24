@@ -98,3 +98,52 @@ test('in-range frame snap and forward loop seam remain unchanged',()=>{
  assert.equal(clock.seek(1-5e-10).time,1);
  assert.equal(clock.tick(1).time,0);
 });
+
+// Replay must never simulate a whole frame later than its canonical seek time.
+function replayProbe(fps,maxSeconds=3600){
+ let snapshot={steps:[],parts:[]};
+ const instance=T.createReplay({fps,maxSeconds,capture:()=>snapshot,restore:value=>{snapshot=value;},
+  step:(dt,time,index)=>snapshot.steps.push({dt,time,index}),
+  partial:(dt,time,index)=>snapshot.parts.push({dt,time,index})});
+ return {instance,get snapshot(){return snapshot;}};
+}
+test('120 FPS seek just before a frame does not execute that frame',()=>{
+ const probe=replayProbe(120),seconds=1/120-5e-12;
+ const result=probe.instance.seek(seconds);
+ assert.equal(result.frame,0);assert.equal(result.fraction,seconds);
+ assert.deepEqual(probe.snapshot,{steps:[],parts:[{dt:seconds,time:seconds,index:0}]});
+});
+test('120 FPS seek preserves a small real remainder after an off-grid frame',()=>{
+ const probe=replayProbe(120),seconds=1/120+5e-10;
+ const result=probe.instance.seek(seconds);
+ assert.equal(result.frame,1);assert.equal(result.fraction,seconds-1/120);
+ assert.deepEqual(probe.snapshot.parts,[{dt:seconds-1/120,time:seconds,index:1}]);
+});
+test('repeated and backward fractional seeks do not accumulate partial state',()=>{
+ const probe=replayProbe(120),seconds=1/120+5e-10;
+ probe.instance.seek(seconds);const expected=structuredClone(probe.snapshot);
+ assert.equal(expected.parts.length,1);
+ probe.instance.seek(0.1);probe.instance.seek(seconds);
+ assert.deepEqual(probe.snapshot,expected);
+ probe.instance.seek(seconds);assert.deepEqual(probe.snapshot,expected);
+ probe.instance.seek(1/120);assert.equal(probe.snapshot.parts.length,0);
+});
+test('exact custom-FPS frame survives floating-point multiplication underflow',()=>{
+ const probe=replayProbe(7),seconds=61/7;
+ const result=probe.instance.seek(seconds);
+ assert.equal(result.frame,61);assert.equal(result.fraction,0);
+ assert.equal(probe.snapshot.steps.at(-1).time,seconds);
+});
+test('frame snapping cannot exceed the replay maxSeconds limit',()=>{
+ const limit=1-5e-10,probe=replayProbe(60,limit);
+ const result=probe.instance.seek(limit);
+ assert.equal(result.seconds,limit);assert.equal(result.frame,59);
+ assert.equal(result.fraction,limit-59/60);
+ assert.ok(probe.snapshot.steps.every(step=>step.time<=limit));
+ assert.equal(probe.instance.time,limit);
+});
+test('default 60 FPS still canonicalizes timestamps within one nanosecond',()=>{
+ const probe=replayProbe(60),result=probe.instance.seek(1-5e-10);
+ assert.equal(result.seconds,1);assert.equal(result.frame,60);assert.equal(result.fraction,0);
+ assert.equal(probe.snapshot.parts.length,0);
+});
