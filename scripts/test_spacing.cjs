@@ -156,4 +156,51 @@ for(let d=0;d<=at.length;d+=5){
  const measured=arc[j]+(arc[j+1]-arc[j])*(scaled-j);
  close(measured,d,.25001);
 }
+// implicit and explicit jump position parity
+{
+ const motion=[{time:0,x:0,y:0},{time:1,x:30,y:0},{time:2,x:1030,y:0},{time:3,x:1060,y:0}];
+ const schedule={events:[.5,1.5,2,2.5].map(time=>({time}))};
+ const run=motion=>S.combineSchedule({schedule,placement:place,motion,mode:'both',teleportThresholdPx:200,maxEvents:100});
+ const implicit=run(motion),explicit=run(motion.map((m,i)=>i===2?{...m,teleport:true}:m));
+ assert.deepEqual(implicit.events.map(e=>e.x),[15,30,1030,1045]);
+ assert.deepEqual(explicit,implicit);
+ assert.deepEqual(implicit.events.map(e=>e.time),[.5,1.5,2,2.5]);
+ assert.deepEqual(implicit.events.map(e=>e.distance),[10,20,30,40]);
+ assert.equal(implicit.capped,false);
+}
+// heading and exact timestamp around discontinuity
+{
+ const motion=[{time:0,x:0,y:0},{time:1,x:0,y:80},{time:2,x:1000,y:80},{time:3,x:1000,y:120}];
+ const times=[1.5,2-1e-7,2,2+1e-7,2.5];
+ const schedule={events:times.map(time=>({time}))};
+ const opts={schedule,placement:place,motion,mode:'both',teleportThresholdPx:200,maxEvents:100};
+ const result=S.combineSchedule(opts),events=result.events;
+ assert.deepEqual(events.map(e=>e.x),[0,0,1000,1000,1000]);
+ assert.deepEqual(events.map(e=>e.time),times);
+ for(const e of events)close(e.angle,Math.PI/2);
+ close(events[0].y,80);close(events[1].y,80);close(events[2].y,80);close(events[3].y,80+40e-7);close(events[4].y,100);
+ assert.deepEqual(result,S.combineSchedule(opts));
+ const capped=S.combineSchedule({...opts,maxEvents:2});assert.equal(capped.capped,true);assert.deepEqual(capped.events,events.slice(0,2));
+}
+// terminal jump and previous real heading
+{
+ const motion=[{time:0,x:0,y:0},{time:1,x:0,y:50},{time:1.25,x:0,y:50},{time:2,x:1000,y:50,teleport:true}];
+ const schedule={events:[1.5,2,2.5].map(time=>({time}))};
+ const result=S.combineSchedule({schedule,placement:place,motion,mode:'both',teleportThresholdPx:200});
+ assert.deepEqual(result.events.map(e=>e.x),[0,1000,1000]);
+ for(const e of result.events)close(e.angle,Math.PI/2);
+}
+// teleport only, threshold equality, distance/time modes
+{
+ const schedule={events:[.5,1,1.5,2].map(time=>({time}))};
+ const motion=[{time:0,x:0,y:0},{time:1,x:1000,y:0},{time:2,x:0,y:0,teleport:true}];
+ for(const mode of ['both','distance'])assert.equal(S.combineSchedule({schedule,placement:place,motion,mode,teleportThresholdPx:200}).events.length,0);
+ const real=[{time:0,x:0,y:0},{time:1,x:20,y:0},{time:2,x:0,y:0}];
+ const opts={schedule,placement:place,motion:real,teleportThresholdPx:20,maxEvents:100};
+ const combined=S.combineSchedule({...opts,mode:'both'}),distance=S.combineSchedule({...opts,mode:'distance'});
+ assert.deepEqual(combined.events.map(e=>e.x),[10,20,10,0]);
+ assert.deepEqual(distance.events.map(e=>e.x),[10,20,10,0]);
+ assert.deepEqual(combined.events.map(e=>e.angle),[0,0,Math.PI,Math.PI]);
+ assert.deepEqual(S.combineSchedule({...opts,mode:'time'}).events,S.combineSchedule({...opts,motion,mode:'time'}).events);
+}
 console.log('PASS FX-CORE-02 temporal scheduling, 30/60/120 FPS, burst/custom/jitter/caps, arc-length, modes, stationary/teleport/reverse/zero');

@@ -316,11 +316,14 @@
     }
     const pathLength=placement.table.length;
     const threshold=i=>anchors[i%anchors.length].distance+Math.floor(i/anchors.length)*pathLength;
-    let cumulative=0,next=0,prev=stops[0];
-    const traversed=[{time:stops[0]?.time??0,distance:0}];
+    let cumulative=0,next=0,prev=stops[0],heading=0;
+    const traversed=[{time:stops[0]?.time??0,distance:0,teleport:false,angle:0}];
     for(let i=1;i<stops.length;i++){
       const now=stops[i],distance=Math.hypot(now.x-prev.x,now.y-prev.y);
-      if(!now.teleport&&distance<=teleportThresholdPx) {
+      const teleport=now.teleport||distance>teleportThresholdPx;
+      const angle=teleport?heading:Math.atan2(now.y-prev.y,now.x-prev.x);
+      if(!teleport) {
+        if(distance>0)heading=angle;
         const before=cumulative;
         cumulative+=distance;
         if(mode==='distance'){
@@ -334,7 +337,7 @@
           }
         }
       }
-      traversed.push({time:now.time,distance:cumulative});
+      traversed.push({time:now.time,distance:cumulative,teleport,angle});
       prev=now;
       if(capped)break;
     }
@@ -345,8 +348,7 @@
         if(stops.length){
           if(e.time>=traversed.at(-1).time){
             d=cumulative;
-            motionPoint={...stops.at(-1),angle:stops.length>1?
-              Math.atan2(stops.at(-1).y-stops.at(-2).y,stops.at(-1).x-stops.at(-2).x):0};
+            motionPoint={...stops.at(-1),angle:traversed.at(-1).angle};
           }else if(e.time>=traversed[0].time){
             let left=0,right=traversed.length-1;
             while(left+1<right){
@@ -355,9 +357,11 @@
             }
             const a=traversed[left],b=traversed[right],fraction=clamp((e.time-a.time)/(b.time-a.time),0,1);
             d=a.distance+(b.distance-a.distance)*fraction;
-            const lo=stops[left],hi=stops[right],f=hi.teleport?0:fraction;
+            const lo=stops[left],hi=stops[right];
+            // A discontinuity is a jump at the destination timestamp, not motion.
+            const f=b.teleport?(e.time>=b.time?1:0):fraction;
             motionPoint={x:lo.x+(hi.x-lo.x)*f,y:lo.y+(hi.y-lo.y)*f,
-              angle:Math.atan2(hi.y-lo.y,hi.x-lo.x)};
+              angle:b.angle};
           }else motionPoint={...stops[0],angle:0};
         }
         if(d+1e-9>=threshold(next)){
