@@ -36,12 +36,17 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     slotGroups.delete(slot);
   }
   function slotParent(slot,e){
-    let existing=slotGroups.get(slot);
-    if(existing)return existing.wrapper;
-    if(typeof model.addSlotObject!=='function'||typeof model.removeSlotObject!=='function'){
-      diagnose('slot-unsupported',e,'Pinned Spine runtime has no slot-object insertion');return null;
+    if(typeof model.addSlotObject!=='function'||typeof model.removeSlotObject!=='function'||
+       typeof model.getSlotObject!=='function'){
+      diagnose('slot-unsupported',e,'Spine runtime cannot verify slot-object ownership');return null;
     }
-    if(model.getSlotObject?.(slot)){
+    const existing=slotGroups.get(slot),bound=model.getSlotObject(slot);
+    if(existing){
+      if(bound===existing.wrapper)return existing.wrapper;
+      // Caller detached/replaced our wrapper; rescue children without touching its binding.
+      dropSlot(slot);
+    }
+    if(bound){
       diagnose('slot-occupied',e,'Slot already has a caller-owned Pixi object; cannot replace it');return null;
     }
     const wrapper=new PIXI.Container();

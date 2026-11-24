@@ -77,7 +77,7 @@ test('unchanged postprocess and ordinary type transitions reuse resources',()=>{
 });
 
 // Each emitter validates its own anchor even when sharing a Spine slot wrapper.
-function slotFixture({fallback='hide',occupied=false}={}){
+function slotFixture({fallback='hide',occupied=false,noLookup=false}={}){
  const bone={active:true,worldX:10,worldY:20,a:1,b:0,c:0,d:1};
  let attachment=null,exists=true;
  const slot={bone,getAttachment:()=>attachment};
@@ -87,7 +87,7 @@ function slotFixture({fallback='hide',occupied=false}={}){
   worldTransform:{apply:(p,out)=>Object.assign(out,p)},
   addSlotObject(name,wrapper,options){assert.equal(name,'body');assert.equal(options.followAttachmentTimeline,false);
    assert.ok(!bindings.has(name));bindings.set(name,wrapper);added++;},
-  getSlotObject:name=>bindings.get(name),
+  ...(noLookup?{}:{getSlotObject:name=>bindings.get(name)}),
   removeSlotObject(name,wrapper){assert.equal(bindings.get(name),wrapper);bindings.delete(name);removed++;}};
  const setAttachment=name=>{attachment=name?{name,computeWorldVertices(_slot,vertices){vertices.set([0,0,2,0,2,2,0,2]);}}:null;};
  setAttachment('bodyA');
@@ -169,4 +169,33 @@ test('configure with unavailable BlurFilter leaves the previous document and nod
  assert.throws(()=>f.edit(eid,glow,'postprocess'),/BlurFilter unavailable/);
  assert.equal(f.runtime.document,previous);assert.equal(f.record(eid,glow),record);
  assert.equal(record.filter,null);assert.equal(f.nodes.length,count);f.runtime.seek(1.2);f.runtime.destroy();assertClean(f);
+});
+
+// External slot edits must not turn a detached wrapper into a fake render target.
+test('externally removed binding is recreated once with existing emitter resources',()=>{
+ const f=slotFixture(),wrapper=f.bindings.get('body'),record=f.record(eid,glow);
+ f.bindings.delete('body');assertFrame(f,['emitter1_glow','emitter2_glow']);
+ const replacement=f.bindings.get('body');assert.ok(replacement);assert.notEqual(replacement,wrapper);
+ assert.equal(wrapper.destroyed,1);assert.equal(f.record(eid,glow),record);
+ assert.equal(record.container.parent.parent,replacement);assert.equal(f.added,2);
+ assertFrame(f,['emitter1_glow','emitter2_glow']);assert.equal(f.added,2);
+ f.runtime.destroy();assert.equal(f.removed,1);assert.equal(replacement.destroyed,1);
+});
+for(const fallback of ['hide','front']){
+ test('external replacement respects '+fallback+' fallback without removing caller binding',()=>{
+  const f=slotFixture({fallback}),wrapper=f.bindings.get('body'),record=f.record(eid,glow);
+  f.bindings.set('body',f.callerObject);
+  const frame=assertFrame(f,fallback==='front'?['emitter1_glow','emitter2_glow']:[]);
+  assert.ok(frame.diagnostics.some(d=>d.code==='slot-occupied'));
+  assert.equal(wrapper.destroyed,1);assert.equal(f.runtime.slotBindings,0);
+  assert.equal(f.record(eid,glow),record);assert.equal(record.container.destroyed,0);
+  assert.equal(f.bindings.get('body'),f.callerObject);assert.equal(f.removed,0);
+  f.runtime.destroy();assert.equal(f.bindings.get('body'),f.callerObject);assert.equal(f.removed,0);
+ });
+}
+test('unverifiable slot ownership refuses insertion and preserves caller binding',()=>{
+ const f=slotFixture({fallback:'hide',occupied:true,noLookup:true});
+ const frame=assertFrame(f,[]);assert.ok(frame.diagnostics.some(d=>d.code==='slot-unsupported'));
+ assert.equal(f.added,0);assert.equal(f.bindings.get('body'),f.callerObject);
+ f.runtime.destroy();assert.equal(f.removed,0);
 });
