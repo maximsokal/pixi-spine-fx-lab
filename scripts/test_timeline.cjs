@@ -209,3 +209,31 @@ test('failed restore reports both errors and blocks retry until explicit recover
  p.instance.invalidate();assert.equal(p.instance.time,0);
  p.instance.seek(1/60);assert.deepEqual(p.snapshot().state.steps,[1]);
 });
+
+// Reset is also a render-bearing state transition. A failed reset cannot
+// silently discard the last good CPU pose or the checkpoint history.
+test('failed invalidate restores prior fractional state and retry matches clean reset',()=>{
+ const p=failureProbe(),clean=failureProbe();
+ for(const q of [p,clean])q.instance.seek(.105);
+ const before=p.snapshot();p.fail('render');
+ assert.throws(()=>p.instance.invalidate(),/injected render/);assert.deepEqual(p.snapshot(),before);
+ p.instance.seek(.125);clean.instance.seek(.125);assert.deepEqual(p.snapshot(),clean.snapshot());
+ p.instance.invalidate();clean.instance.invalidate();assert.deepEqual(p.snapshot(),clean.snapshot());
+});
+test('failed recovery reset remains blocked and successful rebase starts fresh history',()=>{
+ const p=failureProbe();p.fail('step');p.failRestore(true);
+ assert.throws(()=>p.instance.seek(1/60),AggregateError);
+ p.failRestore(false);p.fail('render');assert.throws(()=>p.instance.invalidate(),/injected render/);
+ assert.throws(()=>p.instance.seek(1/60),/invalidate|rebase/);
+ p.instance.rebase();assert.equal(p.instance.time,0);assert.deepEqual(p.instance.checkpointFrames,[0]);
+ assert.equal(p.instance.seek(1/60).frame,1);
+});
+test('checkpoint capture failure rolls back completed steps and allows retry',()=>{
+ let state={steps:[]},calls=0,failAt=0;
+ const r=T.createReplay({checkpointEvery:1,maxCheckpoints:3,capture:()=>{if(++calls===failAt)throw Error('checkpoint capture failed');return state;},
+  restore:v=>{state=v;},step:(dt,time,index)=>state.steps.push(index)});
+ r.seek(2/60);const before=structuredClone(state),checks=r.checkpointFrames;
+ failAt=calls+3;assert.throws(()=>r.seek(6/60),/checkpoint capture failed/);
+ assert.deepEqual(state,before);assert.deepEqual(r.checkpointFrames,checks);assert.equal(r.frame,2);
+ failAt=0;r.seek(6/60);assert.deepEqual(state.steps,[1,2,3,4,5,6]);
+});

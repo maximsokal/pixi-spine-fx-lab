@@ -132,10 +132,7 @@
    if(target/fps>seconds)target--;
    else if((target+1)/fps<=seconds)target++;
    const leftover=seconds-target/fps;
-   // Snapshot the caller's CPU state once, and share immutable checkpoint
-   // values in the shallow map copy. Failed callbacks cannot advance replay.
-   const prior={state:clone(capture()),frame,at,fractional,whole,checks:new Map(checks)};
-   try{
+   return transaction('seek',()=>{
     rollback();
     if(target<frame)rewind(target);
     for(let i=frame+1;i<=target;i++){
@@ -146,18 +143,30 @@
     at=seconds;
     render?.(seconds);
     return Object.freeze({seconds,frame:target,fraction:leftover,checkpointCount:checks.size});
+   });
+  }
+  function transaction(action,run){
+   // Snapshot the caller's CPU state once, and share immutable checkpoint
+   // values in the shallow map copy. Failed callbacks cannot advance replay.
+   const prior={state:clone(capture()),frame,at,fractional,whole,checks:new Map(checks)};
+   try{return run();
    }catch(error){
     ({frame,at,fractional,whole,checks}=prior);
     try{restore(prior.state);}catch(restoreError){
      broken=true;
-     throw new AggregateError([error,restoreError],'Replay seek and CPU state restoration failed');
+     throw new AggregateError([error,restoreError],'Replay '+action+' and CPU state restoration failed');
     }
     throw error;
    }
   }
   function invalidate(){
-   restore(clone(initial));frame=0;at=0;fractional=false;whole=null;checks.clear();
-   checks.set(0,clone(initial));render?.(0);broken=false;
+   const reset=()=>{
+    restore(clone(initial));frame=0;at=0;fractional=false;whole=null;checks.clear();
+    checks.set(0,clone(initial));render?.(0);broken=false;
+   };
+   // A broken instance has no trustworthy live snapshot to roll back to.
+   if(broken)return reset();
+   return transaction('invalidate',reset);
   }
   function rebase(){
    initial=clone(capture());frame=0;at=0;fractional=false;whole=null;
