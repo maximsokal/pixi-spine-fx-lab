@@ -1,6 +1,7 @@
 import hashlib
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -105,6 +106,62 @@ class ScopeTests(unittest.TestCase):
         r = self.check([])
         self.assertEqual(r['status'], 'FAIL')
         self.assertEqual(r['integrityFailures'], ['assets/template/vendor/pixi.js'])
+
+    def test_candidate_replacement_cannot_hide_outside_scope(self):
+        self.write('assets/water/src/core.js', b'changed')
+        candidate = self.commit()
+        self.git('replace', candidate, self.base)
+        r = self.check([], candidate)
+        self.assertEqual(r['status'], 'FAIL')
+        self.assertEqual(r['candidate'], candidate)
+        self.assertEqual(r['outsideScope'], ['assets/water/src/core.js'])
+        self.assertEqual(self.git('replace', '-l'), candidate)
+
+    def test_baseline_replacement_cannot_hide_outside_scope(self):
+        self.write('assets/water/src/core.js', b'changed')
+        candidate = self.commit()
+        self.git('replace', self.base, candidate)
+        r = self.check([], candidate)
+        self.assertEqual(r['status'], 'FAIL')
+        self.assertEqual(r['base'], self.base)
+        self.assertEqual(r['outsideScope'], ['assets/water/src/core.js'])
+
+    def test_tree_replacement_cannot_hide_outside_scope(self):
+        original_tree = self.git('rev-parse', self.base + '^{tree}')
+        self.write('assets/water/src/core.js', b'changed')
+        candidate = self.commit()
+        candidate_tree = self.git('rev-parse', candidate + '^{tree}')
+        self.git('replace', candidate_tree, original_tree)
+        r = self.check([], candidate)
+        self.assertEqual(r['status'], 'FAIL')
+        self.assertEqual(r['outsideScope'], ['assets/water/src/core.js'])
+
+    def test_blob_replacement_cannot_mask_corrupt_protected_bytes(self):
+        path = 'assets/template/vendor/pixi.js'
+        good = self.git('rev-parse', self.base + ':' + path)
+        self.write(path, b'corrupt runtime')
+        self.base = self.commit()
+        bad = self.git('rev-parse', self.base + ':' + path)
+        self.git('replace', bad, good)
+        r = self.check([], self.base)
+        self.assertEqual(r['status'], 'FAIL')
+        self.assertEqual(r['integrityFailures'], [path])
+        self.assertEqual(r['protectedVerified'], 0)
+
+    def test_cli_statuses_ignore_replacements_without_mutating_them(self):
+        self.write('assets/fire/src/core.js', b'new')
+        candidate = self.commit()
+        self.git('replace', candidate, self.base)
+        command = [sys.executable, S.__file__, '--repo', str(self.repo),
+                   '--base', self.base, '--candidate', candidate]
+        for args, code, status in [([], 1, 'FAIL'),
+                                   (['--allow', 'assets/fire/src/core.js'], 0, 'PASS'),
+                                   (['--allow', '../invalid'], 2, 'UNVERIFIED')]:
+            with self.subTest(status=status):
+                p = subprocess.run(command + args, capture_output=True, text=True)
+                self.assertEqual(p.returncode, code, p.stdout + p.stderr)
+                self.assertEqual(json.loads(p.stdout)['status'], status)
+        self.assertEqual(self.git('replace', '-l'), candidate)
 
 
 if __name__ == '__main__':

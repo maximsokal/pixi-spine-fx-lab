@@ -25,7 +25,7 @@ def exact_path(path):
 
 def git(repo, *args):
     try:
-        return subprocess.check_output(['git', '-C', str(repo), *args], stderr=subprocess.PIPE)
+        return subprocess.check_output(['git', '--no-replace-objects', '-C', str(repo), *args], stderr=subprocess.PIPE)
     except (OSError, subprocess.CalledProcessError) as error:
         raise ValueError('Git command failed: ' + args[0]) from error
 
