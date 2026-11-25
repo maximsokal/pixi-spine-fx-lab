@@ -7,7 +7,9 @@ const fields=new Set(['action','issue','title','summary','expected','actual','re
 const sensitive=/(?:[\w.+-]+@[\w.-]+\.[a-z]{2,}|(?:token|api[_ -]?key|password|secret|cookie)\s*[:=]|\b(?:gh[pousr]_|github_pat_|sk-)[\w-]+|authorization\s*:|\bBearer\s+\S+|[a-z]:[\\/]|\/(?:home|Users|mnt|private)\/|https?:\/\/[^\s/]+:[^\s/]+@|-----BEGIN [A-Z ]*PRIVATE KEY-----)/i;
 function requireOK(ok,message){if(!ok)throw Error('Feedback: '+message);}
 function clean(value,name,max=1200){
- requireOK(typeof value==='string'&&value.trim()&&value.length<=max&&!/[\x00-\x08\x0b-\x1f\x7f]/.test(value),'invalid '+name);
+ requireOK(typeof value==='string'&&value.trim()&&value.length<=max&&!/[\x00-\x08\x0b-\x1f\x7f-\x9f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069]/.test(value),'invalid '+name);
+ // Report fields are plain text, not HTML, image embeds or open code fences.
+ requireOK(!/<(?:[a-z/!?])|!\[|(?:^|\n)[ \t]*(?:`{3,}|~{3,})/i.test(value),'unsupported markup in '+name+'; use plain text');
  requireOK(!sensitive.test(value),'potentially sensitive '+name+'; remove and review');
  return value.trim();
 }
@@ -21,10 +23,15 @@ function prepare(input){
  const title=clean(input.title,'title',120);
  requireOK(!title.includes('\n'),'invalid title');
  requireOK(Array.isArray(input.reproduction)&&input.reproduction.length>=1&&input.reproduction.length<=10,'invalid reproduction');
- const body=['## Summary',clean(input.summary,'summary'),'## Environment',clean(input.environment,'environment'),'## Minimal reproduction',...input.reproduction.map((v,i)=>`${i+1}. ${clean(v,'reproduction',300)}`),'## Expected result',clean(input.expected,'expected'),'## Actual result',clean(input.actual,'actual'),'## Evidence','NOT REPRODUCED — independently verified evidence not provided.','## Likely cause','HYPOTHESIS — '+clean(input.hypothesis,'hypothesis'),'## Disclosure','Text-only draft; review all content and disclosure rights before approving.'].join('\n\n');
+ const steps=[];
+ for(let i=0;i<input.reproduction.length;i++){
+  requireOK(Object.hasOwn(input.reproduction,i),'invalid reproduction step');
+  steps.push(`${i+1}. ${clean(input.reproduction[i],'reproduction',300)}`);
+ }
+ const body=['## Summary',clean(input.summary,'summary'),'## Environment',clean(input.environment,'environment'),'## Minimal reproduction',...steps,'## Expected result',clean(input.expected,'expected'),'## Actual result',clean(input.actual,'actual'),'## Evidence','NOT REPRODUCED — independently verified evidence not provided.','## Likely cause','HYPOTHESIS — '+clean(input.hypothesis,'hypothesis'),'## Disclosure','Text-only draft; review all content and disclosure rights before approving.'].join('\n\n');
  const payload=Object.freeze({destination:DEST,action,...(action==='comment'?{issue}:{title}),body});
  const warning=visibility==='private'?'Content leaves this chat and may be copied or disclosed.':'Content leaves this chat and may become public, searchable and permanently copied.';
- const digest=createHash('sha256').update(JSON.stringify({payload,visibility,warning})).digest('hex');
+ const digest=createHash('sha256').update(JSON.stringify({payload,title,visibility,warning})).digest('hex');
  const draft=Object.freeze({...payload,title,visibility,warning,digest});drafts.add(draft);return draft;
 }
 function createGate(draft,send){
