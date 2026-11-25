@@ -1,0 +1,12 @@
+'use strict';
+const {test}=require('node:test'),A=require('node:assert/strict');
+const U=require('../assets/magic-shield/src/shield-export-ui.js');
+const fields={x:'-12',y:'4',width:'280',height:'281',frames:''};
+const spec=(v=fields,d=40)=>U.readSpec(v,d);
+test('strict signed crop, independent dimensions and default authored duration',()=>{A.deepEqual(spec(),{crop:{x:-12,y:4,width:280,height:281},frameCount:40});A.equal(spec({...fields,frames:'90'}).frameCount,90);});
+test('invalid inputs never silently round or become zero',()=>{for(const [key,v] of [['x',''],['y','1.5'],['width','0'],['height','4097'],['frames','3601'],['frames','1e2'],['x','16385']])A.throws(()=>spec({...fields,[key]:v}));});
+function fixture(bake){const calls=[],zip=Uint8Array.of(1,2),request={frameCount:40,crop:spec().crop};const c=U.createController({request:()=>request,bake:bake|| (async p=>{p.progress(40,40);return {zip};}),begin:()=>calls.push('begin'),end:()=>calls.push('end'),progress:(n,total)=>calls.push([n,total]),report:(m,e)=>calls.push([m,e]),download:z=>{A.equal(z,zip);calls.push('download');}});return {c,calls,zip,request};}
+test('successful export reports progress, downloads once and unlocks',async()=>{const {c,calls}=fixture();A.equal(await c.run(),true);A.deepEqual(calls,['begin',[0,40],[40,40],'download',['PNG sequence exported',false],'end']);A.equal(c.active,false);});
+test('concurrent run ignored; cancel after async read cannot publish archive',async()=>{let release,signal;const {c,calls,zip}=fixture(async p=>{signal=p.signal;await new Promise(r=>release=r);return {zip};});const pending=c.run();A.equal(c.active,true);A.equal(await c.run(),false);A.equal(c.cancel(),true);A.equal(signal.aborted,true);release();A.equal(await pending,false);A.equal(calls.includes('download'),false);A.deepEqual(calls.slice(-2),[['PNG export cancelled',false],'end']);A.equal(c.active,false);});
+test('failure unlocks, reports reason and allows retry',async()=>{let i=0;const {c,calls,zip}=fixture(async()=>{if(!i++)throw Error('GPU lost');return {zip};});A.equal(await c.run(),false);A.deepEqual(calls.slice(-2),[['GPU lost',true],'end']);A.equal(await c.run(),true);A.equal(calls.filter(x=>x==='download').length,1);});
+test('invalid request does not lock or start renderer',async()=>{let begun=0,baked=0;const c=U.createController({request:()=>{throw Error('Bad crop');},bake:()=>baked++,begin:()=>begun++,end:()=>{},progress:()=>{},report:()=>{},download:()=>{}});A.equal(await c.run(),false);A.equal(begun,0);A.equal(baked,0);A.equal(c.active,false);});

@@ -21,7 +21,7 @@ def build(root):
     sample = json.dumps(sample_data(template, manifest), separators=(',', ':')).replace('</', '<\\/')
     cores = [tag(template, 'src/' + name) for name in ('curve-core.js', 'spacing-core.js', 'color-core.js', 'timeline-core.js', 'curve-editor.js', 'color-ui.js')]
     cores.append(tag(root / 'assets/shockwave/src', 'shockwave-spine.js'))
-    cores.extend(tag(source, name) for name in ('shield-clock.js', 'shield-geometry.js', 'shield-core.js', 'shield-runtime.js', 'shield-authoring.js'))
+    cores.extend(tag(source, name) for name in ('shield-clock.js', 'shield-geometry.js', 'shield-core.js', 'shield-runtime.js', 'shield-authoring.js', 'shield-export.js', 'shield-bake.js', 'shield-export-ui.js'))
     for marker, value in (('<!-- VENDOR -->', vendor), ('<!-- CORES -->', '\n'.join(cores)), ('__SAMPLE_DATA__', sample), ('<!-- APP -->', tag(source, 'shield-editor.js'))):
         if html.count(marker) != 1:
             raise ValueError('Expected exactly one assembly marker: ' + marker)
