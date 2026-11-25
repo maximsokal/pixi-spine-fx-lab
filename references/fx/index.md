@@ -27,6 +27,7 @@ The small [index.json](index.json) is the machine-readable routing index. Each e
 | GAME | [Healing Aura](game/healing-aura.md) | **Implementation candidate (acceptance pending)**, rising healing motes, glow, optional pulse and lines | parameters, curves, spacing, emitters, colors, timeline |
 | GAME | [Muzzle Flash](game/muzzle-flash.md) | **Implementation candidate (acceptance pending)**, short directional flash, sparks and optional smoke | parameters, curves, spacing, emitters, colors, timeline |
 | GAME | [Poison Cloud](game/poison-cloud.md) | **Implementation candidate (acceptance pending)**, irregular toxic fog, independent spores or bubbles, optional edge | parameters, curves, spacing, emitters, colors, timeline |
+| GAME | [Hit Sparks](game/hit-sparks.md) | **Implementation candidate (acceptance pending)**, directional tapered ribbons, flash and delayed dust | parameters, curves, spacing, pathGeometry, emitters, colors, timeline |
 | GAME | [Magic Portal](game/magic-portal.md) | **Reference implementation**, independent looping polar aperture, rim/runes and orbiting particles | parameters, curves, spacing, emitters, colors, timeline |
 | GAME | [Teleport and Dash Trail](game/teleport-dash.md) | **Reference implementation**, one-shot cubic trail, historical Spine silhouettes, jump flash and particles | parameters, curves, spacing, pathGeometry, emitters, colors, timeline |
 

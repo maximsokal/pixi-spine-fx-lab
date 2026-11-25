@@ -566,6 +566,27 @@
         6,
         7
       ]
+    },
+    {
+      "effectId": "fx.game.hit-sparks",
+      "category": "game",
+      "path": "references/fx/game/hit-sparks.md",
+      "keywords": [
+        "hit sparks",
+        "impact sparks",
+        "metal impact sparks",
+        "искры удара",
+        "іскри удару"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        10,
+        5,
+        6,
+        7
+      ]
     }
   ]
 }

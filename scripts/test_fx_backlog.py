@@ -17,14 +17,15 @@ class BacklogTests(unittest.TestCase):
         rows = B.validate(self.data, self.registry)
         self.assertEqual([r['issue'] for r in rows], list(range(11, 52)))
         self.assertEqual(len(self.data['core']), 8)
-        self.assertEqual(sum(r['localEffectId'] is not None for r in rows), 20)
+        self.assertEqual(sum(r['localEffectId'] is not None for r in rows), 22)
 
     def test_exact_selection_never_substitutes_a_similar_effect(self):
         for key in ('GAME-02', 'game-02', '41', 'Hit Sparks'):
             result = B.select(self.data, self.registry, key)
             self.assertEqual(result['issue'], 41)
-            self.assertEqual(result['source'], 'github-specification')
-            self.assertIsNone(result['localBlueprint'])
+            self.assertEqual(result['source'], 'local-blueprint')
+            self.assertEqual(result['localBlueprint']['effectId'], 'fx.game.hit-sparks')
+            self.assertEqual(result['localBlueprint']['status'], 'specification-only')
         for key in ('hit', 'hit flash', 'frost dissolve', 'fire', '999'):
             with self.assertRaises(ValueError):
                 B.select(self.data, self.registry, key)

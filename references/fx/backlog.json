@@ -540,7 +540,7 @@
       "issue": 41,
       "title": "Hit Sparks",
       "priority": "P0",
-      "localEffectId": null,
+      "localEffectId": "fx.game.hit-sparks",
       "coreIssues": [
         3,
         4,
