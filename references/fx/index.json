@@ -526,6 +526,26 @@
         6,
         7
       ]
+    },
+    {
+      "effectId": "fx.game.muzzle-flash",
+      "category": "game",
+      "path": "references/fx/game/muzzle-flash.md",
+      "keywords": [
+        "muzzle flash",
+        "weapon muzzle flash",
+        "gunfire flash",
+        "дульная вспышка",
+        "спалах пострілу"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
     }
   ]
 }

@@ -17,7 +17,7 @@ class BacklogTests(unittest.TestCase):
         rows = B.validate(self.data, self.registry)
         self.assertEqual([r['issue'] for r in rows], list(range(11, 52)))
         self.assertEqual(len(self.data['core']), 8)
-        self.assertEqual(sum(r['localEffectId'] is not None for r in rows), 17)
+        self.assertEqual(sum(r['localEffectId'] is not None for r in rows), 20)
 
     def test_exact_selection_never_substitutes_a_similar_effect(self):
         for key in ('GAME-02', 'game-02', '41', 'Hit Sparks'):
@@ -28,6 +28,12 @@ class BacklogTests(unittest.TestCase):
         for key in ('hit', 'hit flash', 'frost dissolve', 'fire', '999'):
             with self.assertRaises(ValueError):
                 B.select(self.data, self.registry, key)
+
+    def test_muzzle_candidate_is_linked_but_unverified(self):
+        for query in ('GAME-01', '40', 'Muzzle Flash'):
+            result = B.select(self.data, self.registry, query)
+            self.assertEqual(result['localBlueprint']['effectId'], 'fx.game.muzzle-flash')
+            self.assertEqual(result['localBlueprint']['status'], 'specification-only')
 
     def test_reference_and_specification_are_distinct(self):
         dash = B.select(self.data, self.registry, 'GAME-07')
