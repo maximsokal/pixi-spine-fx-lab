@@ -5,6 +5,7 @@
  if(typeof module==='object'&&module.exports)module.exports=api;else root.FxPortalBake=api;
 })(globalThis,function(X){
  'use strict';
+ const TILE=512;
  const fail=m=>{throw Error('GAME-06 bake: '+m);};
  function gpuReader(renderer,target,width,height,env){
   const device=renderer.gpu.device,stride=Math.ceil(width*4/256)*256;
@@ -53,24 +54,35 @@
     const renderer=app.renderer,actual=renderer.gl?(renderer.gl instanceof env.WebGL2RenderingContext?'webgl2':'webgl1'):'webgpu';
     if(actual!==backend)fail('requested '+backend+' but got '+actual);
     const maxTextureSize=actual==='webgpu'?renderer.gpu.device.limits.maxTextureDimension2D:renderer.gl.getParameter(renderer.gl.MAX_TEXTURE_SIZE);
-    if(!Number.isSafeInteger(maxTextureSize)||maxTextureSize<1||crop.width>maxTextureSize||crop.height>maxTextureSize)fail('crop exceeds actual texture limit');
+    if(!Number.isSafeInteger(maxTextureSize)||maxTextureSize<1||Math.max(TILE,crop.width,crop.height)>maxTextureSize)fail('crop exceeds actual texture limit');
     root=new PIXI.Container();host=new PIXI.Container();root.addChild(host);
-    // Translation belongs to the crop root, not to the Spine or FX coordinates.
-    root.position.set(-crop.x,-crop.y);
+    // World-aligned fixed-size tiles keep projection/raster precision independent of crop size.
+    // The same world pixel always comes from the same target and tile transform.
     if(saved){asset=await FxPortalSpine.create(saved,env);host.addChild(asset.model);}
     fx=FxPortalRuntime.createPortal({PIXI,host,settings});
-    target=PIXI.RenderTexture.create({width:crop.width,height:crop.height,resolution:1,antialias:false});
-    if(actual==='webgpu')reader=gpuReader(renderer,target,crop.width,crop.height,env);
+    target=PIXI.RenderTexture.create({width:TILE,height:TILE,resolution:1,antialias:false});
+    if(actual==='webgpu')reader=gpuReader(renderer,target,TILE,TILE,env);
     async function readFrame(seconds){
      if(dead||reading)fail('scene unavailable');if(!Number.isFinite(seconds)||seconds<0)fail('invalid frame time');reading=true;
      try{
       const poses=asset?asset.pose(seconds,options):{};
-      fx.seek(seconds,poses);renderer.render({container:root,target,clear:true,clearColor:[0,0,0,0]});
-      if(reader)return {pixels:await reader.read(),width:crop.width,height:crop.height,alpha:'straight'};
-      const {pixels,width,height}=renderer.extract.pixels(target);
-      if(width!==crop.width||height!==crop.height)fail('unexpected readback dimensions');
-      return {pixels:new Uint8Array(pixels),width,height,alpha:'premultiplied'};
-     }finally{reading=false;}
+      fx.seek(seconds,poses);
+      const output=new Uint8Array(crop.width*crop.height*4),right=crop.x+crop.width,bottom=crop.y+crop.height;
+      for(let ty=Math.floor(crop.y/TILE)*TILE;ty<bottom;ty+=TILE)for(let tx=Math.floor(crop.x/TILE)*TILE;tx<right;tx+=TILE){
+       root.position.set(-tx,-ty);
+       renderer.render({container:root,target,clear:true,clearColor:[0,0,0,0]});
+       let pixels;
+       if(reader)pixels=await reader.read();
+       else{const read=renderer.extract.pixels(target);if(read.width!==TILE||read.height!==TILE)fail('unexpected readback dimensions');pixels=read.pixels;}
+       if(pixels.length!==TILE*TILE*4)fail('invalid tile readback');
+       const x0=Math.max(tx,crop.x),x1=Math.min(tx+TILE,right),y0=Math.max(ty,crop.y),y1=Math.min(ty+TILE,bottom);
+       for(let y=y0;y<y1;y++){
+        const start=((y-ty)*TILE+x0-tx)*4;
+        output.set(pixels.subarray(start,start+(x1-x0)*4),((y-crop.y)*crop.width+x0-crop.x)*4);
+       }
+      }
+      return {pixels:output,width:crop.width,height:crop.height,alpha:reader?'straight':'premultiplied'};
+    }finally{reading=false;}
     }
     return Object.freeze({backend:actual,maxTextureSize,readFrame,destroy});
    }catch(e){try{destroy()}catch(cleanup){e.cleanupError=cleanup;}throw e;}

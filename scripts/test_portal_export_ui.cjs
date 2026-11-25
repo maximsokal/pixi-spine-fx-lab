@@ -42,7 +42,19 @@ const count=b=>{const a=P.countAlpha(P.decodePng(b));return a.opaque+a.partial;}
    }finally{reader?.destroy();target.destroy(true);app.destroy(true,{children:true})}
   },backend);
   const image=P.decodePng(Buffer.from(oracle)),rgba=image.rgba(4,4);A.ok(Math.abs(rgba[0]-200)<=2&&Math.abs(rgba[1]-100)<=2&&Math.abs(rgba[2]-50)<=2&&Math.abs(rgba[3]-128)<=1,rgba);A.deepEqual(image.rgba(4,12),[0,0,0,0]);
-  console.log('PASS actual one-shot PNG, crop, zoom/guide/background invariance, alpha',backend);
+  // The loop shader uses different interpolated UVs than the one-shot fixture.
+  // A crop must not change raster precision, even across negative/world tile boundaries.
+  const tiles=await page.evaluate(async backend=>{
+   const settings=FxPortal.defaults();
+   const read=async crop=>{const scene=await FxPortalBake.sceneFactory()({settings,backend,crop});try{return Array.from(await FxPortalExport.encodePng(await scene.readFrame(20/60)))}finally{scene.destroy()}};
+   const full=await read({x:0,y:0,width:512,height:512}),cut=await read({x:96,y:190,width:160,height:120});
+   settings.emitters[0].x=510;settings.emitters[0].y=0;
+   return {full,cut,wide:await read({x:350,y:-120,width:320,height:240}),cross:await read({x:480,y:-30,width:80,height:60})};
+  },backend);
+  const pairs=[[tiles.full,tiles.cut,96,190],[tiles.wide,tiles.cross,130,90]];
+  for(const [a,b,dx,dy] of pairs){const big=P.decodePng(Buffer.from(a)),small=P.decodePng(Buffer.from(b));A.ok(count(Buffer.from(b))>100);
+   for(let y=0;y<small.height;y++)for(let x=0;x<small.width;x++)A.deepEqual(small.rgba(x,y),big.rgba(x+dx,y+dy),backend+' crop overlap at '+x+','+y);}
+  console.log('PASS actual one-shot PNG, crop, zoom/guide/background invariance, alpha and loop/cross-tile overlap',backend);
  }
  await apply(original);A.equal(await l('bakeFrames').inputValue(),'120');
  for(const [k,v] of Object.entries({bakeX:160,bakeY:160,bakeWidth:192,bakeHeight:192}))await set(k,v);
