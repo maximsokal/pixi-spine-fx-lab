@@ -37,12 +37,18 @@ def resolve(repo, ref):
 
 def tree(repo, commit):
     result = {}
-    for entry in git(repo, 'ls-tree', '-r', '-z', commit).split(b'\0'):
+    seen = set()
+    # Include directory entries: duplicate trees can have disjoint or empty leaves.
+    for entry in git(repo, 'ls-tree', '-r', '-t', '-z', commit).split(b'\0'):
         if not entry:
             continue
         meta, name = entry.split(b'\t', 1)
         mode, kind, oid = meta.decode('ascii').split(' ')
-        result[name.decode('utf8')] = (mode, kind, oid)
+        name = name.decode('utf8')
+        require(name not in seen, 'Duplicate Git tree path: ' + name)
+        seen.add(name)
+        if kind != 'tree':
+            result[name] = (mode, kind, oid)
     return result
 
 

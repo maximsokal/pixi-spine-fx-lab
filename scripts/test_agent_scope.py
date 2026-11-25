@@ -164,5 +164,42 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual(self.git('replace', '-l'), candidate)
 
 
+    def raw_object(self, kind, data):
+        # Deliberately malformed tree objects exist only in this disposable repository.
+        return subprocess.check_output(
+            ['git', '-C', str(self.repo), 'hash-object', '-w', '-t', kind,
+             '--stdin', '--literally'], input=data).decode().strip()
+
+    def duplicate_root_entry(self, name, mode, oid):
+        original = subprocess.check_output(
+            ['git', '-C', str(self.repo), 'cat-file', 'tree', self.base + '^{tree}'])
+        entry = mode.encode() + b' ' + name.encode() + b'\0' + bytes.fromhex(oid)
+        tree = self.raw_object('tree', entry + original)
+        return self.git('commit-tree', tree, '-p', self.base, '-m', 'malformed fixture')
+
+    def test_duplicate_leaf_cannot_hide_unapproved_blob(self):
+        self.write('README.md', b'approved')
+        self.base = self.commit()
+        bad = self.raw_object('blob', b'unapproved')
+        candidate = self.duplicate_root_entry('README.md', '100644', bad)
+        with self.assertRaisesRegex(ValueError, 'Duplicate Git tree path'):
+            self.check([], candidate)
+
+    def test_duplicate_directory_detected_even_without_overlapping_leaves(self):
+        empty = self.raw_object('tree', b'')
+        candidate = self.duplicate_root_entry('assets', '40000', empty)
+        with self.assertRaisesRegex(ValueError, 'Duplicate Git tree path'):
+            self.check([], candidate)
+
+    def test_duplicate_baseline_is_unverified_in_cli(self):
+        empty = self.raw_object('tree', b'')
+        baseline = self.duplicate_root_entry('assets', '40000', empty)
+        command = [sys.executable, S.__file__, '--repo', str(self.repo),
+                   '--base', baseline, '--candidate', self.base]
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)['status'], 'UNVERIFIED')
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
