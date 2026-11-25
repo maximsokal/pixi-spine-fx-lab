@@ -5,6 +5,7 @@ import sys
 sys.dont_write_bytecode = True
 import hashlib
 import json
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 from build_editor import local, text
@@ -15,13 +16,20 @@ class Surface(HTMLParser):
         self.ids = []
         self.external = []
     def handle_starttag(self, tag, attributes):
-        attrs = dict(attributes)
+        # HTML tokenization retains the first occurrence of duplicate attributes.
+        attrs = {}
+        for name, value in attributes:
+            attrs.setdefault(name, value)
         if 'id' in attrs:
             self.ids.append(attrs['id'])
         if tag == 'script' and attrs.get('src'):
             self.external.append(attrs['src'])
-        if tag == 'link' and attrs.get('rel') == 'stylesheet' and not attrs.get('href', '').startswith('data:'):
-            self.external.append(attrs.get('href'))
+        if tag == 'link':
+            # Link relation keywords are ASCII case-insensitive, space-separated tokens.
+            relations = re.split(r'[\t\n\f\r ]+', (attrs.get('rel') or '').lower())
+            href = (attrs.get('href') or '').strip(' \t\n\f\r')
+            if 'stylesheet' in relations and not href.lower().startswith('data:'):
+                self.external.append(attrs.get('href'))
 
 def verify(root, output=None):
     manifest = json.loads(text(local(root, 'template.json')))
