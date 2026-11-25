@@ -36,7 +36,7 @@
    for(const [i,p] of sample.particles.entries()){const sprite=b.pool[i],group=p.placement==='behind'?b.behind:b.front;if(sprite.parent!==group)group.addChild(sprite);sprite.position.set(p.x,p.y);sprite.width=sprite.height=p.radius*2;sprite.tint=(Math.round(p.rgba[0])<<16)|(Math.round(p.rgba[1])<<8)|Math.round(p.rgba[2]);sprite.alpha=p.rgba[3];sprite.blendMode=p.blend;sprite.visible=true;}
    return sample;
   }
-  async function replace(config,s){const b=await build(config,s);try{const result=await paint(b,time,s);behind.addChild(b.behind);front.addChild(b.front);const old=current;current=b;last=result;dispose(old);return b.plan.settings;}catch(e){if(current!==b)dispose(b);throw e;}}
+  async function replace(config,s){const b=await build(config,s);try{const result=await paint(b,time,s);behind.addChild(b.behind);front.addChild(b.front);const old=current;current=b;last=result;time=Math.min(time,(b.plan.settings.durationFrames-1)/60);dispose(old);return b.plan.settings;}catch(e){if(current!==b)dispose(b);throw e;}}
   try{await replace(settings,signal);}catch(e){throw e;}
   async function locked(fn){if(dead||busy)fail('runtime unavailable');busy=true;try{return await fn();}finally{busy=false;}}
   async function seek(t,s){if(!Number.isFinite(t)||t<0||t>1e6)fail('invalid time');return locked(async()=>{const result=await paint(current,t,s);time=t;last=result;return result;});}
