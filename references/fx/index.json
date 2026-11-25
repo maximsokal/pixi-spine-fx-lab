@@ -506,6 +506,26 @@
         6,
         7
       ]
+    },
+    {
+      "effectId": "fx.game.healing-aura",
+      "category": "game",
+      "path": "references/fx/game/healing-aura.md",
+      "keywords": [
+        "healing aura",
+        "healing glow",
+        "healing motes",
+        "аура исцеления",
+        "аура зцілення"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
     }
   ]
 }
