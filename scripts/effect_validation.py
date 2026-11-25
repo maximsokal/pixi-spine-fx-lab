@@ -62,17 +62,22 @@ def _check_png_structure(data, label):
     require(len(data) <= 32 * 1024 * 1024, "PNG evidence exceeds 32 MiB: " + label)
     offset=8
     width=height=channels=None
-    found_idat=found_end=False
+    found_idat=found_end=found_plte=found_trns=idat_closed=False
     idat=[]
     while offset + 12 <= len(data):
         size=struct.unpack_from(">I", data, offset)[0]
         require(size<=32*1024*1024 and offset+size+12<=len(data),
                 "truncated or oversized PNG chunk: " + label)
         kind=data[offset+4:offset+8]
+        require(re.fullmatch(rb"[A-Za-z]{2}[A-Z][A-Za-z]", kind) is not None,
+                "invalid PNG chunk type: " + label)
         payload=data[offset+8:offset+8+size]
         crc=struct.unpack_from(">I", data, offset+8+size)[0]
         require(zlib.crc32(kind+payload)&0xffffffff==crc,
                 "PNG CRC mismatch: " + label)
+        require(width is not None or kind==b"IHDR", "PNG IHDR must be first: " + label)
+        if found_idat and kind!=b"IDAT":
+            idat_closed=True
         if kind==b"IHDR":
             require(width is None and size==13 and offset==8,
                     "missing or duplicate PNG IHDR: " + label)
@@ -83,8 +88,16 @@ def _check_png_structure(data, label):
                     compression==0 and filter_mode==0 and interlace==0,
                     "unsupported PNG dimensions/pixel format: " + label)
             channels=3 if color==2 else 4
+        elif kind==b"PLTE":
+            require(not found_plte and not found_trns and not found_idat and
+                    3<=size<=768 and size%3==0, "invalid or misplaced PNG PLTE: " + label)
+            found_plte=True
+        elif kind==b"tRNS":
+            require(channels==3 and not found_trns and not found_idat and size==6,
+                    "invalid or misplaced RGB8 PNG tRNS: " + label)
+            found_trns=True
         elif kind==b"IDAT":
-            require(width is not None and not found_end, "PNG IDAT without IHDR")
+            require(not idat_closed, "PNG IDAT chunks must be consecutive: " + label)
             idat.append(payload)
             found_idat=True
         elif kind==b"IEND":
