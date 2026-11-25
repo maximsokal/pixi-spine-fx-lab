@@ -53,16 +53,23 @@ function runHealth(command = process.env.STATIK_BIN || 'statik', prefix = []) {
     const dead = run(['dead-code', '--scope', 'files', '--no-index', '--format', 'json']);
     const s = dead?.summary;
     if (!s || !count(s.total_files) || !count(s.dead_files) || !count(s.entry_points) ||
-        s.entry_points > s.total_files || s.dead_files > s.total_files - s.entry_points) {
+        s.entry_points > s.total_files || s.dead_files > s.total_files - s.entry_points ||
+        !Array.isArray(dead.dead_files) || dead.dead_files.length !== s.dead_files) {
       throw Error('invalid dead-code summary counts');
     }
     if (!s.total_files || !s.entry_points) {
       return report('DEGRADED', `files=${s.total_files}, entry_points=${s.entry_points}; lint not run`, 2);
     }
+    // Pinned direct_deps deduplicates file IDs; both summary counts describe this returned direct list.
     const deps = run(['deps', WIND, '--direction', 'out', '--no-index', '--format', 'json']);
     if (!samePath(deps?.target_path, WIND) || !Array.isArray(deps.imports) ||
         !deps.imports.every(d => d && typeof d.path === 'string' && count(d.depth) && d.depth > 0) ||
-        !count(deps.summary?.direct_imports)) {
+        !count(deps.summary?.direct_imports) ||
+        !count(deps.summary?.transitive_imports) ||
+        deps.summary.transitive_imports !== deps.imports.length ||
+        deps.summary.direct_imports !== deps.imports.length ||
+        new Set(deps.imports.map(d => d.file_id)).size !== deps.imports.length ||
+        !deps.imports.every(d => count(d.file_id) && d.path.trim())) {
       throw Error('invalid dependency response for Wind Gust canary');
     }
     if (!deps.summary.direct_imports || !deps.imports.some(d => d.depth === 1 && samePath(d.path, CURVE))) {

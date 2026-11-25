@@ -22,11 +22,12 @@ if (command === 'index') {
 } else if (command === 'dead-code') {
   assert.deepEqual(args, ['--scope', 'files', '--no-index', '--format', 'json']);
   if (mode === 'malformed') { console.log('not json'); process.exit(0); }
-  emit({ dead_files: [], dead_exports: [], confidence: 'Certain', limitations: [], summary: { total_files: 229, dead_files: mode === 'roots' ? 229 : 0, total_exports: 0, dead_exports: 0, entry_points: mode === 'roots' ? 0 : (mode === 'bad-count' ? '229' : 229), files_with_unresolvable_imports: 0, unresolved_ratio: 0 } });
+  emit({ dead_files: mode === 'roots' ? Array.from({length:229},(_,i)=>({file_id:i+1,path:'file'+i+'.js'})) : mode === 'dead-list-mismatch' ? [{file_id:1,path:'orphan.js'}] : [], dead_exports: [], confidence: 'Certain', limitations: [], summary: { total_files: 229, dead_files: mode === 'roots' ? 229 : 0, total_exports: 0, dead_exports: 0, entry_points: mode === 'roots' ? 0 : (mode === 'bad-count' ? '229' : 229), files_with_unresolvable_imports: 0, unresolved_ratio: 0 } });
 } else if (command === 'deps') {
   assert.deepEqual(args, ['assets/wind-gust/src/wind-core.js', '--direction', 'out', '--no-index', '--format', 'json']);
   const imports = mode === 'missing-edge' ? [] : [{file_id: 2, path: mode === 'wrong-root' ? '/unrelated/assets/template/src/curve-core.js' : 'assets/template/src/curve-core.js', depth: mode === 'indirect' ? 2 : 1, imported_names: ['*']}];
-  emit({ target_file: 1, target_path: 'assets/wind-gust/src/wind-core.js', imports, imported_by: [], confidence: 'Certain', summary: { direct_imports: imports.length, transitive_imports: imports.length, direct_importers: 0, transitive_importers: 0 } });
+  if (mode === 'duplicate-edge') imports.push({...imports[0]});
+  emit({ target_file: 1, target_path: 'assets/wind-gust/src/wind-core.js', imports, imported_by: [], confidence: 'Certain', summary: { direct_imports: mode === 'edge-count-mismatch' ? 99 : imports.length, transitive_imports: mode === 'transitive-count-mismatch' ? 99 : imports.length, direct_importers: 0, transitive_importers: 0 } });
 } else if (command === 'lint') {
   assert.deepEqual(args, ['--no-index']);
   console.log('fixture lint ran');
@@ -48,6 +49,7 @@ if (process.argv[2] === '--fixture') {
   for (const [mode, code, label] of [
     ['healthy', 0, 'PASS'], ['empty', 2, 'DEGRADED'], ['roots', 2, 'DEGRADED'],
     ['missing-edge', 2, 'DEGRADED'], ['wrong-root', 2, 'DEGRADED'], ['indirect', 2, 'DEGRADED'],
+    ['dead-list-mismatch', 1, 'ERROR'], ['edge-count-mismatch', 1, 'ERROR'], ['transitive-count-mismatch', 1, 'ERROR'], ['duplicate-edge', 1, 'ERROR'],
     ['malformed', 1, 'ERROR'], ['bad-count', 1, 'ERROR'], ['absent', 2, 'UNVERIFIED'],
     ['crash', 1, 'ERROR'], ['lint-failure', 1, 'ERROR'],
   ]) {

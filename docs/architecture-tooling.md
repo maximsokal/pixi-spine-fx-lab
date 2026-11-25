@@ -70,6 +70,10 @@ Run `npm run arch:statik:test` for dependency-free synthetic subprocess regressi
 
 Local Node 22.16.0 verification: 11/11 synthetic regression tests passed; absent actual Statik reported UNVERIFIED and exit 2; full arch:check stopped at missing dependency-cruiser (exit 127). Full checkout, real pinned Statik on Linux/Windows, and runtime/browser tests were not available. This change guards against misleading success; it does not fix upstream CommonJS parsing or Windows path indexing.
 
+### Statik response consistency regression
+
+The pinned dead-code summary counts its returned dead-file list. The direct-only outbound deps response deduplicates file IDs and reports both import counters for the returned list. Contradictory counters or duplicate file IDs now fail as ERROR (exit 1), not PASS. These are structural checks, not a new claim about graph coverage. Four targeted synthetic cases failed before the correction; all 15 pass afterwards. The actual dependency-cruiser coverage tests (2/2), repository graph (327 modules / 1001 edges) and Knip passed on Windows Node 24.22.3.
+
 ## CI proposal
 
 Start with an informational GitHub Actions job: use `actions/setup-node` with Node 24, `npm ci`, install Rust stable, check out statik at the recorded revision into a temporary tools directory, build it with `cargo build --release`, then run `npm run arch:check` and upload the DOT/JSON reports. Do not fail the job for Knip/statik findings until their dynamic-entry baseline has been reviewed. The current dependency-cruiser baseline is clean and its rules have a passing negative test; promote that step to blocking only after maintainers approve the rules. Add browser test dependencies separately rather than pretending the current checkout has a TypeScript build or a configured Playwright suite.
