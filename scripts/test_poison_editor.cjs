@@ -3,25 +3,28 @@ const {test}=require('node:test'),A=require('node:assert/strict'),fs=require('no
 const read=p=>fs.readFileSync(path.resolve(__dirname,'..',p),'utf8');
 const prefix='assets/poison-cloud/src/',shared='assets/template/src/';
 test('editor wires real core to controls, placement, timeline and backend lifecycle (DOM/Pixi fixtures)',async()=>{
- const html=read(prefix+'ui.html'),nodes=new Map();
+ const html=read(prefix+'ui.html'),nodes=new Map(),downloads=[],requests=[];
  class Element{
   constructor(tag='div'){this.tagName=tag;this.children=[];this.dataset={};this.style={};this.validity={valid:true};this._value='';this.checked=false;}
   get value(){return this._value;}set value(v){this._value=String(v);}
-  append(...v){this.children.push(...v);for(const child of v)child.parent=this;}prepend(v){this.children.unshift(v);v.parent=this;}
+  append(...v){this.children.push(...v);for(const child of v)child.parent=this;}click(){downloads.push(this.download);}prepend(v){this.children.unshift(v);v.parent=this;}
   add(v){this.children.push(v);}replaceChildren(...v){this.children=v;}setAttribute(){}setPointerCapture(){}
   getBoundingClientRect(){return {left:0,top:0,width:256,height:256};}
   remove(){if(this.parent){this.parent.children=this.parent.children.filter(c=>c!==this);this.parent=null;}}
  }
  for(const m of html.matchAll(/id="([^"]+)"/g)){A.ok(!nodes.has(m[1]));nodes.set(m[1],new Element());}
  const $=id=>{A.ok(nodes.has(id),'Missing '+id);return nodes.get(id);};
- $('layer').value='emitter';$('curveKey').value='cloudSizeCurve';$('speed').value='1';$('showSpine').checked=true;$('sampleData').textContent='{}';
+ $('layer').value='emitter';$('curveKey').value='cloudSizeCurve';$('speed').value='1';$('showSpine').checked=true;$('sampleData').textContent='{}';for(const [id,v] of Object.entries({cropX:0,cropY:0,cropWidth:512,cropHeight:512,exportFrames:''}))$(id).value=v;for(const id of ['runtimeLicenses','poison-core.js']){const n=new Element();n.textContent='fixture';nodes.set(id,n);}
  const body=new Element(),document={getElementById:$,createElement:t=>new Element(t),querySelectorAll:()=>[],body};
  class GL2{};let failBackend=false,failLoad=false,appDestroyed=0,assetDestroyed=0,fxDestroyed=0,scene;
  class Container{constructor(){this.children=[];}addChild(...v){this.children.push(...v);}}
  class Application{constructor(){this.stage=new Container();this.canvas=new Element('canvas');}async init(o){if(failBackend)throw Error('backend failed');this.renderer=o.preference==='webgpu'?{}:{gl:o.preferWebGLVersion===1?{}:new GL2()};}render(){}destroy(){appDestroyed++;}}
- const box={document,Option:class{constructor(text,value){this.text=text;this.value=value;}},WebGL2RenderingContext:GL2,PIXI:{Application,Container},requestAnimationFrame(){},FxCurveEditor:{mount(h,o){box.curve=o;}},FxColorUi:{mount(h,o){box.palette=o;return {refresh(){}};}},FxShockwaveSpine:{sample(){return {name:'sample.json'};},async create(source){if(failLoad)throw Error('load failed');return {source,model:{skeleton:{bones:[{active:true,data:{name:'head'}}]}},animations:['idle'],skins:['default'],defaultAnimation:'idle',defaultSkin:'default',destroy(){assetDestroyed++;}};},pose(){return {$local:{x:100,y:100,rotation:0,scale:1},head:{x:120,y:110,rotation:0,scale:1}};}}};
- const ctx=vm.createContext(box);for(const p of [shared+'curve-core.js',shared+'spacing-core.js',shared+'color-core.js',prefix+'poison-core.js',prefix+'poison-authoring.js'])vm.runInContext(read(p),ctx);
+ const box={document,AbortController,Blob,URL:{createObjectURL:()=> 'blob:fixture',revokeObjectURL(){}},setTimeout:f=>{f();},Option:class{constructor(text,value){this.text=text;this.value=value;}},WebGL2RenderingContext:GL2,PIXI:{Application,Container},requestAnimationFrame(){},FxCurveEditor:{mount(h,o){box.curve=o;}},FxColorUi:{mount(h,o){box.palette=o;return {refresh(){}};}},FxShockwaveSpine:{sample(){return {name:'sample.json'};},async create(source){if(failLoad)throw Error('load failed');return {source,model:{skeleton:{bones:[{active:true,data:{name:'head'}}]}},animations:['idle'],skins:['default'],defaultAnimation:'idle',defaultSkin:'default',destroy(){assetDestroyed++;}};},pose(){return {$local:{x:100,y:100,rotation:0,scale:1},head:{x:120,y:110,rotation:0,scale:1}};}}};
+ const ctx=vm.createContext(box);for(const p of [shared+'curve-core.js',shared+'spacing-core.js',shared+'color-core.js',prefix+'poison-core.js',prefix+'poison-authoring.js',prefix+'poison-export-ui.js'])vm.runInContext(read(p),ctx);
  box.FxPoisonRuntime={createPoison({settings}){let plan=box.FxPoison.compile(settings);const fx={stats:{visible:0,allocated:plan.reserved},seek(t,p){const result=plan.sample(t,p);this.stats.visible=result.cost;return result;},configure(s){plan=box.FxPoison.compile(s);this.stats.allocated=plan.reserved;},destroy(){fxDestroyed++;}};scene=fx;return fx;}};
+ box.FxPoisonBake={sceneFactory(o){return ()=>o;}};
+ box.FxPoisonExport={cropSpec:c=>c,makeZip(){},async bakeSequence(p){requests.push(p);p.progress(p.frameCount,p.frameCount);return {zip:Uint8Array.of(1)};}};
+ box.FxPoisonDeveloper={FILES:['poison-core.js'],async developer(p){requests.push(p);return {zip:Uint8Array.of(2)};}};
  vm.runInContext(read(prefix+'poison-editor.js'),ctx);
  const settle=async()=>{for(let i=0;i<12;i++)await Promise.resolve();};
  const preset=()=>JSON.parse($('preset').value),field=(host,key)=>$(host).children.flatMap(e=>e.children).find(e=>e.dataset.key===key);
@@ -42,4 +45,9 @@ test('editor wires real core to controls, placement, timeline and backend lifecy
  failBackend=false;$('backend').value='webgpu';await $('backend').onchange();A.equal($('actual').textContent,'WEBGL2');A.equal($('assetLabel').textContent,'sample.json');
  failLoad=false;$('backend').value='webgpu';await $('backend').onchange();A.equal($('actual').textContent,'WEBGPU');A.equal(appDestroyed,2);A.equal(fxDestroyed,1);A.equal(assetDestroyed,1);A.equal($('surface').children.filter(c=>c.tagName==='canvas').length,1);
  await $('remove').onclick();A.equal($('assetLabel').textContent,'No Spine asset');A.equal(assetDestroyed,2);
+ $('cropWidth').value=64;$('cropHeight').value=32;$('cropX').value=-12;$('cropY').value=9;$('exportFrames').value=40;$('showCrop').checked=true;$('showCrop').onchange();A.equal($('cropGuide').hidden,false);
+ $('cropLabel').onpointerdown({pointerId:7,clientX:0,clientY:0});$('cropLabel').onpointermove({pointerId:7,clientX:5,clientY:-2});$('cropLabel').onpointerup();A.equal($('cropX').value,'-2');A.equal($('cropY').value,'5');
+ const canceled=$('exportPng').onclick();$('cancelExport').onclick();A.equal(await canceled,false);A.equal(downloads.length,0);A.equal($('exportPng').disabled,false);
+ A.equal(await $('exportPng').onclick(),true);A.equal(downloads[0],'poison-cloud-png.zip');A.deepEqual(JSON.parse(JSON.stringify(requests.at(-1).crop)),{x:222,y:245,width:64,height:32});A.equal(requests.at(-1).frameCount,40);A.equal(requests.at(-1).backend,'webgpu');
+ await $('exportWebgl').onclick();await $('exportWebgpu').onclick();A.deepEqual(downloads,['poison-cloud-png.zip','poison-cloud-developer-webgl.zip','poison-cloud-developer-webgpu.zip']);A.equal(requests.at(-2).target,'webgl');A.equal(requests.at(-1).target,'webgpu');A.equal($('status').dataset.error,'false');
 });

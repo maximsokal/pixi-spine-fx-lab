@@ -21,7 +21,7 @@ class BuilderTests(unittest.TestCase):
         self.write(self.src + 'ui.html', '<script type="application/json">__SAMPLE_DATA__</script><!-- VENDOR --><!-- CORES --><!-- APP -->')
         for name in ['curve-core', 'spacing-core', 'color-core', 'timeline-core', 'curve-editor', 'color-ui']:
             self.write(self.template + 'src/' + name + '.js', '// ' + name)
-        for name in ['poison-core', 'poison-runtime', 'poison-authoring', 'poison-editor']:
+        for name in ['poison-core', 'poison-runtime', 'poison-authoring', 'poison-export', 'poison-bake', 'poison-export-ui', 'poison-developer', 'poison-editor']:
             self.write(self.src + name + '.js', '// ' + name)
         self.write('assets/shockwave/src/shockwave-spine.js', '// spine loader')
         for p in ['vendor/pixi.js', 'vendor/spine.js', 'licenses/pixi.txt', 'licenses/spine.txt']:
@@ -40,7 +40,7 @@ class BuilderTests(unittest.TestCase):
         result = build(self.root)
         names = ['pixi.js', 'spine.js', 'curve-core.js', 'spacing-core.js', 'color-core.js', 'timeline-core.js',
                  'curve-editor.js', 'color-ui.js', 'shockwave-spine.js', 'poison-core.js', 'poison-runtime.js',
-                 'poison-authoring.js', 'poison-editor.js']
+                 'poison-authoring.js', 'poison-export.js', 'poison-bake.js', 'poison-export-ui.js', 'poison-developer.js', 'poison-editor.js']
         offsets = [result.index('id="' + name + '"') for name in names]
         self.assertEqual(offsets, sorted(offsets))
         self.assertIn('"p.png":"YmluYXJ5IGZpeHR1cmU="', result)

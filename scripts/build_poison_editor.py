@@ -21,7 +21,7 @@ def build(root):
     sample = json.dumps(sample_data(template, manifest), separators=(',', ':')).replace('</', '<\\/')
     cores = [tag(template, 'src/' + name) for name in ('curve-core.js', 'spacing-core.js', 'color-core.js', 'timeline-core.js', 'curve-editor.js', 'color-ui.js')]
     cores.append(tag(root / 'assets/shockwave/src', 'shockwave-spine.js'))
-    cores.extend(tag(source, name) for name in ('poison-core.js', 'poison-runtime.js', 'poison-authoring.js'))
+    cores.extend(tag(source, name) for name in ('poison-core.js', 'poison-runtime.js', 'poison-authoring.js', 'poison-export.js', 'poison-bake.js', 'poison-export-ui.js', 'poison-developer.js'))
     for marker, value in (('<!-- VENDOR -->', vendor), ('<!-- CORES -->', '\n'.join(cores)), ('__SAMPLE_DATA__', sample), ('<!-- APP -->', tag(source, 'poison-editor.js'))):
         if html.count(marker) != 1:
             raise ValueError('Expected exactly one assembly marker: ' + marker)
