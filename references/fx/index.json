@@ -464,6 +464,28 @@
         6,
         7
       ]
+    },
+    {
+      "effectId": "fx.game.teleport-dash",
+      "category": "game",
+      "path": "references/fx/game/teleport-dash.md",
+      "keywords": [
+        "teleport and dash trail",
+        "teleport trail",
+        "dash trail",
+        "historical afterimages",
+        "телепорт и рывок",
+        "след рывка"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        10,
+        5,
+        6,
+        7
+      ]
     }
   ]
 }
