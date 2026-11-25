@@ -16,18 +16,11 @@
  const pending={skeleton:null,atlas:null,images:new Map()};
  function lock(value){
   busy=value;
-  for(const id of ['backend','sample','loadSpine','removeSpine','skeletonFile','atlasFile','textureFiles','clearTextures','animation','skin','showSpine','animationSpeed'])
+  for(const id of ['backend','sample','loadSpine','removeSpine','skeletonFile','atlasFile','textureFiles','clearTextures','animation','skin','showSpine','animationSpeed','allFiles','frame','play','reverse','resetFrame','bakePng','bakeFrames','bakeX','bakeY','bakeWidth','bakeHeight','cropHandle'])
    $(id).disabled=value;
  }
  function pose(asset,seconds,name=animation,skinName=skin){
-  if(!asset)return {};
-  const m=asset.model;
-  if(skinName&&m.skeleton.skin?.name!==skinName){m.skeleton.setSkinByName(skinName);m.skeleton.setSlotsToSetupPose();}
-  if(name){
-   if(m.state.getCurrent(0)?.animation.name!==name)m.state.setAnimation(0,name,true);
-   FxTimeline.seekSpine(m,seconds*animationSpeed);
-  }else{m.state.clearTracks();m.skeleton.setToSetupPose();m.update(0);}
-  m.visible=spineVisible;m.updateLocalTransform();return FxShockwaveSpine.anchorPoses(m);
+  return FxShockwaveSpine.pose(asset,seconds,{animation:name,skin:skinName,speed:animationSpeed,visible:spineVisible});
  }
  function populateSpine(){
   const a=$('animation'),s=$('skin');a.replaceChildren();s.replaceChildren();
@@ -210,6 +203,36 @@
   }catch(error){nextAsset?.destroy();nextFx?.destroy();if(next.renderer)next.destroy(true,{children:true});$('backend').value=backend;status(error.message,true);}
   finally{lock(false);}
  }
+ let bakeAbort=null,cropDrag=null;
+ function integer(id){const el=$(id);if(!el.value.trim()||!el.validity.valid||!Number.isInteger(Number(el.value)))throw Error('Invalid '+id);return Number(el.value)}
+ function readCrop(){return {x:integer('bakeX'),y:integer('bakeY'),width:integer('bakeWidth'),height:integer('bakeHeight')}}
+ function guide(){
+  try{const c=readCrop(),g=$('cropGuide');g.hidden=!$('showCrop').checked;
+   g.style.left=c.x/512*100+'%';g.style.top=c.y/512*100+'%';g.style.width=c.width/512*100+'%';g.style.height=c.height/512*100+'%';
+   $('cropHandle').textContent=c.width+' x '+c.height;
+  }catch(e){status(e.message,true)}
+ }
+ for(const id of ['bakeX','bakeY','bakeWidth','bakeHeight','showCrop'])$(id).onchange=guide;
+ $('cropHandle').onpointerdown=e=>{if(busy)return;e.preventDefault();try{cropDrag={...readCrop(),px:e.clientX,py:e.clientY,scale:$('surface').getBoundingClientRect().width/512};e.currentTarget.setPointerCapture(e.pointerId)}catch(err){status(err.message,true)}};
+ $('cropHandle').onpointermove=e=>{if(!cropDrag||busy)return;$('bakeX').value=Math.max(-16384,Math.min(16384,Math.round(cropDrag.x+(e.clientX-cropDrag.px)/cropDrag.scale)));$('bakeY').value=Math.max(-16384,Math.min(16384,Math.round(cropDrag.y+(e.clientY-cropDrag.py)/cropDrag.scale)));guide()};
+ $('cropHandle').onpointerup=$('cropHandle').onpointercancel=$('cropHandle').onlostpointercapture=()=>{cropDrag=null};
+ async function bake(){
+  if(busy||!fx)return;
+  let crop,frameCount;try{crop=readCrop();frameCount=integer('bakeFrames')}catch(e){status(e.message,true);return}
+  const settings=structuredClone(cfg),actual=backend,wasPlaying=playing,wasDirection=direction;
+  const options={animation,skin,speed:animationSpeed,visible:spineVisible,loop:true};
+  const assetInfo=source?{name:source.name,version:spineAsset.version,pages:spineAsset.pages,options}:null;
+  const factory=FxShockwaveBake.sceneFactory({source,poseOptions:options});
+  setPlaying(false);lock(true);bakeAbort=new AbortController();$('cancelBake').disabled=false;$('bakeProgress').max=frameCount;$('bakeProgress').value=0;
+  try{
+   const r=await FxShockwaveExport.bakeSequence({settings,backend:actual,crop,frameCount,assetInfo,createScene:factory,signal:bakeAbort.signal,
+    progress:(n,total)=>{$('bakeProgress').value=n;status('Baking '+n+'/'+total)},yieldFrame:()=>new Promise(resolve=>setTimeout(resolve,0))});
+   const url=URL.createObjectURL(new Blob([r.zip],{type:'application/zip'})),a=document.createElement('a');
+   a.href=url;a.download='Shockwave_'+frameCount+'_PNG.zip';try{a.click()}finally{setTimeout(()=>URL.revokeObjectURL(url),30000)}
+   status('Exported '+frameCount+' PNG frames');
+  }catch(e){status(e.message,true)}finally{bakeAbort=null;$('cancelBake').disabled=true;lock(false);direction=wasDirection;if(wasPlaying)setPlaying(true)}
+ }
+ $('bakePng').onclick=bake;$('cancelBake').onclick=()=>bakeAbort?.abort();guide();
  $('backend').onchange=()=>initialize($('backend').value);
  $('background').onchange=()=>{$('surface').className=$('background').value;};
  $('zoom').onchange=()=>{const size=512*Number($('zoom').value);$('surface').style.width=size+'px';};

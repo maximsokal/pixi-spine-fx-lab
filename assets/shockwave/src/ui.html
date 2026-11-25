@@ -27,7 +27,7 @@ textarea{display:block;width:100%;height:120px;font:11px/1.5 ui-monospace,monosp
 <main><section class="preview" aria-label="Effect preview">
 <div class="tools"><button id="play">Play</button><button id="reverse">Reverse</button><button id="resetFrame">Reset frame</button>
 <label>Frame <input id="frame" type="range" min="0" max="39" step="1" value="0"></label><output id="frameLabel">0 / 39</output></div>
-<div id="surface" class="dark"><button id="originHandle" aria-label="Drag selected origin" title="Drag selected origin" hidden></button></div>
+<div id="surface" class="dark"><div id="cropGuide" hidden style="position:absolute;pointer-events:none;outline:1px dashed #f8c460;box-shadow:0 0 0 2000px #0005;z-index:1"><button id="cropHandle" style="position:absolute;pointer-events:auto;touch-action:none;top:0;left:0;cursor:move">Crop</button></div><button id="originHandle" aria-label="Drag selected origin" title="Drag selected origin" hidden></button></div>
 <div class="tools"><label>Background <select id="background"><option value="dark">Dark</option><option value="checker">Checkerboard</option><option value="light">Light</option></select></label>
 <label>Zoom <select id="zoom"><option value="0.5">50%</option><option value="1" selected>100%</option><option value="2">200%</option></select></label>
 <label>Backend <select id="backend"><option value="webgl2">WebGL 2</option><option value="webgl1">WebGL 1</option><option value="webgpu">WebGPU</option></select></label></div>
@@ -46,13 +46,23 @@ textarea{display:block;width:100%;height:120px;font:11px/1.5 ui-monospace,monosp
 <label class="control">Animation speed <input id="animationSpeed" type="number" min=".1" max="4" step=".1" value="1"></label>
 <label class="control">Show Spine <input id="showSpine" type="checkbox" checked></label>
 </details>
-<details open><summary>Geometry and spacing</summary><div id="geometry"></div><small>Refraction is not available in this preview.</small></details>
+<details open><summary>PNG sequence export</summary>
+<label class="control">Frames <input id="bakeFrames" type="number" min="1" max="3600" step="1" value="40"></label>
+<label class="control">Crop X <input id="bakeX" type="number" min="-16384" max="16384" step="1" value="0"></label>
+<label class="control">Crop Y <input id="bakeY" type="number" min="-16384" max="16384" step="1" value="0"></label>
+<label class="control">Width <input id="bakeWidth" type="number" min="1" max="4096" step="1" value="512"></label>
+<label class="control">Height <input id="bakeHeight" type="number" min="1" max="4096" step="1" value="512"></label>
+<label class="control">Show crop <input id="showCrop" type="checkbox"></label>
+<div class="tools"><button id="bakePng">PNG Sequence ZIP</button><button id="cancelBake" disabled>Cancel</button></div>
+<progress id="bakeProgress" max="40" value="0" aria-label="PNG export progress"></progress>
+<small>Crop coordinates are authored pixels. 60 FPS, straight RGBA8, transparent, no UI overlays.</small>
+</details><details open><summary>Geometry and spacing</summary><div id="geometry"></div><small>Refraction is not available in this preview.</small></details>
 <details open><summary>Emitters and independent layers</summary><div class="tools"><select id="emitterSelect" aria-label="Emitter"></select><button id="addEmitter">Add</button><button id="duplicateEmitter">Copy</button><button id="removeEmitter">Delete</button></div>
 <div id="emitterControls"></div><label class="control">Origin to edit <select id="layerSelect"><option value="emitter">Emitter</option><option value="primary">Primary ring</option><option value="secondary">Secondary wave</option><option value="particles">Particles</option></select></label><div id="layerControls"></div></details>
 <details open><summary>Authoring curves</summary><label class="control">Curve <select id="curveSelect"><option value="radiusCurve">Radius</option><option value="widthCurve">Width</option><option value="opacityCurve">Opacity</option><option value="intervalCurve">Time interval</option><option value="arcSpacingCurve">Arc spacing</option></select></label><div id="curve"></div></details>
 <div id="palette"></div>
 <details open><summary>Preset JSON</summary><textarea id="preset" aria-label="Preset JSON" spellcheck="false"></textarea><div class="tools"><button id="applyPreset">Apply JSON</button><button id="syncPreset">Refresh JSON</button><button id="downloadPreset">Download</button><button id="resetSettings">Defaults</button></div></details>
-<small>World, local and bone anchors follow the current Spine pose. Missing anchors hide dependent layers. Attachment anchors, PNG sequence and developer ZIP are not yet included.</small>
+<small>World, local and bone anchors follow the current Spine pose. Missing anchors hide dependent layers. Attachment anchors and developer ZIP are not yet included.</small>
 </aside></main>
 <!-- VENDOR -->
 <!-- CORES -->

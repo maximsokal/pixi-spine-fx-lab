@@ -21,7 +21,7 @@ def build(root):
     sample = json.dumps(sample_data(template, manifest), separators=(",", ":")).replace("</", "<\\/")
     cores = [tag(template, "src/" + name) for name in (
         "curve-core.js", "color-core.js", "timeline-core.js", "curve-editor.js", "color-ui.js")]
-    cores += [tag(source, name) for name in ("shockwave-core.js", "shockwave-runtime.js", "shockwave-spine.js")]
+    cores += [tag(source, name) for name in ("shockwave-core.js", "shockwave-runtime.js", "shockwave-spine.js", "shockwave-export.js", "shockwave-bake.js")]
     for marker, value in (("<!-- VENDOR -->", vendor), ("<!-- CORES -->", "\n".join(cores)),
                           ("__SAMPLE_DATA__", sample), ("<!-- APP -->", tag(source, "shockwave-editor.js"))):
         if html.count(marker) != 1:

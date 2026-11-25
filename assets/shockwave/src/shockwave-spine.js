@@ -82,5 +82,15 @@
     defaultSkin:parsed.defaultSkin?.name||skins[0]||'',defaultAnimation:animations.includes('idle')?'idle':animations[0]||'',destroy};
   }catch(error){destroy();throw error;}
  }
- root.FxShockwaveSpine=Object.freeze({create,sample,anchorPoses});
+ function pose(asset,seconds,{animation='',skin='',speed=1,visible=true}={},timeline=root.FxTimeline){
+  if(!asset)return {};
+  const m=asset.model;
+  if(skin&&m.skeleton.skin?.name!==skin){m.skeleton.setSkinByName(skin);m.skeleton.setSlotsToSetupPose();}
+  if(animation){
+   if(m.state.getCurrent(0)?.animation.name!==animation)m.state.setAnimation(0,animation,true);
+   timeline.seekSpine(m,seconds*speed);
+  }else{m.state.clearTracks();m.skeleton.setToSetupPose();m.update(0);}
+  m.visible=visible;m.updateLocalTransform();return anchorPoses(m);
+ }
+ root.FxShockwaveSpine=Object.freeze({create,sample,anchorPoses,pose});
 })(globalThis);
