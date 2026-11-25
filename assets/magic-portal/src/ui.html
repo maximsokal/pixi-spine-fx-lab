@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Magic Portal FX Lab</title>
+<style>
+:root{color-scheme:dark;font:14px/1.45 system-ui,sans-serif;background:#111722;color:#e4ebf5}*{box-sizing:border-box}body{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}button,select,input[type=number],input[type=text],textarea{background:#222e40;border:1px solid #46566c;border-radius:5px;padding:6px}
+button{cursor:pointer}button:disabled{opacity:.4;cursor:default}header{min-height:58px;padding:9px 16px;border-bottom:1px solid #334258;display:flex;align-items:center;justify-content:space-between;gap:10px}h1{font-size:19px;margin:0}small{color:#a8b8ce}
+main{height:calc(100dvh - 58px);display:grid;grid-template-columns:minmax(0,1fr) 370px}
+.preview{display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px;min-width:0;overflow:hidden;background:#151d2b}
+.tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+#viewport{width:100%;min-height:120px;flex:1;overflow:auto;display:grid;place-items:safe center;padding:8px}
+#surface{position:relative;width:512px;aspect-ratio:1;flex:none;outline:1px solid #64758c}
+#surface canvas{width:100%;height:100%;display:block}.dark{background:#101420}.light{background:#faf8f3}.checker{background-color:#d7dde4;background-image:conic-gradient(#abb7c6 25%,transparent 0 50%,#abb7c6 0 75%,transparent 0);background-size:24px 24px}
+#originHandle{position:absolute;z-index:1;width:18px;height:18px;border:2px solid #63e5ff;background:#111a;border-radius:50%;transform:translate(-50%,-50%);touch-action:none;cursor:move;padding:0}
+aside{overflow:auto;background:#1a2331;border-left:1px solid #34435b;padding:12px;min-width:0}
+details{border:1px solid #37465c;border-radius:6px;margin:0 0 10px;background:#202b3c;padding:10px}summary{font-weight:650;cursor:pointer;margin-bottom:6px}
+.control{display:grid;grid-template-columns:minmax(0,1fr) 115px;align-items:center;gap:8px;margin:7px 0}.control input,.control select{width:100%;min-width:0}.control input[type=checkbox]{width:auto;justify-self:end}
+textarea{display:block;width:100%;height:140px;font:11px/1.5 ui-monospace,monospace}#status{color:#acd5e7;min-height:20px;overflow-wrap:anywhere}#status[data-error=true]{color:#ffb1a6}
+@media(max-width:860px){main{height:auto;display:block}.preview{min-height:360px}#viewport{min-height:290px;max-height:75vh}aside{overflow:visible;border-left:0}}
+</style></head><body>
+<header><div><h1>Magic Portal FX Lab</h1><small>GAME-06 · offline authoring preview</small></div><span id="backendActual">Starting...</span></header>
+<main><section class="preview" aria-label="Effect preview">
+<div class="tools"><button id="play">Play</button><button id="reverse">Reverse</button><button id="resetFrame">Reset frame</button><label>Frame <input id="frame" type="range" min="0" max="119" step="1" value="0"></label><output id="frameLabel">0 / 119</output></div>
+<div id="viewport"><div id="surface" class="dark"><button id="originHandle" aria-label="Drag selected origin" title="Drag selected origin" hidden></button></div></div>
+<div class="tools"><label>Background <select id="background"><option value="dark">Dark</option><option value="checker">Checkerboard</option><option value="light">Light</option></select></label>
+<button id="zoomOut" aria-label="Zoom out">−</button><output id="zoomLabel">100%</output><button id="zoomIn" aria-label="Zoom in">+</button><button id="fit">Fit</button><button id="actualSize">100%</button>
+<label>Backend <select id="backend"><option value="webgl2">WebGL 2</option><option value="webgl1">WebGL 1</option><option value="webgpu">WebGPU</option></select></label></div>
+<output id="effectiveSpeed"></output><output id="anchorDiagnostics"></output><div id="status" role="status" aria-live="polite"></div>
+</section><aside aria-label="Effect settings">
+<details open><summary>Geometry and appearance</summary><div id="geometry"></div><small>Warp distorts the portal surface, not the scene behind it.</small></details>
+<details open><summary>Timing and independent spacing</summary><div id="timing"></div><small>The loop aperture is always open. Loop swirl speed is adjusted to close the phase.</small></details>
+<details open><summary>Emitters and independent layers</summary><div class="tools"><select id="emitterSelect" aria-label="Emitter"></select><button id="addEmitter">Add</button><button id="duplicateEmitter">Copy</button><button id="removeEmitter">Delete</button></div>
+<div id="emitterControls"></div><label class="control">Layer <select id="layerSelect"><option value="emitter">Emitter</option><option value="aperture">Aperture</option><option value="rim">Rim and runes</option><option value="particles">Particles</option></select></label><div id="layerControls"></div></details>
+<details open><summary>Authoring curves</summary><label class="control">Curve <select id="curveSelect"><option value="apertureCurve">Aperture open</option><option value="swirlCurve">Swirl speed</option><option value="rimCurve">Rim width</option><option value="rateCurve">Emission rate</option><option value="intervalCurve">Time interval</option><option value="spacingCurve">Arc spacing</option><option value="alphaCurve">Particle alpha</option></select></label><div id="curve"></div></details>
+<div id="palette"></div><details open><summary>Preset JSON</summary><textarea id="preset" aria-label="Preset JSON" spellcheck="false"></textarea><div class="tools"><button id="applyPreset">Apply JSON</button><button id="syncPreset">Refresh JSON</button><button id="downloadPreset">Download</button><button id="resetSettings">Defaults</button></div></details>
+<small>Standalone FX preview only. Spine assets, bone/attachment pose resolution, PNG sequence and developer ZIP are not included yet. Local or bone anchors are retained in presets but unresolved in this preview.</small>
+</aside></main>
+<!-- VENDOR -->
+<!-- CORES -->
+<!-- APP -->
+</body></html>
