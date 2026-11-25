@@ -40,3 +40,11 @@ test('reject nonfinite, malformed and over-budget input',()=>{
  assert.throws(()=>G.tongues(base,Array.from({length:21},(_,i)=>i),1));
  assert.throws(()=>G.sparks({...base,life:1,speed:100,seed:0},[{time:0,index:0},{time:0,index:0}],0,1));
 });
+test('tip arc endpoints tolerate only floating point roundoff',()=>{
+ for(const length of [8,9,10,30,65,100,260])for(let coneAngle=5;coneAngle<=150;coneAngle++){
+  const c={...base,length,coneAngle},span=length*coneAngle*(Math.PI/180),half=coneAngle*Math.PI/360;
+  const tips=G.tongues(c,[0,span],1);
+  approx(tips[0].angle,-half);approx(tips[1].angle,half);
+  assert.throws(()=>G.tongues(c,[0,span+1e-8],1));
+ }
+});

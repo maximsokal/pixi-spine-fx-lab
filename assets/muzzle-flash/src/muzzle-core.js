@@ -90,7 +90,7 @@
  }
  function freeze(o){if(o&&typeof o==='object'&&!Object.isFrozen(o)){Object.values(o).forEach(freeze);Object.freeze(o);}return o;}
  function compile(input){
-  const cfg=freeze(normalize(input)),span=cfg.flashLength*cfg.coneAngle*RAD;
+  const cfg=freeze(normalize(input)),span=cfg.flashLength*(cfg.coneAngle*RAD);
   // An exact linear arc-length coordinate, not a geometric approximation of the circle.
   const path={schemaVersion:1,closed:false,segments:[{p0:[0,0],p1:[span/3,0],p2:[2*span/3,0],p3:[span,0]}]};
   const placement=S.createSpatialPlacement({path,mode:cfg.spatialMode,baseSpacingPx:cfg.tongueGap,

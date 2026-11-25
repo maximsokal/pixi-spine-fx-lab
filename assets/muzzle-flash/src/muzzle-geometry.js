@@ -42,7 +42,9 @@
  function tongues(config,distances,seed){
   const c=frame(config);integer(seed,'seed',-2147483648,2147483647);
   const span=c.length*c.cone;
-  const d=array(distances,'tongue distances',0,20,v=>scalar(v,'arc distance',0,span));
+  // Accept only representational error at either endpoint; never widen the authored cone.
+  const tolerance=8*Number.EPSILON*Math.max(1,span);
+  const d=array(distances,'tongue distances',0,20,v=>Math.max(0,Math.min(span,scalar(v,'arc distance',-tolerance,span+tolerance))));
   for(let i=1;i<d.length;i++)if(d[i]<=d[i-1])throw TypeError('Unordered muzzle arc distances');
   if(!c.alpha)return [];
   return d.map((distance,i)=>{
