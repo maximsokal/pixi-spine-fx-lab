@@ -180,7 +180,7 @@
    schemaVersion:1,mode:'custom',frequencySource:'rate',
    baseRate:cfg.trailRate,interval:1/Math.max(cfg.trailRate,.1),
    duration,minInterval:0,jitter:cfg.trailJitter,burstCount:1,burstDelay:0,
-   seed:cfg.seed,maxEvents:Math.min(4096,Math.ceil(duration*cfg.trailRate)+4),
+   seed:cfg.seed,maxEvents:4096,
    rateCurve:cfg.emissionRateCurve,intervalCurve:null
   });
   const placement=Spacing.createSpatialPlacement({
@@ -195,18 +195,24 @@
     .map((p,i)=>({time:p.distance/cfg.speed,index:i,distance:p.distance,x:p.x,y:p.y,
      angle:p.angle}));
   }else{
-   const motion=Array.from({length:Math.ceil(duration*240)+1},(_,i)=>{
-    const time=Math.min(duration,i/240),p=headAt(table,cfg,time);
-    return {time:time+i*1e-10,x:p.x,y:p.y}
-   });
-   const combined=Spacing.combineSchedule({schedule:timetable,placement,motion,
-    mode:cfg.emissionMode,teleportThresholdPx:512,maxEvents:4096});
-   events=combined.events.map((ev,i)=>{
+   // Flight advances monotonically in true arc distance. No spatial anchor
+   // is needed for time-only births; both mode consumes at most one threshold
+   // per temporal birth, without an approximate chord-motion integration.
+   let next=0;
+   for(const ev of timetable.events){
     const p=headAt(table,cfg,ev.time);
-    return {time:ev.time,index:i,distance:p.distance,x:p.x,y:p.y,angle:p.angle};
-   });
+    if(cfg.emissionMode==='both'){
+     if(next>=placement.points.length)break;
+     if(p.distance+1e-9<placement.points[next].distance)continue;
+     next++;
+    }
+    events.push({time:ev.time,index:events.length,distance:p.distance,x:p.x,y:p.y,
+     angle:p.angle});
+   }
   }
-  return {events,capped:events.length>=4096,placement,timetable};
+  const capped=(cfg.emissionMode!=='distance'&&timetable.capped)||
+   (cfg.emissionMode!=='time'&&placement.capped);
+  return {events,capped,placement,timetable};
  }
  function sample(input,seconds){
   const cfg=normalize(input),t0=scalar(seconds,'time',0,1e7),total=cfg.durationFrames/60;

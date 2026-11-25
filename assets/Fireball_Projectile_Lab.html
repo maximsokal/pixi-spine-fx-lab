@@ -2911,7 +2911,26 @@ fn mainFragment(
     while(hi-lo>1){const m=(lo+hi)>>1;if(table.nodes[m].s<=d)lo=m;else hi=m;}
     const a=table.nodes[lo],b=table.nodes[hi],f=b.s>a.s?(d-a.s)/(b.s-a.s):0;
     const segment=table.path.segments[b.segment]||table.path.segments.at(-1);
-    const t=a.segment===b.segment?a.t+(b.t-a.t)*f:b.t*f;
+    const startT=a.segment===b.segment?a.t:0,endT=b.t;
+    let t=startT+(endT-startT)*f;
+    // A flat cubic can still have highly nonlinear parameter speed.
+    // Invert the projection onto this arc-table leaf's chord, rather
+    // than interpolating t. The distance error is bounded by the leaf's
+    // control-polygon excess plus the preceding table length error.
+    if(f>0&&f<1){
+      const dx=b.x-a.x,dy=b.y-a.y,chord=Math.hypot(dx,dy);
+      if(chord>0){
+        const ux=dx/chord,uy=dy/chord,target=f*chord;
+        let lower=startT,upper=endT;
+        for(let i=0;i<48;i++){
+          const p=evaluateCubic(segment,t);
+          const residual=(p.x-a.x)*ux+(p.y-a.y)*uy-target;
+          if(Math.abs(residual)<=1e-9)break;
+          if(residual<0)lower=t;else upper=t;
+          t=(lower+upper)/2;
+        }
+      }
+    }
     const point=evaluateCubic(segment,t),tangent=derivative(segment,t);
     if(reverse){tangent.x=-tangent.x;tangent.y=-tangent.y;}
     return {x:point.x,y:point.y,distance:d,tangent,angle:Math.atan2(tangent.y,tangent.x),segment:b.segment,t};
@@ -2995,11 +3014,14 @@ fn mainFragment(
     }
     const pathLength=placement.table.length;
     const threshold=i=>anchors[i%anchors.length].distance+Math.floor(i/anchors.length)*pathLength;
-    let cumulative=0,next=0,prev=stops[0];
-    const traversed=[{time:stops[0]?.time??0,distance:0}];
+    let cumulative=0,next=0,prev=stops[0],heading=0;
+    const traversed=[{time:stops[0]?.time??0,distance:0,teleport:false,angle:0}];
     for(let i=1;i<stops.length;i++){
       const now=stops[i],distance=Math.hypot(now.x-prev.x,now.y-prev.y);
-      if(!now.teleport&&distance<=teleportThresholdPx) {
+      const teleport=now.teleport||distance>teleportThresholdPx;
+      const angle=teleport?heading:Math.atan2(now.y-prev.y,now.x-prev.x);
+      if(!teleport) {
+        if(distance>0)heading=angle;
         const before=cumulative;
         cumulative+=distance;
         if(mode==='distance'){
@@ -3013,7 +3035,7 @@ fn mainFragment(
           }
         }
       }
-      traversed.push({time:now.time,distance:cumulative});
+      traversed.push({time:now.time,distance:cumulative,teleport,angle});
       prev=now;
       if(capped)break;
     }
@@ -3024,8 +3046,7 @@ fn mainFragment(
         if(stops.length){
           if(e.time>=traversed.at(-1).time){
             d=cumulative;
-            motionPoint={...stops.at(-1),angle:stops.length>1?
-              Math.atan2(stops.at(-1).y-stops.at(-2).y,stops.at(-1).x-stops.at(-2).x):0};
+            motionPoint={...stops.at(-1),angle:traversed.at(-1).angle};
           }else if(e.time>=traversed[0].time){
             let left=0,right=traversed.length-1;
             while(left+1<right){
@@ -3034,9 +3055,15 @@ fn mainFragment(
             }
             const a=traversed[left],b=traversed[right],fraction=clamp((e.time-a.time)/(b.time-a.time),0,1);
             d=a.distance+(b.distance-a.distance)*fraction;
-            const lo=stops[left],hi=stops[right],f=hi.teleport?0:fraction;
-            motionPoint={x:lo.x+(hi.x-lo.x)*f,y:lo.y+(hi.y-lo.y)*f,
-              angle:Math.atan2(hi.y-lo.y,hi.x-lo.x)};
+            const lo=stops[left],hi=stops[right];
+            // A discontinuity is a jump at the destination timestamp, not motion.
+            if(b.teleport){
+              const pose=e.time>=b.time?hi:lo;
+              motionPoint={x:pose.x,y:pose.y,angle:b.angle};
+            }else{
+              motionPoint={x:lo.x+(hi.x-lo.x)*fraction,y:lo.y+(hi.y-lo.y)*fraction,
+                angle:b.angle};
+            }
           }else motionPoint={...stops[0],angle:0};
         }
         if(d+1e-9>=threshold(next)){
@@ -3557,7 +3584,14 @@ fn mainFragment(
   };
  }
  function createTransport({duration=3,time=0,direction=1,loop=false,playing=false}={}){
-  let length=num(duration,'duration',1/FPS,1e6),t=canonicalSeconds(num(time,'time',0,length));
+  let length=num(duration,'duration',1/FPS,1e6);
+  // Authored endpoint wins over frame snapping; never snap outside duration.
+  const transportSeconds=value=>{
+   if(value===length)return length;
+   const snapped=canonicalSeconds(value);
+   return snapped<=length?snapped:value;
+  };
+  let t=transportSeconds(num(time,'time',0,length));
   if(direction!==1&&direction!==-1)throw new RangeError('direction must be +1 or -1');
   if(typeof loop!=='boolean'||typeof playing!=='boolean')throw new TypeError('loop and playing must be boolean');
   let velocity=direction,looped=loop,active=playing;
@@ -3565,7 +3599,7 @@ fn mainFragment(
    direction:velocity,loop:looped,playing:active});
   return {
    get state(){return snapshot()},
-   seek(value){t=canonicalSeconds(num(value,'seek time',0,length));return snapshot()},
+   seek(value){t=transportSeconds(num(value,'seek time',0,length));return snapshot()},
    play(next=velocity){if(next!==1&&next!==-1)throw new RangeError('direction must be +1 or -1');
     velocity=next;active=true;return snapshot();},
    pause(){active=false;return snapshot()},
@@ -3586,7 +3620,7 @@ fn mainFragment(
      if(next>=length-eps){next=length;active=false;}
      if(next<=eps){next=0;active=false;}
     }
-    t=canonicalSeconds(next);return snapshot();
+    t=transportSeconds(next);return snapshot();
    }
   };
  }
@@ -3619,9 +3653,10 @@ fn mainFragment(
      !Number.isSafeInteger(checkpointEvery)||checkpointEvery<1||
      !Number.isSafeInteger(maxCheckpoints)||maxCheckpoints<2||maxCheckpoints>64)
     throw new RangeError('invalid replay limits');
+  num(maxSeconds,'maxSeconds');
   const clone=state=>structuredClone(state);
   let initial=clone(capture()),frame=0,at=0,fractional=false,whole=null;
-  const checks=new Map([[0,clone(initial)]]);
+  let checks=new Map([[0,clone(initial)]]),broken=false;
   function save(n){
    if(n%checkpointEvery)return;
    checks.set(n,clone(capture()));
@@ -3639,29 +3674,55 @@ fn mainFragment(
    restore(clone(checks.get(n)));frame=n;at=n/fps;fractional=false;
   }
   function seek(seconds){
+   if(broken)throw Error('Replay restore failed; invalidate or rebase before seeking');
    num(seconds,'seek seconds',0,maxSeconds);
-   seconds=canonicalSeconds(seconds);
-   const target=Math.floor(seconds*fps+eps),wholeTime=target/fps;
-   let leftover=seconds-wholeTime;
-   if(Math.abs(leftover)<eps)leftover=0;
-   rollback();
-   if(target<frame)rewind(target);
-   for(let i=frame+1;i<=target;i++){
-    step(1/fps,i/fps,i);frame=i;at=i/fps;save(i);
+   const snapped=canonicalSeconds(seconds);
+   if(snapped<=maxSeconds)seconds=snapped;
+   // Compare actual frame timestamps: multiplying by fps can round in either
+   // direction, and an epsilon in frame units can advance physics too early.
+   let target=Math.floor(seconds*fps);
+   if(target/fps>seconds)target--;
+   else if((target+1)/fps<=seconds)target++;
+   const leftover=seconds-target/fps;
+   return transaction('seek',()=>{
+    rollback();
+    if(target<frame)rewind(target);
+    for(let i=frame+1;i<=target;i++){
+     step(1/fps,i/fps,i);frame=i;at=i/fps;save(i);
+    }
+    whole=clone(capture());
+    if(leftover>0){partial?.(leftover,seconds,target);fractional=true;}
+    at=seconds;
+    render?.(seconds);
+    return Object.freeze({seconds,frame:target,fraction:leftover,checkpointCount:checks.size});
+   });
+  }
+  function transaction(action,run){
+   // Snapshot the caller's CPU state once, and share immutable checkpoint
+   // values in the shallow map copy. Failed callbacks cannot advance replay.
+   const prior={state:clone(capture()),frame,at,fractional,whole,checks:new Map(checks)};
+   try{return run();
+   }catch(error){
+    ({frame,at,fractional,whole,checks}=prior);
+    try{restore(prior.state);}catch(restoreError){
+     broken=true;
+     throw new AggregateError([error,restoreError],'Replay '+action+' and CPU state restoration failed');
+    }
+    throw error;
    }
-   whole=clone(capture());
-   if(leftover>0){partial?.(leftover,seconds,target);fractional=true;}
-   at=seconds;
-   render?.(seconds);
-   return Object.freeze({seconds,frame:target,fraction:leftover,checkpointCount:checks.size});
   }
   function invalidate(){
-   restore(clone(initial));frame=0;at=0;fractional=false;whole=null;checks.clear();
-   checks.set(0,clone(initial));render?.(0);
+   const reset=()=>{
+    restore(clone(initial));frame=0;at=0;fractional=false;whole=null;checks.clear();
+    checks.set(0,clone(initial));render?.(0);broken=false;
+   };
+   // A broken instance has no trustworthy live snapshot to roll back to.
+   if(broken)return reset();
+   return transaction('invalidate',reset);
   }
   function rebase(){
    initial=clone(capture());frame=0;at=0;fractional=false;whole=null;
-   checks.clear();checks.set(0,clone(initial));
+   checks.clear();checks.set(0,clone(initial));broken=false;
   }
   return {seek,invalidate,rebase,get time(){return at;},get frame(){return frame;},
    get checkpointFrames(){return [...checks.keys()].sort((a,b)=>a-b)},
@@ -4308,7 +4369,7 @@ root.FxColorUi=Object.freeze({mount});
    schemaVersion:1,mode:'custom',frequencySource:'rate',
    baseRate:cfg.trailRate,interval:1/Math.max(cfg.trailRate,.1),
    duration,minInterval:0,jitter:cfg.trailJitter,burstCount:1,burstDelay:0,
-   seed:cfg.seed,maxEvents:Math.min(4096,Math.ceil(duration*cfg.trailRate)+4),
+   seed:cfg.seed,maxEvents:4096,
    rateCurve:cfg.emissionRateCurve,intervalCurve:null
   });
   const placement=Spacing.createSpatialPlacement({
@@ -4323,18 +4384,24 @@ root.FxColorUi=Object.freeze({mount});
     .map((p,i)=>({time:p.distance/cfg.speed,index:i,distance:p.distance,x:p.x,y:p.y,
      angle:p.angle}));
   }else{
-   const motion=Array.from({length:Math.ceil(duration*240)+1},(_,i)=>{
-    const time=Math.min(duration,i/240),p=headAt(table,cfg,time);
-    return {time:time+i*1e-10,x:p.x,y:p.y}
-   });
-   const combined=Spacing.combineSchedule({schedule:timetable,placement,motion,
-    mode:cfg.emissionMode,teleportThresholdPx:512,maxEvents:4096});
-   events=combined.events.map((ev,i)=>{
+   // Flight advances monotonically in true arc distance. No spatial anchor
+   // is needed for time-only births; both mode consumes at most one threshold
+   // per temporal birth, without an approximate chord-motion integration.
+   let next=0;
+   for(const ev of timetable.events){
     const p=headAt(table,cfg,ev.time);
-    return {time:ev.time,index:i,distance:p.distance,x:p.x,y:p.y,angle:p.angle};
-   });
+    if(cfg.emissionMode==='both'){
+     if(next>=placement.points.length)break;
+     if(p.distance+1e-9<placement.points[next].distance)continue;
+     next++;
+    }
+    events.push({time:ev.time,index:events.length,distance:p.distance,x:p.x,y:p.y,
+     angle:p.angle});
+   }
   }
-  return {events,capped:events.length>=4096,placement,timetable};
+  const capped=(cfg.emissionMode!=='distance'&&timetable.capped)||
+   (cfg.emissionMode!=='time'&&placement.capped);
+  return {events,capped,placement,timetable};
  }
  function sample(input,seconds){
   const cfg=normalize(input),t0=scalar(seconds,'time',0,1e7),total=cfg.durationFrames/60;
@@ -4906,8 +4973,8 @@ const ProjectileEditor=(()=>{
   const binary=/\.skel$/i.test(source.skeletonName);
   const raw=binary?new Uint8Array(bytes):new TextDecoder().decode(bytes);
   const data=binary?raw:JSON.parse(raw);
-  const version=binary?binaryVersion(raw):data.skeleton?.spine;
-  if(typeof version!=='string'||!version.startsWith('4.2.'))
+  const version=binary?binaryVersion(raw):data?.skeleton?.spine;
+  if(typeof version!=='string'||!/^4\.2\.(?:0|[1-9]\d*)$/.test(version))
    throw Error('Projectile requires Spine 4.2 export. Actual: '+version);
   const newAtlas=new spine.TextureAtlas(await source.atlas.text()),newTextures=[];
   let newModel=null;

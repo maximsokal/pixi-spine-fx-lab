@@ -127,3 +127,83 @@ for(const bad of [
  {...d,missing:1},{...d,seed:2147483648}
 ])assert.throws(()=>P.normalize(bad),/invalid|unknown|phase|path/i);
 console.log('PASS FIRE-03 core: true arc speed, ribbon lag, unlocked tail, exact time/distance/both, seeded seek, independent layers, bounds/phase/curve policy');
+
+// Independent scheduling: a path shorter than the requested spatial gap still
+// permits time births, including a stationary emitter. No catch-up in both mode.
+const {test}=require('node:test');
+const shortPath={schemaVersion:1,closed:false,segments:[
+ {p0:[0,0],p1:[.1,0],p2:[.2,0],p3:[.5,0]},
+ {p0:[.5,0],p1:[.6,0],p2:[.9,0],p3:[1,0]}
+]};
+const scheduleFor=(cfg)=>P.schedule(cfg,S.buildArcTable(cfg.trajectory));
+test('time events are independent of empty spatial placement',()=>{
+ const cfg={...d,trajectory:shortPath,speed:.5,trailRate:10,trailJitter:0,
+  trailSpacing:100,emissionMode:'time'};
+ const actual=scheduleFor(cfg);
+ assert.equal(actual.placement.points.length,0);
+ assert.equal(actual.events.length,16);
+ assert.deepEqual(actual.events,scheduleFor({...cfg,trailSpacing:.25}).events);
+ for(let i=0;i<actual.events.length;i++){
+  const e=actual.events[i];
+  approx(e.time,(i+1)/10,1e-8);
+  approx(e.distance,e.time*.5,1e-9);
+  approx(e.x,e.distance,1e-8);
+ }
+ assert.equal(scheduleFor({...cfg,emissionMode:'both'}).events.length,0);
+});
+test('stationary time emission survives missing spatial anchors',()=>{
+ const cfg={...d,trajectory:shortPath,speed:0,trailRate:10,trailJitter:0,
+  trailSpacing:100,emissionMode:'time'};
+ const events=scheduleFor(cfg).events;
+ assert.equal(events.length,16);
+ assert.ok(events.every(e=>e.distance===0&&e.x===0&&e.y===0));
+ assert.equal(scheduleFor({...cfg,emissionMode:'distance'}).events.length,0);
+ assert.equal(scheduleFor({...cfg,emissionMode:'both'}).events.length,0);
+});
+test('custom rate multiplier does not truncate valid births',()=>{
+ const cfg=structuredClone(d);
+ cfg.emissionMode='time';cfg.trailJitter=0;
+ for(const key of cfg.emissionRateCurve.keys)key.y=3;
+ const actual=scheduleFor(cfg);
+ assert.equal(actual.events.length,120);
+ assert.equal(actual.timetable.capped,false);
+ assert.equal(actual.capped,false);
+ for(let i=0;i<actual.events.length;i++)approx(actual.events[i].time,(i+1)/75,1e-8);
+});
+test('both mode uses exact arc distance at temporal threshold',()=>{
+ const cfg={...d,emissionMode:'both',trailSpacing:10,trailRate:20,trailJitter:0};
+ const actual=scheduleFor(cfg);
+ assert.equal(actual.events.length,32);
+ for(let i=0;i<actual.events.length;i++){
+  approx(actual.events[i].time,(i+1)/20,1e-8);
+  approx(actual.events[i].distance,(i+1)*10,1e-8);
+ }
+});
+test('both mode consumes at most one spatial threshold per time birth',()=>{
+ const cfg={...d,emissionMode:'both',trailSpacing:1,trailRate:4,trailJitter:0};
+ const events=scheduleFor(cfg).events;
+ assert.equal(events.length,6);
+ assert.deepEqual(events.map(e=>e.time),scheduleFor({...cfg,emissionMode:'time'}).events.map(e=>e.time));
+});
+test('spatial cap is reported for distance mode, not time mode',()=>{
+ const cfg={...d,trailSpacing:.25,trailJitter:0,emissionMode:'distance'};
+ const actual=scheduleFor(cfg);
+ assert.equal(actual.placement.capped,true);
+ assert.equal(actual.capped,true);
+ assert.equal(scheduleFor({...cfg,emissionMode:'time'}).capped,false);
+});
+
+test('both mode does not lose births at a corner between motion samples',()=>{
+ const line=(a,b)=>({p0:a,p1:[a[0]+(b[0]-a[0])/3,a[1]+(b[1]-a[1])/3],
+  p2:[a[0]+(b[0]-a[0])*2/3,a[1]+(b[1]-a[1])*2/3],p3:b});
+ const trajectory={schemaVersion:1,closed:false,segments:[
+  line([0,0],[10.1,0]),line([10.1,0],[10.1,100])]};
+ const cfg={...d,trajectory,speed:200,trailRate:20,trailSpacing:10,
+  trailJitter:0,emissionMode:'both'};
+ const actual=scheduleFor(cfg).events;
+ assert.equal(actual.length,11);
+ for(let i=0;i<actual.length;i++){
+  approx(actual[i].time,(i+1)/20,1e-8);
+  approx(actual[i].distance,(i+1)*10,1e-8);
+ }
+});
