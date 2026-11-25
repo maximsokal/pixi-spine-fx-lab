@@ -21,7 +21,7 @@ textarea{display:block;width:100%;height:140px;font:11px/1.5 ui-monospace,monosp
 <header><div><h1>Magic Portal FX Lab</h1><small>GAME-06 · offline authoring preview</small></div><span id="backendActual">Starting...</span></header>
 <main><section class="preview" aria-label="Effect preview">
 <div class="tools"><button id="play">Play</button><button id="reverse">Reverse</button><button id="resetFrame">Reset frame</button><label>Frame <input id="frame" type="range" min="0" max="119" step="1" value="0"></label><output id="frameLabel">0 / 119</output></div>
-<div id="viewport"><div id="surface" class="dark"><button id="originHandle" aria-label="Drag selected origin" title="Drag selected origin" hidden></button></div></div>
+<div id="viewport"><div id="surface" class="dark"><div id="cropGuide" hidden style="position:absolute;pointer-events:none;outline:1px dashed #f8c460;box-shadow:0 0 0 2000px #0005;z-index:1"><button id="cropHandle" style="position:absolute;pointer-events:auto;touch-action:none;top:0;left:0;cursor:move">Crop</button></div><button id="originHandle" aria-label="Drag selected origin" title="Drag selected origin" hidden></button></div></div>
 <div class="tools"><label>Background <select id="background"><option value="dark">Dark</option><option value="checker">Checkerboard</option><option value="light">Light</option></select></label>
 <button id="zoomOut" aria-label="Zoom out">−</button><output id="zoomLabel">100%</output><button id="zoomIn" aria-label="Zoom in">+</button><button id="fit">Fit</button><button id="actualSize">100%</button>
 <label>Backend <select id="backend"><option value="webgl2">WebGL 2</option><option value="webgl1">WebGL 1</option><option value="webgpu">WebGPU</option></select></label></div>
@@ -41,13 +41,23 @@ textarea{display:block;width:100%;height:140px;font:11px/1.5 ui-monospace,monosp
 <label class="control">Show Spine <input id="showSpine" type="checkbox" checked></label>
 <datalist id="boneNames"></datalist>
 <small>Bone offsets use positive uniform scale and heading; reflection, shear and nonuniform scale are approximated.</small></details>
-<details open><summary>Geometry and appearance</summary><div id="geometry"></div><small>Warp distorts the portal surface, not the scene behind it.</small></details>
+<details open><summary>PNG sequence export</summary>
+<label class="control">Frames <input id="bakeFrames" type="number" min="1" max="3600" step="1" value="120"></label>
+<label class="control">Crop X (left) <input id="bakeX" type="number" min="-16384" max="16384" step="1" value="0"></label>
+<label class="control">Crop Y (top) <input id="bakeY" type="number" min="-16384" max="16384" step="1" value="0"></label>
+<label class="control">Width <input id="bakeWidth" type="number" min="1" max="4096" step="1" value="512"></label>
+<label class="control">Height <input id="bakeHeight" type="number" min="1" max="4096" step="1" value="512"></label>
+<label class="control">Show crop <input id="showCrop" type="checkbox"></label>
+<div class="tools"><button id="bakePng">PNG Sequence ZIP</button><button id="cancelBake" disabled>Cancel</button></div>
+<progress id="bakeProgress" max="120" value="0" aria-label="PNG export progress"></progress>
+<small>60 FPS ? transparent straight RGBA8 ? authored pixels, no preview guides. Default count follows duration until explicitly changed.</small>
+</details><details open><summary>Geometry and appearance</summary><div id="geometry"></div><small>Warp distorts the portal surface, not the scene behind it.</small></details>
 <details open><summary>Timing and independent spacing</summary><div id="timing"></div><small>The loop aperture is always open. Loop swirl speed is adjusted to close the phase.</small></details>
 <details open><summary>Emitters and independent layers</summary><div class="tools"><select id="emitterSelect" aria-label="Emitter"></select><button id="addEmitter">Add</button><button id="duplicateEmitter">Copy</button><button id="removeEmitter">Delete</button></div>
 <div id="emitterControls"></div><label class="control">Layer <select id="layerSelect"><option value="emitter">Emitter</option><option value="aperture">Aperture</option><option value="rim">Rim and runes</option><option value="particles">Particles</option></select></label><div id="layerControls"></div></details>
 <details open><summary>Authoring curves</summary><label class="control">Curve <select id="curveSelect"><option value="apertureCurve">Aperture open</option><option value="swirlCurve">Swirl speed</option><option value="rimCurve">Rim width</option><option value="rateCurve">Emission rate</option><option value="intervalCurve">Time interval</option><option value="spacingCurve">Arc spacing</option><option value="alphaCurve">Particle alpha</option></select></label><div id="curve"></div></details>
 <div id="palette"></div><details open><summary>Preset JSON</summary><textarea id="preset" aria-label="Preset JSON" spellcheck="false"></textarea><div class="tools"><button id="applyPreset">Apply JSON</button><button id="syncPreset">Refresh JSON</button><button id="downloadPreset">Download</button><button id="resetSettings">Defaults</button></div></details>
-<small>Spine 4.2 JSON/SKEL and bone/local anchors. Missing anchors hide only dependent layers. Slot/attachment anchors, PNG sequence and developer ZIP are not included yet.</small>
+<small>Spine 4.2 JSON/SKEL and bone/local anchors. Missing anchors hide only dependent layers. Slot/attachment anchors and developer ZIP are not included yet.</small>
 </aside></main>
 <!-- VENDOR -->
 <!-- CORES -->
