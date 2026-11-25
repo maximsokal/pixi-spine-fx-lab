@@ -27,7 +27,7 @@ def build(root):
     cores.append(tag(root / 'assets/shockwave/src', 'shockwave-spine.js'))
     cores.extend(tag(source, name) for name in ('muzzle-geometry.js', 'muzzle-core.js', 'muzzle-anchors.js', 'muzzle-smoke.js', 'muzzle-runtime.js', 'muzzle-authoring.js'))
     cores.extend(tag(root / 'assets/magic-shield/src', name) for name in ('shield-export.js', 'shield-export-ui.js'))
-    cores.extend(tag(source, name) for name in ('muzzle-export.js', 'muzzle-bake.js'))
+    cores.extend(tag(source, name) for name in ('muzzle-export.js', 'muzzle-bake.js', 'muzzle-developer.js'))
     sample = json.dumps(sample_data(template, manifest), separators=(',', ':')).replace('</', '<\\/')
     replacements = {'<!-- VENDOR -->': vendor, '<!-- CORES -->': '\n'.join(cores), '__SAMPLE_DATA__': sample, '<!-- APP -->': tag(source, 'muzzle-editor.js')}
     for marker in replacements:

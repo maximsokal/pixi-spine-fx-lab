@@ -75,6 +75,20 @@
   const url=URL.createObjectURL(new Blob([bytes],{type:'application/zip'})),a=document.createElement('a');a.href=url;a.download='muzzle-flash-png.zip';try{document.body.append(a);a.click();}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
  }});
  $('exportPng').onclick=()=>job.run();$('cancelExport').onclick=()=>{if(job.cancel())status('Cancelling PNG export');};
+ let developerJob=null;
+ async function developerExport(target){
+  if(busy||!scene)return;const resume=playing,controller=new AbortController();developerJob=controller;
+  try{
+   const spec=readExport(),opts=options();if(!$('speed').value||!$('speed').validity.valid)throw Error('Invalid speed');
+   const D=FxMuzzleDeveloper,compile=S.createCompiler({compileEffect:M.compile,anchors:A,colors:FxColors,...context()});
+   const texts=names=>Object.fromEntries(names.map(name=>[name,$(name)?.textContent]));
+   const params={...spec,target,settings:cfg,previewSeconds:seconds,source,options:opts,assetInfo:scene.asset?{version:scene.asset.version}:null,sources:texts(D.FILES),vendors:texts(D.VENDORS),licenses:$('runtimeLicenses').textContent,compile,cropSpec:FxShieldExport.cropSpec,makeZip:FxShieldExport.makeZip,signal:controller.signal};
+   lock(true);status('Preparing '+target+' developer archive');const result=await D.developer(params);if(controller.signal.aborted)return;
+   const url=URL.createObjectURL(new Blob([result.zip],{type:'application/zip'})),a=document.createElement('a');a.href=url;a.download='muzzle-flash-developer-'+target+'.zip';try{document.body.append(a);a.click();}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+   status('Developer archive exported');
+  }catch(e){if(!controller.signal.aborted)status(e.message,true);}finally{developerJob=null;if(scene){lock(false);handle();play(resume);}}
+ }
+ $('exportWebgl').onclick=()=>developerExport('webgl');$('exportWebgpu').onclick=()=>developerExport('webgpu');
  function tick(now){if(playing&&!busy&&scene){if(previous!==null)attempt(()=>{seek(U.advance(seconds,(now-previous)/1000,cfg));if(seconds>=(U.frameCount(cfg)-1)/60)play(false);});if(playing)previous=now;}requestAnimationFrame(tick);}
- window.addEventListener('pagehide',()=>{job.cancel();play(false);destroy(scene);scene=null;},{once:true});requestAnimationFrame(tick);rebuild('webgl2');
+ window.addEventListener('pagehide',()=>{job.cancel();developerJob?.abort();play(false);destroy(scene);scene=null;},{once:true});requestAnimationFrame(tick);rebuild('webgl2');
 })();
