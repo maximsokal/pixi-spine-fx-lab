@@ -23,6 +23,7 @@ The small [index.json](index.json) is the machine-readable routing index. Each e
 | GAME | [Hit flash](game/hit-flash.md) | **Specification only**, not a shipped editor | parameters, curves, timeline |
 | GAME | [Loot Sparkle](game/loot-sparkle.md) | **Reference implementation**, independent 40-frame pickup and 60-frame idle sparkle; build offline editor with Python | parameters, curves, spacing, emitters, colors, timeline |
 | GAME | [Shockwave Ring](game/shockwave.md) | **Reference implementation**, independent 40-frame pressure front, delayed waves and optional particles | parameters, curves, spacing, emitters, colors, timeline |
+| GAME | [Magic Shield](game/magic-shield.md) | **Implementation candidate (acceptance pending)**, translucent shell, halo and independent impact sparks | parameters, curves, spacing, emitters, colors, timeline |
 | GAME | [Magic Portal](game/magic-portal.md) | **Reference implementation**, independent looping polar aperture, rim/runes and orbiting particles | parameters, curves, spacing, emitters, colors, timeline |
 | GAME | [Teleport and Dash Trail](game/teleport-dash.md) | **Reference implementation**, one-shot cubic trail, historical Spine silhouettes, jump flash and particles | parameters, curves, spacing, pathGeometry, emitters, colors, timeline |
 

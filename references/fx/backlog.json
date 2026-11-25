@@ -47,7 +47,7 @@
     {"id":"GAME-05","issue":44,"title":"Shockwave Ring","priority":"P0","localEffectId":null,"coreIssues":[3,4,5,6,7,8,9]},
     {"id":"GAME-06","issue":45,"title":"Magic Portal","priority":"P2","localEffectId":"fx.game.magic-portal","coreIssues":[3,4,5,6,7,8,9,10]},
     {"id":"GAME-07","issue":46,"title":"Teleport and Dash Trail","priority":"P1","localEffectId":"fx.game.teleport-dash","coreIssues":[3,4,5,6,7,8,9,10]},
-    {"id":"GAME-08","issue":47,"title":"Magic Shield","priority":"P0","localEffectId":null,"coreIssues":[3,4,5,6,7,8,9]},
+    {"id":"GAME-08","issue":47,"title":"Magic Shield","priority":"P0","localEffectId":"fx.game.magic-shield","coreIssues":[3,4,5,6,7,8,9]},
     {"id":"GAME-09","issue":48,"title":"Healing Aura","priority":"P2","localEffectId":null,"coreIssues":[3,4,5,6,7,8,9]},
     {"id":"GAME-10","issue":49,"title":"Poison Cloud","priority":"P2","localEffectId":null,"coreIssues":[3,4,5,6,7,8,9]},
     {"id":"GAME-11","issue":50,"title":"Dissolve / Disintegration","priority":"P0","localEffectId":null,"coreIssues":[3,4,5,6,7,8,9,10]},

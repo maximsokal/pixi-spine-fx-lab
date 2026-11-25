@@ -486,6 +486,26 @@
         6,
         7
       ]
+    },
+    {
+      "effectId": "fx.game.magic-shield",
+      "category": "game",
+      "path": "references/fx/game/magic-shield.md",
+      "keywords": [
+        "magic shield",
+        "protective barrier",
+        "shield aura",
+        "магический щит",
+        "магічний щит"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
     }
   ]
 }
