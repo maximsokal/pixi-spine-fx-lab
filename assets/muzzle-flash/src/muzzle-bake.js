@@ -18,8 +18,8 @@
   const options=Object.freeze({animation:'',skin:'',speed:1,visible:true,...poseOptions});
   if(typeof options.animation!=='string'||typeof options.skin!=='string'||typeof options.visible!=='boolean'||!Number.isFinite(options.speed)||options.speed<0||options.speed>4)fail('Spine options');
   return async function createScene({settings,backend,crop}){
-   const {PIXI,FxMuzzle:M,FxMuzzleAnchors:A,FxMuzzleSmoke:S,FxMuzzleRuntime:R,FxColors,FxShockwaveSpine:Sp,FxShieldExport:X}=env;
-   if(!PIXI||!M||!A||!S||!R||!FxColors||!Sp||!X||!['webgl1','webgl2','webgpu'].includes(backend))fail('dependencies/backend');
+   const {PIXI,FxMuzzle:M,FxMuzzleAnchors:A,FxMuzzleSmoke:S,FxMuzzleRuntime:R,FxColors,FxShockwaveSpine:Sp,FxMuzzlePose:Pose,FxShieldExport:X}=env;
+   if(!PIXI||!M||!A||!S||!R||!FxColors||!Sp||!Pose||!X||!['webgl1','webgl2','webgpu'].includes(backend))fail('dependencies/backend');
    const c=X.cropSpec(crop);let app,world,asset,fx,target,reader,dead=false,reading=false;
    function destroy(){if(dead)return;if(reading)fail('read in progress');dead=true;const errors=[];const drop=f=>{try{f()}catch(e){errors.push(e);}};drop(()=>reader?.destroy());drop(()=>fx?.destroy());drop(()=>asset?.destroy());drop(()=>target?.destroy(true));drop(()=>world?.destroy({children:true}));if(app?.renderer)drop(()=>app.destroy(true,{children:true}));if(errors.length)throw new AggregateError(errors,'Muzzle bake cleanup failed');}
    try{
@@ -35,7 +35,7 @@
     async function readFrame(seconds){
      if(dead||reading||!Number.isFinite(seconds)||seconds<0||seconds>3600)fail('invalid read');reading=true;
      try{
-      world.position.set(0,0);Sp.pose(asset,seconds,options);fx.seek(seconds);
+      world.position.set(0,0);Pose.pose(asset,seconds,options,Sp);fx.seek(seconds);
       const out=new Uint8Array(c.width*c.height*4),right=c.x+c.width,bottom=c.y+c.height;
       for(let ty=Math.floor(c.y/TILE)*TILE;ty<bottom;ty+=TILE)for(let tx=Math.floor(c.x/TILE)*TILE;tx<right;tx+=TILE){
        world.position.set(-tx,-ty);r.render({container:world,target,clear:true,clearColor:[0,0,0,0]});

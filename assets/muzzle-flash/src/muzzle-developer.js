@@ -4,13 +4,13 @@
  if(typeof module==='object'&&module.exports)module.exports=api;else root.FxMuzzleDeveloper=api;
 })(globalThis,function(){
  'use strict';
- const FILES=Object.freeze(['curve-core.js','spacing-core.js','color-core.js','timeline-core.js','shockwave-spine.js','muzzle-geometry.js','muzzle-core.js','muzzle-anchors.js','muzzle-smoke.js','muzzle-runtime.js','muzzle-authoring.js','shield-export.js','muzzle-export.js','muzzle-bake.js']);
+ const FILES=Object.freeze(['curve-core.js','spacing-core.js','color-core.js','timeline-core.js','shockwave-spine.js','muzzle-geometry.js','muzzle-core.js','muzzle-anchors.js','muzzle-smoke.js','muzzle-runtime.js','muzzle-authoring.js','muzzle-pose.js','shield-export.js','muzzle-export.js','muzzle-bake.js']);
  const VENDORS=Object.freeze(['pixi-8.22.0.min.js','spine-pixi-v8-4.2.120.min.js']);
  const MiB=1048576,enc=s=>new TextEncoder().encode(s),copy=v=>JSON.parse(JSON.stringify(v)),fail=m=>{throw Error('Muzzle developer: '+m);};
  // Same controller in the Vite and zero-install local HTTP examples.
  const controller=`${FILES.map(n=>"import './"+n+"';").join('\n')}
 export async function startMuzzleDemo({preset,mount,baseURL=document.baseURI,env=globalThis}){
- const p=structuredClone(preset),{PIXI,FxMuzzle:M,FxMuzzleAnchors:A,FxMuzzleSmoke:S,FxMuzzleRuntime:R,FxMuzzleAuthoring:U,FxShockwaveSpine:Sp,FxColors}=env;
+ const p=structuredClone(preset),{PIXI,FxMuzzle:M,FxMuzzleAnchors:A,FxMuzzleSmoke:S,FxMuzzleRuntime:R,FxMuzzleAuthoring:U,FxShockwaveSpine:Sp,FxMuzzlePose:Pose,FxColors}=env;
  if(p.schemaVersion!==1||p.effectId!=='fx.game.muzzle-flash'||!['webgl','webgpu'].includes(p.rendererPreference)||!mount||!PIXI)throw Error('Invalid demo preset/dependencies');
  const actual=r=>r.gl?(typeof env.WebGL2RenderingContext==='function'&&r.gl instanceof env.WebGL2RenderingContext?'webgl2':'webgl1'):r.gpu?.device?'webgpu':'unsupported';
  async function start(preference){const app=new PIXI.Application();try{await app.init({width:512,height:512,resolution:1,backgroundAlpha:0,autoStart:false,preference,preferWebGLVersion:2});const got=actual(app.renderer);if(got==='unsupported'||(preference==='webgl'&&got==='webgpu'))throw Error('Unexpected renderer '+got);return app;}catch(e){if(app.renderer)app.destroy(true,{children:true});throw e;}}
@@ -24,7 +24,7 @@ export async function startMuzzleDemo({preset,mount,baseURL=document.baseURI,env
   if(p.asset){const a=p.asset;asset=await Sp.create({name:a.sourceSkeletonName,skeleton:await load(a.skeleton),atlas:await load(a.atlas),images:new Map(await Promise.all(a.images.map(async i=>[i.name,await load(i.path)])))});models.addChild(asset.model);}
   const compile=S.createCompiler({compileEffect:M.compile,anchors:A,colors:FxColors,host,world:app.stage,model:asset?.model||null});
   fx=R.createRenderer({PIXI,host,compile,settings:p.settings});settings=fx.settings;
-  function seek(t){if(dead||!Number.isFinite(t))throw Error('Invalid seek');const next=U.seek(t,settings);Sp.pose(asset,next,p.asset?.options);const sample=fx.seek(next);app.render();time=next;return sample;}
+  function seek(t){if(dead||!Number.isFinite(t))throw Error('Invalid seek');const next=U.seek(t,settings);Pose.pose(asset,next,p.asset?.options,Sp);const sample=fx.seek(next);app.render();time=next;return sample;}
   function tick(now){if(!playing)return;try{if(last!==null){seek(time+(now-last)/1000);if(time>=(U.frameCount(settings)-1)/60){pause();return;}}last=now;raf=env.requestAnimationFrame(tick);}catch(e){pause();console.error(e);}}
   function play(){if(dead)throw Error('Destroyed demo');pause();if(time>=(U.frameCount(settings)-1)/60)seek(0);playing=true;raf=env.requestAnimationFrame(tick);}
   seek(p.previewSeconds);mount.append(app.canvas);return Object.freeze({backend:actual(app.renderer),get time(){return time;},seek,play,pause,destroy});
@@ -63,7 +63,7 @@ main().catch(e=>{console.error(e);document.getElementById('backend').textContent
   add('package.json',JSON.stringify({name:'muzzle-flash-'+target,private:true,type:'module',scripts:{dev:'vite --open /index.html',build:'vite build',preview:'vite preview'},devDependencies:{vite:'7.1.12'}},null,2));
   add('vite.config.js',"import {defineConfig} from 'vite';\nexport default defineConfig({base:'./',build:{rollupOptions:{input:'bootstrap.html'}}});\n");
   add('bootstrap.html','<!doctype html><html lang="en"><meta charset="utf-8"><title>Muzzle Flash</title><a href="./index.html">Open Muzzle Flash demo</a></html>');
-  add('README.md','# Muzzle Flash developer example\n\nZero-install offline launch: python -m http.server 8000 --directory public, then open http://localhost:8000. The pinned Pixi 8.22.0 and Spine 4.2.120 browser distributions and license notices are included. No CDN. Optional Vite: npm install, npm run dev; npm run build copies public to dist; npm run preview serves dist/index.html. Initial Vite installation requires its package or cache. Actual renderer is shown; WebGPU preference can fall back to WebGL. Original Spine bytes and atlas page keys are preserved through safe aliases. Preview is a 512x512 logical plane; crop and frameCount are handoff metadata. Import startMuzzleDemo from muzzle-demo.js after loading vendor scripts. seek/play/pause/destroy use the same compiled effect and Spine pose order as the editor. One-shot clamps to the last authored frame. PNG helpers are included for integration, not exposed as demo controls. GPU parity and performance require separate verification.\n');
+  add('README.md','# Muzzle Flash developer example\n\nZero-install offline launch: python -m http.server 8000 --directory public, then open http://localhost:8000. The pinned Pixi 8.22.0 and Spine 4.2.120 browser distributions and license notices are included. No CDN. Optional Vite: npm install, npm run dev; npm run build copies public to dist; npm run preview serves dist/index.html. Initial Vite installation requires its package or cache. Actual renderer is shown; WebGPU preference can fall back to WebGL. Original Spine bytes and atlas page keys are preserved through safe aliases. Preview is a 512x512 logical plane; crop and frameCount are handoff metadata. Import startMuzzleDemo from muzzle-demo.js after loading vendor scripts. seek/play/pause/destroy use the same compiled effect and Spine pose order as the editor. One-shot clamps to the last authored frame. Spine physics advances at 60 FPS (substeps for faster animation); backward seeks and pose option changes reset and replay. Nonphysics rigs retain exact-time seeks. PNG helpers are included for integration, not exposed as demo controls. GPU parity and performance require separate verification.\n');
   check();const zip=makeZip(entries,check);check();return {zip,preset};
  }
  return {FILES,VENDORS,developer};

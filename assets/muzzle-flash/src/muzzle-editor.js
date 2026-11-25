@@ -17,7 +17,7 @@
  function selected(){return $('layer').value;}
  function currentPose(){return A.resolve(U.anchor(cfg,selected()),context());}
  function handle(){const p=scene&&U.origin(currentPose(),U.layer(cfg,selected())),h=$('handle');h.hidden=!p||busy;if(p){h.style.left=p.x/512*100+'%';h.style.top=p.y/512*100+'%';}}
- function paint(s,t,opts=options()){Sp.pose(s.asset,t,opts);s.fx.seek(t);s.app.render();}
+ function paint(s,t,opts=options()){FxMuzzlePose.pose(s.asset,t,opts,Sp);s.fx.seek(t);s.app.render();}
  function seek(t){if(!scene)return;const next=U.seek(t,cfg);paint(scene,next);seconds=next;$('frame').max=U.frameCount(cfg)-1;$('frame').value=U.frame(seconds,cfg);$('frameLabel').textContent=$('frame').value+' / '+$('frame').max;handle();}
  function sync(){$('preset').value=JSON.stringify(cfg,null,2);}
  function change(next,refresh=true){if(busy||!scene)throw Error('Preview unavailable');const old=cfg,oldTime=seconds;

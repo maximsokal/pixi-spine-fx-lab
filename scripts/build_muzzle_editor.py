@@ -25,7 +25,7 @@ def build(root):
     vendor = '<script type="text/plain" id="runtimeLicenses">' + safe(notices) + '</script>\n' + '\n'.join(tag(template, name) for name in vendors)
     cores = [tag(template, 'src/' + name) for name in ('curve-core.js', 'spacing-core.js', 'color-core.js', 'timeline-core.js', 'curve-editor.js', 'color-ui.js')]
     cores.append(tag(root / 'assets/shockwave/src', 'shockwave-spine.js'))
-    cores.extend(tag(source, name) for name in ('muzzle-geometry.js', 'muzzle-core.js', 'muzzle-anchors.js', 'muzzle-smoke.js', 'muzzle-runtime.js', 'muzzle-authoring.js'))
+    cores.extend(tag(source, name) for name in ('muzzle-geometry.js', 'muzzle-core.js', 'muzzle-anchors.js', 'muzzle-smoke.js', 'muzzle-runtime.js', 'muzzle-authoring.js', 'muzzle-pose.js'))
     cores.extend(tag(root / 'assets/magic-shield/src', name) for name in ('shield-export.js', 'shield-export-ui.js'))
     cores.extend(tag(source, name) for name in ('muzzle-export.js', 'muzzle-bake.js', 'muzzle-developer.js'))
     sample = json.dumps(sample_data(template, manifest), separators=(',', ':')).replace('</', '<\\/')

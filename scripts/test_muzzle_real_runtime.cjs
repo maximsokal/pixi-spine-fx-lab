@@ -10,7 +10,7 @@ function run(read,A,test){
  browser.PIXI=P;
  const Sp=new Function('PIXI','window','self','require',read(vendor+'spine-pixi-v8-4.2.120.min.js')+'\nreturn spine;')(P,browser,browser,n=>{if(n==='pixi.js')return P;throw Error('Unexpected vendor import '+n);});
  const modules={};
- for(const path of [shared+'curve-core.js',shared+'spacing-core.js',shared+'color-core.js',...['geometry','core','anchors','smoke','runtime'].map(n=>fx+'muzzle-'+n+'.js')]){
+ for(const path of [shared+'curve-core.js',shared+'spacing-core.js',shared+'color-core.js',...['geometry','core','anchors','smoke','runtime','pose'].map(n=>fx+'muzzle-'+n+'.js')]){
   const m={exports:{}};new Function('module','require',read(path))(m,n=>{const key=n.split('/').at(-1);if(!Object.hasOwn(modules,key))throw Error('Missing module '+n);return modules[key];});modules[path.split('/').at(-1)]=m.exports;
  }
  const M=modules['muzzle-core.js'],Anch=modules['muzzle-anchors.js'],S=modules['muzzle-smoke.js'],R=modules['muzzle-runtime.js'],C=modules['color-core.js'];
@@ -50,6 +50,23 @@ function run(read,A,test){
    const q=f.seek(.15);A.equal(q.core.length,0);A.ok(q.smoke.length>0);const smoke=f.owned.children.find(l=>l.label==='smoke');A.ok(smoke.children.some(v=>v.visible&&v.alpha>0&&v.blendMode==='normal'));
    const off=JSON.parse(JSON.stringify(f.settings));for(const l of Object.values(off.effect.layers))l.enabled=false;off.smoke.enabled=false;f.configure(off);A.equal(visible(f).length,0);A.ok(Object.values(f.seek(0)).every(a=>a.length===0));
   }finally{f.destroy();s.camera.destroy({children:true});}
+ });
+ test('real Spine Physics Constraint direct seek and replay match sequential integration',()=>{
+  const timeline={exports:{}};new Function('module',read(shared+'timeline-core.js'))(timeline);
+  const env={FxTimeline:timeline.exports};new Function('globalThis',read('assets/shockwave/src/shockwave-spine.js'))(env);
+  const L=env.FxShockwaveSpine,Pose=modules['muzzle-pose.js'];
+  const data={skeleton:{spine:'4.2.43'},bones:[{name:'root'},{name:'weapon',parent:'root',length:20}],physics:[{name:'spring',bone:'weapon',x:1,rotate:1,step:60,strength:100,damping:.5}],animations:{idle:{bones:{root:{translate:[{x:0,y:0},{time:.5,x:80,y:0},{time:1,x:0,y:0}]}}}}};
+  function physicsRig(){const model=new Sp.Spine({skeletonData:new Sp.SkeletonJson({}).readSkeletonData(data),autoUpdate:false});model.update(0);return {model};}
+  const a=physicsRig(),b=physicsRig(),c=physicsRig(),legacy=physicsRig(),o={animation:'idle',skin:'',speed:1,visible:true};
+  try{
+   const old=L.pose(legacy,.5,o).weapon;
+   c.model.state.setAnimation(0,'idle',true);for(let i=0;i<30;i++)c.model.update(1/60);c.model.updateLocalTransform();
+   const expected=L.anchorPoses(c.model).weapon,direct=Pose.pose(a,.5,o,L).weapon;
+   A.ok(Math.abs(old.x-expected.x)>10);near(direct.x,expected.x);near(direct.rotation,expected.rotation);
+   for(let i=0;i<=30;i++)Pose.pose(b,i/60,o,L);near(Pose.pose(b,.5,o,L).weapon.x,expected.x);
+   Pose.pose(a,.1,o,L);near(Pose.pose(a,.5,o,L).weapon.x,expected.x);
+   near(Pose.pose(a,.5,{...o,speed:0},L).weapon.x,0);near(Pose.pose(a,.5,o,L).weapon.x,expected.x);
+  }finally{for(const x of [a,b,c,legacy])x.model.destroy();}
  });
  test('seeded randomized valid presets stay finite across time and respect budgets',()=>{
   let seed=123;const rand=()=>((seed=Math.imul(seed,1664525)+1013904223|0)>>>0)/4294967296;
