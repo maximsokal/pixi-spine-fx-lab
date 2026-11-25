@@ -9,7 +9,7 @@
  let cfg=initial(),scene=null,source=null,seconds=0,playing=false,previous=null,busy=false,closed=false,drag=null,animation='',skin='',raf=0;
  const status=(s,error=false)=>{$('status').textContent=s;$('status').dataset.error=String(error);};
  function play(v){playing=v;previous=null;$('play').textContent=v?'Pause':'Play';}
- function lock(v){busy=v;play(false);for(const id of ['controls','transport','assets'])$(id).disabled=v||!scene;$('backend').disabled=v;handle();}
+ function lock(v){busy=v;play(false);for(const id of ['controls','transport','assets','exportFields'])$(id).disabled=v||!scene;$('backend').disabled=v;handle();}
  function attempt(fn){try{return fn();}catch(e){play(false);status(e.message,true);}}
  function context(s=scene){return {host:s.host,world:s.app.stage,model:s.asset?.model||null,Spine:spine};}
  function options(){const el=$('speed');if(!el.value||!el.validity.valid)throw Error('Invalid Spine speed');return {animation,skin,speed:Number(el.value),visible:$('showSpine').checked};}
@@ -73,6 +73,25 @@
  h.onpointermove=e=>{if(!drag||drag.id!==e.pointerId||busy||drag.layer!==selected())return;attempt(()=>{const p=U.pointer(e.clientX,e.clientY,$('surface').getBoundingClientRect()),o=U.offset(currentPose(),p.x+drag.dx,p.y+drag.dy);if(o)edit(c=>Object.assign(U.layer(c,selected()),o),false);});};
  h.onpointerup=h.onpointercancel=h.onlostpointercapture=()=>{drag=null;if(scene&&!closed)controls();};
  h.onkeydown=e=>{const keys={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(!keys[e.key]||busy||!scene)return;e.preventDefault();play(false);attempt(()=>{const p=currentPose(),o=U.origin(p,U.layer(cfg,selected())),[x,y]=keys[e.key],step=e.shiftKey?10:1;if(o)edit(c=>Object.assign(U.layer(c,selected()),U.offset(p,o.x+x*step,o.y+y*step)));});};
+
+ const E=FxShieldExportUi;
+ function readExport(){return E.readSpec(Object.fromEntries(['x','y','width','height','frames'].map(k=>[k,$('export-'+k).value])),cfg.effect.exportFrames);}
+ function download(bytes,name){if(closed)return;const url=URL.createObjectURL(new Blob([bytes],{type:'application/zip'})),a=document.createElement('a');a.href=url;a.download=name;try{document.body.append(a);a.click();}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}}
+ let resume=false,developerJob=null;
+ const job=E.createController({request(){
+  if(busy||closed||!scene)throw Error('Preview unavailable');const spec=readExport(),opts=options();
+  const compile=A.createCompiler({compile:H.compile,...context()});
+  return {...spec,codec:FxShieldExport,compile,settings:cfg,backend:scene.actual,assetInfo:scene.asset?{name:source.name,version:scene.asset.version,options:opts}:null,createScene:FxHitSparksBake.sceneFactory({source,poseOptions:opts}),yieldFrame:()=>new Promise(r=>setTimeout(r,0))};
+ },bake:FxHitSparksExport.bakeSequence,begin(){resume=playing;lock(true);$('cancelExport').disabled=false;status('Baking PNG sequence');},end(){if(!closed){$('cancelExport').disabled=true;lock(false);play(resume);}},progress(n,total){$('exportProgress').max=total;$('exportProgress').value=n;$('exportCount').textContent=n+' / '+total;},report:status,download:bytes=>download(bytes,'hit-sparks-png.zip')});
+ $('exportPng').onclick=()=>job.run();$('cancelExport').onclick=()=>{if(job.cancel())status('Cancelling PNG export');};
+ async function developerExport(target){
+  if(busy||closed||!scene)return;const wasPlaying=playing,controller=new AbortController();developerJob=controller;
+  try{const spec=readExport(),opts=options(),D=FxHitSparksDeveloper,compile=A.createCompiler({compile:H.compile,...context()}),texts=names=>Object.fromEntries(names.map(name=>[name,$(name)?.textContent]));
+   const params={...spec,target,settings:cfg,previewSeconds:seconds,source,options:opts,assetInfo:scene.asset?{version:scene.asset.version}:null,sources:texts(D.FILES),vendors:texts(D.VENDORS),licenses:$('runtimeLicenses').textContent,compile,cropSpec:FxShieldExport.cropSpec,makeZip:FxShieldExport.makeZip,signal:controller.signal};
+   lock(true);status('Preparing '+target+' archive');const result=await D.developer(params);if(controller.signal.aborted||closed)return;download(result.zip,'hit-sparks-developer-'+target+'.zip');status('Developer archive exported');
+  }catch(e){if(!closed&&!controller.signal.aborted)status(e.message,true);}finally{developerJob=null;if(!closed){lock(false);play(wasPlaying);}}
+ }
+ $('exportWebgl').onclick=()=>developerExport('webgl');$('exportWebgpu').onclick=()=>developerExport('webgpu');
  function tick(now){if(closed)return;if(playing&&!busy&&scene){if(previous!==null)attempt(()=>{seek(U.advance(seconds,(now-previous)/1000,cfg));if(seconds>=(U.frameCount(cfg)-1)/60)play(false);});if(playing)previous=now;}raf=requestAnimationFrame(tick);}
- window.addEventListener('pagehide',()=>{closed=true;play(false);cancelAnimationFrame(raf);destroy(scene);scene=null;},{once:true});raf=requestAnimationFrame(tick);rebuild('webgl2');
+ window.addEventListener('pagehide',()=>{closed=true;job.cancel();developerJob?.abort();play(false);cancelAnimationFrame(raf);destroy(scene);scene=null;},{once:true});raf=requestAnimationFrame(tick);rebuild('webgl2');
 })();

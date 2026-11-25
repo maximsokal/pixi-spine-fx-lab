@@ -45,7 +45,9 @@ function run(read,A,test){
   const get=k=>{if(!ids[k])throw Error('Missing element '+k);return ids[k];};
   get('layer').value='flash';get('curveKey').value='burstRate';get('speed').value='1';get('showSpine').checked=true;get('backend').value='webgl2';
   const doc={getElementById:get,createElement:t=>new El(t),body:new El('body')};
-  let onHide,failed=false,created=[],mountCurve,mountColor,clock;
+  let onHide,failed=false,created=[],mountCurve,mountColor,clock,releaseBake,bakeCalls=0;
+  for(const [k,v] of Object.entries({x:'-3',y:'4',width:'280',height:'280',frames:''}))get('export-'+k).value=v;
+  const codecUi={exports:{}};new Function('module','AbortController',read('assets/magic-shield/src/shield-export-ui.js'))(codecUi,AbortController);
   class App{
    constructor(){this.stage=new P.Container();this.canvas=new El('canvas');created.push(this);}
    async init(){this.renderer={gl:new GL2()};if(failed)throw Error('simulated unavailable backend');}
@@ -53,7 +55,7 @@ function run(read,A,test){
    destroy(){this.stage.destroy({children:true});this.destroyed=true;}
   }
   const win={addEventListener:(k,fn)=>{if(k==='pagehide')onHide=fn;}};
-  const e={document:doc,window:win,PIXI:{...P,Application:App},spine:Sp,WebGL2RenderingContext:GL2,Option:class{constructor(text,value){this.text=text;this.value=value;}},requestAnimationFrame:fn=>{clock=fn;return 1;},cancelAnimationFrame:()=>{},FxHitSparksAuthoring:U,FxHitSparks:H,FxHitSparksAnchors:An,FxHitSparksRuntime:R,FxHitSparksPose:Pose,FxShockwaveSpine:L,FxCurveEditor:{mount:(h,o)=>{mountCurve=o;}},FxColorUi:{mount:(h,o)=>{mountColor=o;}}};
+  const e={document:doc,window:win,PIXI:{...P,Application:App},spine:Sp,WebGL2RenderingContext:GL2,Option:class{constructor(text,value){this.text=text;this.value=value;}},requestAnimationFrame:fn=>{clock=fn;return 1;},cancelAnimationFrame:()=>{},FxHitSparksAuthoring:U,FxHitSparks:H,FxHitSparksAnchors:An,FxHitSparksRuntime:R,FxHitSparksPose:Pose,FxShockwaveSpine:L,FxCurveEditor:{mount:(h,o)=>{mountCurve=o;}},FxColorUi:{mount:(h,o)=>{mountColor=o;}},FxShieldExportUi:codecUi.exports,FxShieldExport:{},FxHitSparksBake:{sceneFactory:()=>()=>{}},FxHitSparksExport:{async bakeSequence(p){bakeCalls++;A.deepEqual(p.crop,{x:-3,y:4,width:280,height:280});A.equal(p.frameCount,40);A.equal(p.backend,'webgl2');A.ok(get('controls').disabled);p.progress(1,40);await new Promise(r=>{releaseBake=r;});if(p.signal.aborted)throw Error('cancelled');return {zip:new Uint8Array()};}}};
   new Function(...Object.keys(e),read(fx+'hit-sparks-editor.js'))(...Object.values(e));await Promise.resolve();await Promise.resolve();
   const cfg=()=>JSON.parse(get('preset').value),field=(host,key)=>get(host).children.flatMap(x=>x.children).find(x=>x.dataset.field===key),set=(host,key,val)=>{const el=field(host,key);A.ok(el,'missing field '+key);el.value=String(val);el.onchange();};
   try{
@@ -65,6 +67,9 @@ function run(read,A,test){
    const cv=JSON.parse(JSON.stringify(cfg().effect.curves.burstRate));cv.keys[0].y=.5;mountCurve.onChange(cv);near(cfg().effect.curves.burstRate.keys[0].y,.5);
    get('frame').value='39';get('frame').oninput();A.ok(get('frameLabel').textContent.startsWith('39 / 39'));get('play').onclick();clock(0);clock(1000);A.equal(get('play').textContent,'Play');
    failed=true;get('backend').value='webgpu';await get('backend').onchange();A.equal(get('actual').textContent,'WEBGL2');A.equal(created[0].destroyed,undefined);A.equal(created[1].destroyed,true);
+   const pending=get('exportPng').onclick();A.equal(get('exportFields').disabled,true);A.equal(get('cancelExport').disabled,false);A.equal(get('exportCount').textContent,'1 / 40');
+   await get('exportPng').onclick();A.equal(bakeCalls,1);get('cancelExport').onclick();releaseBake();A.equal(await pending,false);A.equal(get('exportFields').disabled,false);A.equal(get('cancelExport').disabled,true);A.equal(get('status').textContent,'PNG export cancelled');
+   get('export-width').value='0';A.equal(await get('exportPng').onclick(),false);A.equal(bakeCalls,1);A.equal(get('status').dataset.error,'true');
    const old=cfg();get('preset').value='{"schemaVersion":2}';get('apply').onclick();A.equal(get('status').dataset.error,'true');get('preset').value=JSON.stringify(old);get('apply').onclick();A.deepEqual(cfg(),old);
   }finally{onHide();A.equal(created[0].destroyed,true);}
  });
