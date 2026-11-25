@@ -36,8 +36,8 @@ const layers=fx=>Object.fromEntries(fx.owned.children.map(c=>[c.label,c]));
 const counts=fx=>Object.fromEntries(Object.entries(layers(fx)).map(([k,g])=>[k,g.children.filter(x=>x.visible).length]));
 test('ordered layers, straight color and one closed core outline',()=>{
  const {fx}=fixture();fx.seek(0,pose);const g=layers(fx);
- A.deepEqual(fx.owned.children.map(c=>c.label),['tongues','core','sparks']);
- A.deepEqual(counts(fx),{tongues:1,core:1,sparks:1});
+ A.deepEqual(fx.owned.children.map(c=>c.label),['smoke','tongues','core','sparks']);
+ A.deepEqual(counts(fx),{smoke:0,tongues:1,core:1,sparks:1});
  A.deepEqual(g.core.children[0].shape,{points:[100,202,110,200,100,198],close:true});
  A.equal(g.core.children[0].tint,0xff641e);A.equal(g.core.children[0].fillColor,0xffffff);
  A.equal(g.core.children[0].blendMode,'normal');fx.destroy();
@@ -49,10 +49,10 @@ test('same shape not retriangulated and spark pool bounded across seeks',()=>{
  A.equal(fx.allocated,allocated);A.equal(core.draws,n);fx.destroy();
 });
 test('end, missing anchor and disabled settings remove all visible geometry',()=>{
- const {fx}=fixture();fx.seek(.2,pose);fx.seek(1,pose);A.deepEqual(counts(fx),{tongues:0,core:0,sparks:0});
+ const {fx}=fixture();fx.seek(.2,pose);fx.seek(1,pose);A.deepEqual(counts(fx),{smoke:0,tongues:0,core:0,sparks:0});
  fx.seek(0,null);A.equal(fx.owned.visible,false);A.equal(fx.sample,null);
  fx.seek(0,pose);A.equal(fx.owned.visible,true);fx.configure({...settings,enabled:false});
- A.deepEqual(counts(fx),{tongues:0,core:0,sparks:0});fx.destroy();
+ A.deepEqual(counts(fx),{smoke:0,tongues:0,core:0,sparks:0});fx.destroy();
 });
 test('pose translation and tint change actual commands; invalid configure preserves previous frame',()=>{
  const {fx}=fixture();fx.seek(0,pose);const old=fx.owned;
@@ -63,14 +63,24 @@ test('pose translation and tint change actual commands; invalid configure preser
 });
 test('malformed snapshot or over-budget layer does not replace previous valid frame',()=>{
  const host=new Container();const fx=R.createRenderer({PIXI,host,settings,compile(s){const p=compile(s);return {...p,sample(t,a){const q=p.sample(t,a);if(t===.3)q.sparks=Array(51).fill(q.sparks[0]);if(t===.4)q.core[0].vertices[0].x=NaN;return q;}}}});
- fx.seek(0,pose);const before=fx.sample;A.throws(()=>fx.seek(.3,pose));A.throws(()=>fx.seek(.4,pose));A.equal(fx.sample,before);A.deepEqual(counts(fx),{tongues:1,core:1,sparks:1});fx.destroy();
+ fx.seek(0,pose);const before=fx.sample;A.throws(()=>fx.seek(.3,pose));A.throws(()=>fx.seek(.4,pose));A.equal(fx.sample,before);A.deepEqual(counts(fx),{smoke:0,tongues:1,core:1,sparks:1});fx.destroy();
 });
 test('allocation failure rolls back all newly attached views',()=>{
  let limit=100;class Limited extends Graphics{constructor(){super();if(--limit<0)throw Error('allocation');}}
  const {fx}=fixture(settings,{Container,Graphics:Limited});fx.seek(0,pose);const n=fx.allocated;
- limit=0;A.throws(()=>fx.seek(.2,pose));A.equal(fx.allocated,n);A.deepEqual(counts(fx),{tongues:1,core:1,sparks:1});fx.destroy();
+ limit=0;A.throws(()=>fx.seek(.2,pose));A.equal(fx.allocated,n);A.deepEqual(counts(fx),{smoke:0,tongues:1,core:1,sparks:1});fx.destroy();
 });
 test('idempotent disposal leaves unrelated host children intact',()=>{
  const {fx,host,foreign}=fixture();fx.seek(.2,pose);const owned=fx.owned,views=owned.children.flatMap(g=>g.children);
  fx.destroy();fx.destroy();A.ok(owned.destroyed);A.ok(views.every(g=>g.destroyed));A.deepEqual(host.children,[foreign]);A.equal(foreign.destroyed,false);A.throws(()=>fx.seek(0,pose));
+});
+test('smoke renders behind flash, reuses bands, and blends independently',()=>{
+ const host=new Container(),fx=R.createRenderer({PIXI,host,settings,compile(s){const p=compile(s);return {...p,sample(t,a){const q=p.sample(t,a);q.smoke=t<.5?[{x:a.x,y:a.y,radius:7+t,rgba:[100,110,120,.2],blend:'normal'}]:[];if(q.sparks[0])q.sparks[0].blend='add';return q;}}}});
+ fx.seek(.2,pose);const g=layers(fx),v=g.smoke.children[0],n=v.draws;
+ A.equal(fx.owned.children[0].label,'smoke');A.equal(v.alpha,.2);A.equal(v.size,7.2);A.equal(v.blendMode,'normal');A.equal(g.sparks.children[0].blendMode,'add');
+ fx.seek(.3,pose);A.equal(v.draws,n);fx.seek(.6,pose);A.equal(v.visible,false);fx.seek(.2,pose);A.equal(v.visible,true);fx.destroy();
+});
+test('unsupported blend and excessive smoke reject without replacing valid frame',()=>{
+ const host=new Container(),fx=R.createRenderer({PIXI,host,settings,compile(s){const p=compile(s);return {...p,sample(t,a){const q=p.sample(t,a);if(t===.2)q.sparks[0].blend='wrong';if(t===.3)q.smoke=Array(17).fill({x:0,y:0,radius:1,rgba:[0,0,0,1]});return q;}}}});
+ fx.seek(0,pose);const before=fx.sample;A.throws(()=>fx.seek(.2,pose));A.throws(()=>fx.seek(.3,pose));A.equal(fx.sample,before);fx.destroy();
 });

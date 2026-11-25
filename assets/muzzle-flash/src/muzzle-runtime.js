@@ -5,7 +5,7 @@
  if(typeof module==='object'&&module.exports)module.exports=api;else root.FxMuzzleRuntime=api;
 })(globalThis,function(){
  'use strict';
- const ORDER=['tongues','core','sparks'],CAPS={core:1,tongues:20,sparks:50};
+ const ORDER=['smoke','tongues','core','sparks'],CAPS={core:1,tongues:20,sparks:50,smoke:16};
  function fail(s){throw Error('Muzzle renderer: '+s);}
  function number(n,min,max){if(!Number.isFinite(n)||n<min||n>max)fail('invalid numeric primitive');return n;}
  function point(p){if(!p)fail('missing point');return [number(p.x,-2e6,2e6),number(p.y,-2e6,2e6)];}
@@ -25,7 +25,9 @@
   return Math.abs(area)>1e-9?out:null;
  }
  function primitive(k,p){
-  if(!p)fail('missing primitive');const c=color(p.rgba);
+  if(!p)fail('missing primitive');const c=color(p.rgba),blend=p.blend===undefined?'normal':p.blend;
+  if(!['normal','add'].includes(blend))fail('blend');c.blend=blend;
+  if(k==='smoke'){const [x,y]=point(p);return {...c,shape:'smoke',x,y,size:number(p.radius,0,500)};}
   if(k==='sparks'){
    const [x,y]=point(p),age=number(p.age,0,1);return {...c,shape:'dot',x,y,size:2.5*(1-.6*age)};
   }
@@ -46,7 +48,7 @@
  function jobsFor(result){
   if(!result||typeof result!=='object')fail('invalid sample');
   const jobs={};for(const k of ORDER){
-   const list=result[k];if(!Array.isArray(list)||list.length>CAPS[k])fail('layer budget '+k);
+   const list=k==='smoke'&&result[k]===undefined?[]:result[k];if(!Array.isArray(list)||list.length>CAPS[k])fail('layer budget '+k);
    jobs[k]=Array.from(list,p=>primitive(k,p)).filter(p=>p&&p.alpha>0);
   }return jobs;
  }
@@ -65,7 +67,7 @@
    return {plan,group,layers};
   }
   function paint(g,t,p){
-   const result=p===null?null:g.plan.sample(t,p),jobs=result===null?{core:[],tongues:[],sparks:[]}:jobsFor(result);
+   const result=p===null?null:g.plan.sample(t,p),jobs=result===null?{core:[],tongues:[],sparks:[],smoke:[]}:jobsFor(result);
    const added=[];
    try{for(const k of ORDER){const {pool,layer}=g.layers[k];for(let i=pool.length;i<jobs[k].length;i++){
     const view=new PIXI.Graphics();view.visible=false;view.blendMode='normal';
@@ -73,10 +75,16 @@
    }}}catch(e){for(const {pool,view} of added.reverse()){pool.pop();release(view);}throw e;}
    for(const k of ORDER){const {pool}=g.layers[k];for(let i=0;i<pool.length;i++){
     const entry=pool[i],v=entry.view,j=jobs[k][i];v.visible=!!j;if(!j)continue;
-    const key=j.shape==='dot'?'dot':j.outline.join(',');
-    if(entry.key!==key){v.clear();if(j.shape==='dot')v.circle(0,0,1);else v.poly(j.outline,true);v.fill(0xffffff);entry.key=key;}
-    if(j.shape==='dot'){v.position.set(j.x,j.y);v.scale.set(j.size);}
-    v.tint=j.tint;v.alpha=j.alpha;
+    const key=j.shape==='polygon'?j.outline.join(','):j.shape;
+    if(entry.key!==key){v.clear();
+     if(j.shape==='smoke'){
+      // Four reusable translucent concentric bands; no per-frame filter allocation.
+      for(const [radius,alpha] of [[1,.08],[.78,.14],[.55,.22],[.3,.4]])v.circle(0,0,radius).fill({color:0xffffff,alpha});
+     }else{if(j.shape==='dot')v.circle(0,0,1);else v.poly(j.outline,true);v.fill(0xffffff);}
+     entry.key=key;
+    }
+    if(j.shape!=='polygon'){v.position.set(j.x,j.y);v.scale.set(j.size);}
+    v.tint=j.tint;v.alpha=j.alpha;v.blendMode=j.blend;
    }}
    g.group.visible=p!==null;return result;
   }
