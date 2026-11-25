@@ -16,7 +16,7 @@
  const pending={skeleton:null,atlas:null,images:new Map()};
  function lock(value){
   busy=value;
-  for(const id of ['backend','sample','loadSpine','removeSpine','skeletonFile','atlasFile','textureFiles','clearTextures','animation','skin','showSpine','animationSpeed','allFiles','frame','play','reverse','resetFrame','bakePng','bakeFrames','bakeX','bakeY','bakeWidth','bakeHeight','cropHandle'])
+  for(const id of ['backend','sample','loadSpine','removeSpine','skeletonFile','atlasFile','textureFiles','clearTextures','animation','skin','showSpine','animationSpeed','allFiles','frame','play','reverse','resetFrame','bakePng','bakeFrames','bakeX','bakeY','bakeWidth','bakeHeight','cropHandle','webglZip','webgpuZip'])
    $(id).disabled=value;
  }
  function pose(asset,seconds,name=animation,skinName=skin){
@@ -232,6 +232,22 @@
    status('Exported '+frameCount+' PNG frames');
   }catch(e){status(e.message,true)}finally{bakeAbort=null;$('cancelBake').disabled=true;lock(false);direction=wasDirection;if(wasPlaying)setPlaying(true)}
  }
+ async function exportDeveloper(target){
+  if(busy||!fx)return;
+  let crop,frameCount;try{crop=readCrop();frameCount=integer('bakeFrames')}catch(e){status(e.message,true);return}
+  const settings=structuredClone(cfg),retained=source?{...source,images:new Map(source.images)}:null;
+  const options={animation,skin,speed:animationSpeed,visible:spineVisible},assetInfo=spineAsset?{version:spineAsset.version}:null;
+  const previewSeconds=time,wasPlaying=playing,wasDirection=direction;
+  setPlaying(false);lock(true);
+  try{
+   const names=['curve-core.js','color-core.js','timeline-core.js','shockwave-core.js','shockwave-runtime.js','shockwave-spine.js'];
+   const r=await FxShockwaveExportBrowser.developer({settings,target,source:retained,options,assetInfo,previewSeconds,crop,frameCount,sources:Object.fromEntries(names.map(n=>[n,$(n).textContent])),licenses:$('runtimeLicenses').textContent});
+   const url=URL.createObjectURL(new Blob([r.zip],{type:'application/zip'})),a=document.createElement('a');
+   a.href=url;a.download='Shockwave_'+target+'.zip';try{a.click()}finally{setTimeout(()=>URL.revokeObjectURL(url),30000)}
+   status('Exported '+target+' developer ZIP');
+  }catch(e){status(e.message,true)}finally{lock(false);direction=wasDirection;if(wasPlaying)setPlaying(true)}
+ }
+ $('webglZip').onclick=()=>exportDeveloper('webgl');$('webgpuZip').onclick=()=>exportDeveloper('webgpu');
  $('bakePng').onclick=bake;$('cancelBake').onclick=()=>bakeAbort?.abort();guide();
  $('backend').onchange=()=>initialize($('backend').value);
  $('background').onchange=()=>{$('surface').className=$('background').value;};

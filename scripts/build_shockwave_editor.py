@@ -15,13 +15,13 @@ def build(root):
         raise ValueError("Runtime pins changed; review GAME-05")
     html = text(local(source, "ui.html"))
     def tag(base, name):
-        return "<script>" + re.sub(r"</script", r"<\\/script", text(local(base, name)), flags=re.I) + "</script>"
+        return "<script id=\"" + Path(name).name + "\">" + re.sub(r"</script", r"<\\/script", text(local(base, name)), flags=re.I) + "</script>"
     notices = text(local(template, "licenses/spine.txt")) + "\n" + text(local(template, "licenses/pixi.txt"))
-    vendor = "<!--\n" + notices + "\n-->\n" + "\n".join(tag(template, name) for name in manifest["browserScripts"])
+    vendor = "<script type=\"text/plain\" id=\"runtimeLicenses\">" + notices + "</script>\n" + "\n".join(tag(template, name) for name in manifest["browserScripts"])
     sample = json.dumps(sample_data(template, manifest), separators=(",", ":")).replace("</", "<\\/")
     cores = [tag(template, "src/" + name) for name in (
         "curve-core.js", "color-core.js", "timeline-core.js", "curve-editor.js", "color-ui.js")]
-    cores += [tag(source, name) for name in ("shockwave-core.js", "shockwave-runtime.js", "shockwave-spine.js", "shockwave-export.js", "shockwave-bake.js")]
+    cores += [tag(source, name) for name in ("shockwave-core.js", "shockwave-runtime.js", "shockwave-spine.js", "shockwave-export.js", "shockwave-bake.js", "shockwave-export-browser.js")]
     for marker, value in (("<!-- VENDOR -->", vendor), ("<!-- CORES -->", "\n".join(cores)),
                           ("__SAMPLE_DATA__", sample), ("<!-- APP -->", tag(source, "shockwave-editor.js"))):
         if html.count(marker) != 1:
