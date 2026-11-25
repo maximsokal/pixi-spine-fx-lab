@@ -428,6 +428,24 @@
         6,
         7
       ]
+    },
+    {
+      "effectId": "fx.game.shockwave",
+      "category": "game",
+      "path": "references/fx/game/shockwave.md",
+      "keywords": [
+        "shockwave ring",
+        "pressure front",
+        "shockwave"
+      ],
+      "status": "reference-implementation",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
     }
   ]
 }
