@@ -25,12 +25,16 @@ textarea{display:block;width:100%;height:140px;font:11px/1.5 ui-monospace,monosp
 #status,#anchorDiagnostics{max-width:100%;overflow-wrap:anywhere}#assetLabel,#pendingFiles{overflow-wrap:anywhere}
 fieldset{border:0;padding:0;margin:0;min-width:0}fieldset:disabled{opacity:.7}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #7dd3fc;outline-offset:2px}
 .path-values{display:grid;grid-template-columns:1fr 1fr;gap:6px}.path-values label{display:grid;gap:4px}.path-values input{width:100%;min-width:0}
+#cropOverlay{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#cropOverlay svg{position:absolute;inset:0;width:100%;height:100%}
+#cropHandle{position:absolute;pointer-events:auto;touch-action:none;cursor:move;background:#362d20;color:#ffdf9a;white-space:nowrap;max-width:100%;font-size:11px;padding:3px 6px}
+#bakeProgress{width:100%;accent-color:#7dd3fc}
 </style></head><body>
 <header><div><h1>Teleport &amp; Dash Trail FX Lab</h1><small>GAME-07 · offline authoring preview · 60 FPS</small></div><span id="backendActual">Starting...</span></header>
 <main><section class="preview" aria-label="Effect preview">
 <div class="tools"><button id="play">Play</button><button id="reverse">Reverse</button><button id="resetFrame">Reset frame</button><label>Frame <input id="frame" type="range" min="0" max="39" step="1" value="0"></label><output id="frameLabel">0 / 39</output></div>
 <div id="birthMarkers" aria-label="Scheduled afterimage births"></div>
-<div id="viewport"><div id="surface" class="checker"><svg id="guides" viewBox="0 0 512 512" aria-label="Emitter and path guides"></svg></div></div>
+<div id="viewport"><div id="surface" class="checker"><div id="cropOverlay" hidden><svg viewBox="0 0 512 512" aria-hidden="true"><path id="cropMask" fill="#0008" fill-rule="evenodd"></path><rect id="cropBorder" fill="none" stroke="#f8c460" stroke-dasharray="5 3" stroke-width="1.5" vector-effect="non-scaling-stroke"></rect></svg><button id="cropHandle" type="button" aria-label="Drag crop rectangle">512 × 512</button></div><svg id="guides" viewBox="0 0 512 512" aria-label="Emitter and path guides"></svg></div></div>
 <div class="tools"><label>Background <select id="background"><option value="dark">Dark</option><option value="checker" selected>Checkerboard</option><option value="light">Light</option></select></label><label>Guides <input id="showGuides" type="checkbox" checked></label>
 <button id="zoomOut" aria-label="Zoom out">−</button><output id="zoomLabel">100%</output><button id="zoomIn" aria-label="Zoom in">+</button><button id="fit">Fit</button><button id="actualSize">100%</button>
 <label>Backend <select id="backend"><option value="webgl2">WebGL 2</option><option value="webgl1">WebGL 1</option><option value="webgpu">WebGPU</option></select></label></div>
@@ -48,8 +52,17 @@ fieldset{border:0;padding:0;margin:0;min-width:0}fieldset:disabled{opacity:.7}bu
 <p id="pendingFiles">No files selected</p><div class="tools"><button id="clearTextures">Clear textures</button><button id="loadSpine">Load preview</button></div>
 <label class="control">Animation <select id="animation"></select></label><label class="control">Skin <select id="skin"></select></label><label class="control">Animation speed <input id="animationSpeed" type="number" min="0" max="10" step="any" value="1"></label><label class="control">Loop animation <input id="loopAnimation" type="checkbox" checked></label><label class="control">Show source <input id="showSpine" type="checkbox" checked></label><datalist id="boneNames"></datalist></details>
 <details><summary>Preset JSON</summary><textarea id="preset" aria-label="Effect preset" spellcheck="false"></textarea><div class="tools"><button id="applyPreset">Apply JSON</button><button id="syncPreset">Restore JSON</button><button id="downloadPreset">Download JSON</button><button id="resetSettings">Reset settings</button></div></details>
-<small>Authoring preview. PNG sequence and developer ZIP export are not available until T04.</small>
-</fieldset></aside></main>
+<details id="bakePanel" open><summary>Transparent PNG sequence</summary>
+<label class="control">Crop left (px) <input id="bakeX" type="number" min="-16384" max="16384" step="1" value="0"></label>
+<label class="control">Crop top (px) <input id="bakeY" type="number" min="-16384" max="16384" step="1" value="0"></label>
+<label class="control">Width (px) <input id="bakeWidth" type="number" min="1" max="4096" step="1" value="512"></label>
+<label class="control">Height (px) <input id="bakeHeight" type="number" min="1" max="4096" step="1" value="512"></label>
+<label class="control">Frame count (60 FPS) <input id="bakeFrames" type="number" min="1" max="3600" step="1" value="40"></label>
+<label class="control">Show crop <input id="showCrop" type="checkbox"></label>
+<button id="bakePng" type="button">Export PNG ZIP</button><small>World coordinates; output stays untrimmed. Source visibility, animation and all enabled FX are frozen. Developer ZIPs follow in T04c.</small>
+</details>
+</fieldset>
+<progress id="bakeProgress" aria-label="PNG export progress" max="40" value="0"></progress><button id="cancelBake" type="button" disabled>Cancel PNG export</button></aside></main>
 <!-- VENDOR -->
 <script type="application/json" id="sampleData">__SAMPLE_DATA__</script>
 <!-- CORES -->

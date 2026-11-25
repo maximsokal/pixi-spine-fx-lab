@@ -19,7 +19,7 @@ def build(root):
     vendor = '<script type="text/plain" id="runtimeLicenses">' + text(local(template, "licenses/pixi.txt")) + "\n" + text(local(template, "licenses/spine.txt")) + "</script>\n" + "\n".join(tag(template, name) for name in manifest["browserScripts"])
     sample = json.dumps(sample_data(template, manifest), separators=(",", ":")).replace("</", "<\\/")
     cores = [tag(template, "src/" + name) for name in ("curve-core.js", "spacing-core.js", "path-core.js", "color-core.js", "curve-editor.js", "color-ui.js")]
-    cores += [tag(source, name) for name in ("dash-core.js", "dash-spine.js", "dash-runtime.js", "dash-editor-state.js")]
+    cores += [tag(source, name) for name in ("dash-core.js", "dash-spine.js", "dash-runtime.js", "dash-editor-state.js", "dash-export.js", "dash-bake.js")]
     for marker, value in (("<!-- VENDOR -->", vendor), ("<!-- CORES -->", "\n".join(cores)), ("__SAMPLE_DATA__", sample), ("<!-- APP -->", tag(source, "dash-editor.js"))):
         if html.count(marker) != 1:
             raise ValueError("Expected exactly one marker: " + marker)
