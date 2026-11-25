@@ -4683,12 +4683,15 @@ root.FxColorUi=Object.freeze({mount});
   for(const entry of entries){
    checkCancel();
    if(typeof entry.name!=='string'||entry.name.startsWith('/')||/^[a-z]:/i.test(entry.name)||
+    /[\\\x00]/.test(entry.name)||
     entry.name.split('/').some(x=>x===''||x==='.'||x==='..')||names.has(entry.name))
     throw Error('Unsafe/duplicate ZIP entry '+entry.name);
    names.add(entry.name);
    const name=enc.encode(entry.name);
+   if(name.length>0xffff)throw Error('ZIP filename exceeds 65535 UTF-8 bytes');
    const data=entry.data instanceof Blob?new Uint8Array(await entry.data.arrayBuffer()):
     typeof entry.data==='string'?enc.encode(entry.data):entry.data;
+   checkCancel();
    if(!(data instanceof Uint8Array)||data.length>128*1024*1024||
     offset+data.length>256*1024*1024)throw Error('ZIP entry or package exceeds budget');
    const [lh,lv]=rec(30);lv.setUint32(0,0x04034b50,true);lv.setUint16(4,20,true);
@@ -4706,6 +4709,7 @@ root.FxColorUi=Object.freeze({mount});
   const [end,ed]=rec(22);ed.setUint32(0,0x06054b50,true);
   ed.setUint16(8,entries.length,true);ed.setUint16(10,entries.length,true);
   ed.setUint32(12,size,true);ed.setUint32(16,offset,true);
+  checkCancel();
   return new Blob([...local,...central,end],{type:'application/zip'});
  }
  function download(blob,name){
