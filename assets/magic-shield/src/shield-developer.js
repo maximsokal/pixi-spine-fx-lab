@@ -3,7 +3,7 @@
  'use strict';
  const FILES=Object.freeze(['curve-core.js','spacing-core.js','color-core.js','timeline-core.js','shockwave-spine.js','shield-clock.js','shield-geometry.js','shield-core.js','shield-runtime.js','shield-authoring.js']);
  const enc=s=>new TextEncoder().encode(s),MiB=1048576,copy=v=>JSON.parse(JSON.stringify(v)),fail=m=>{throw Error('Shield developer export: '+m);};
- const demo=`import * as PIXI from 'pixi.js';
+ const controller=`import * as PIXI from 'pixi.js';
 import * as spine from '@esotericsoftware/spine-pixi-v8';
 ${FILES.map(n=>"import './"+n+"';").join('\n')}
 // Legacy offline loader resolves these runtime namespaces; no application state is global.
@@ -29,6 +29,8 @@ export async function startShieldDemo({preset,mount,baseURL=document.baseURI}){
   seek(p.previewSeconds);mount.append(app.canvas);return Object.freeze({backend:actual(app.renderer),get time(){return time;},seek,play,pause,destroy});
  }catch(e){destroy();throw e;}
 }
+`;
+ const demo=`import {startShieldDemo} from './shield-demo.js';
 async function main(){const $=id=>document.getElementById(id),res=await fetch('./preset.json');if(!res.ok)throw Error('Missing preset');const c=await startShieldDemo({preset:await res.json(),mount:$('preview')});$('backend').textContent=c.backend;$('play').onclick=c.play;$('pause').onclick=c.pause;$('reset').onclick=()=>{c.pause();c.seek(0);};$('destroy').onclick=()=>{c.destroy();for(const id of ['play','pause','reset','destroy'])$(id).disabled=true;};}
 main().catch(e=>{console.error(e);document.getElementById('backend').textContent=e.message;});
 `;
@@ -54,8 +56,8 @@ main().catch(e=>{console.error(e);document.getElementById('backend').textContent
   }
   const json=JSON.stringify(preset,null,2);add('preset.json',json);add('public/preset.json',json);
   add('package.json',JSON.stringify({name:'magic-shield-'+target,private:true,type:'module',scripts:{dev:'vite',build:'vite build --base ./',preview:'vite preview'},dependencies:{'pixi.js':'8.22.0','@esotericsoftware/spine-pixi-v8':'4.2.120'},devDependencies:{vite:'7.1.12'}},null,2));
-  add('example.js',demo);add('index.html','<!doctype html><html lang="en"><meta charset="utf-8"><title>Magic Shield</title><button id="play">Play</button><button id="pause">Pause</button><button id="reset">Reset</button><button id="destroy">Destroy</button><output id="backend">Loading</output><div id="preview"></div><script type="module" src="./example.js"></script></html>');
-  add('README.md','# Magic Shield developer example\n\nRun npm install and npm run dev; npm run build produces a static HTTP deployment. Runtime dependencies are pinned. WebGPU is preferred only in the WebGPU package; WebGL is fallback. The actual backend is displayed. Source modules and runtime notices are included. Original Spine bytes and page keys are preserved through safe aliases. Authoring coordinates are pixels in a 512x512 plane; crop and frameCount are handoff metadata, not demo viewport size. Update Spine pose first, then seek the shield using seconds and anchor poses. Loop wraps at durationFrames/60; one-shot clamps to the last authored frame. Colors are straight RGBA; Pixi handles premultiplication. CSS resizing is display-only. startShieldDemo returns seek/play/pause/destroy; destroy FX before asset textures. Animated Spine physics is not deterministic under the current seek helper. No GPU or device performance guarantee.\n');
+  add('shield-demo.js',controller);add('example.js',demo);add('index.html','<!doctype html><html lang="en"><meta charset="utf-8"><title>Magic Shield</title><button id="play">Play</button><button id="pause">Pause</button><button id="reset">Reset</button><button id="destroy">Destroy</button><output id="backend">Loading</output><div id="preview"></div><script type="module" src="./example.js"></script></html>');
+  add('README.md','# Magic Shield developer example\n\nRun npm install and npm run dev; npm run build produces a static HTTP deployment. Runtime dependencies are pinned. WebGPU is preferred only in the WebGPU package; WebGL is fallback. The actual backend is displayed. Source modules and runtime notices are included. Original Spine bytes and page keys are preserved through safe aliases. Authoring coordinates are pixels in a 512x512 plane; crop and frameCount are handoff metadata, not demo viewport size. Update Spine pose first, then seek the shield using seconds and anchor poses. Loop wraps at durationFrames/60; one-shot clamps to the last authored frame. Colors are straight RGBA; Pixi handles premultiplication. CSS resizing is display-only. Import startShieldDemo from shield-demo.js to create a controller explicitly (example.js is the standalone page entry). It returns seek/play/pause/destroy; destroy FX before asset textures. Animated Spine physics is not deterministic under the current seek helper. No GPU or device performance guarantee.\n');
   check();const zip=makeZip(entries,check);check();return {zip,preset};
  }
  return {FILES,developer};
