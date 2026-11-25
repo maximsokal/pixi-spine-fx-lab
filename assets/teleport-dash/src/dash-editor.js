@@ -165,6 +165,19 @@
    if(signal.aborted)throw Error('Export cancelled');downloadZip(r.zip,'TeleportDash_'+frameCount+'_PNG.zip');status('Exported '+frameCount+' PNG frames');
   }catch(e){status(e.message,true);}finally{bakeAbort=null;$('cancelBake').disabled=true;lock(false);direction=wasDirection;if(wasPlaying)setPlaying(true);}
  }
+ async function developer(target){
+  if(busy||!scene||drag||cropDrag)return;
+  let crop,frameCount;try{crop=readCrop();frameCount=integer('bakeFrames');}catch(e){status(e.message,true);return;}
+  const wasPlaying=playing,wasDirection=direction,previewSeconds=state.time,options={...scene.options},source=scene.source,assetInfo=scene.asset?{version:scene.asset.version,pages:scene.asset.pages}:null;
+  setPlaying(false);lock(true);status('Preparing developer ZIP');
+  try{
+   const names=['curve-core.js','spacing-core.js','color-core.js','path-core.js','dash-core.js','dash-runtime.js','dash-spine.js'];
+   const sources=Object.fromEntries(names.map(n=>[n,$(n)?.textContent]));
+   const r=await FxDashExportBrowser.developer({settings:cfg(),target,source,options,assetInfo,previewSeconds,crop,frameCount,sources,licenses:$('runtimeLicenses').textContent});
+   downloadZip(r.zip,'TeleportDash_'+target+'.zip');status('Exported '+target+' developer ZIP');
+  }catch(e){status(e.message,true);}finally{lock(false);direction=wasDirection;if(wasPlaying)setPlaying(true);}
+ }
+ $('webglZip').onclick=()=>developer('webgl');$('webgpuZip').onclick=()=>developer('webgpu');
  $('bakePng').onclick=bake;$('cancelBake').onclick=()=>{bakeAbort?.abort();$('cancelBake').disabled=true;};drawCrop();
  palette=FxColorUi.mount($('palette'),{value:cfg().palette,defaultValue:D.defaults().palette,idPrefix:'dashPalette',isLocked:()=>busy||!!drag,onChange:value=>edit(c=>{c.palette={...value,parameterKey:'dashColor'};})});
  refreshAll();syncPreset();populateSpine();requestAnimationFrame(tick);replace(new URLSearchParams(location.search).get('backend')||backend,null);

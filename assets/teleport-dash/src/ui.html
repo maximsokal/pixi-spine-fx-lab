@@ -59,8 +59,9 @@ fieldset{border:0;padding:0;margin:0;min-width:0}fieldset:disabled{opacity:.7}bu
 <label class="control">Height (px) <input id="bakeHeight" type="number" min="1" max="4096" step="1" value="512"></label>
 <label class="control">Frame count (60 FPS) <input id="bakeFrames" type="number" min="1" max="3600" step="1" value="40"></label>
 <label class="control">Show crop <input id="showCrop" type="checkbox"></label>
-<button id="bakePng" type="button">Export PNG ZIP</button><small>World coordinates; output stays untrimmed. Source visibility, animation and all enabled FX are frozen. Developer ZIPs follow in T04c.</small>
+<button id="bakePng" type="button">Export PNG ZIP</button><small>World coordinates; output stays untrimmed. Source visibility, animation and all enabled FX are frozen. Developer ZIPs preserve the same settings and source assets.</small>
 </details>
+<details open><summary>Developer handoff</summary><div class="tools"><button id="webglZip" type="button">WebGL ZIP</button><button id="webgpuZip" type="button">WebGPU ZIP</button></div><small>Pinned Vite examples, readable source, selected rig and preset. WebGPU archive includes WebGL fallback.</small></details>
 </fieldset>
 <progress id="bakeProgress" aria-label="PNG export progress" max="40" value="0"></progress><button id="cancelBake" type="button" disabled>Cancel PNG export</button></aside></main>
 <!-- VENDOR -->
