@@ -27,15 +27,30 @@ textarea{display:block;width:100%;height:140px;font:11px/1.5 ui-monospace,monosp
 <label>Backend <select id="backend"><option value="webgl2">WebGL 2</option><option value="webgl1">WebGL 1</option><option value="webgpu">WebGPU</option></select></label></div>
 <output id="effectiveSpeed"></output><output id="anchorDiagnostics"></output><div id="status" role="status" aria-live="polite"></div>
 </section><aside aria-label="Effect settings">
+<details id="spinePanel"><summary>Spine 4.2 assets and animation</summary>
+<div class="tools"><button id="sample">Load Doctor head sample</button><button id="removeSpine">Remove Spine</button></div>
+<p id="assetLabel">No Spine asset loaded</p>
+<label class="control">Skeleton <input id="skeletonFile" type="file" accept=".json,.skel"></label>
+<label class="control">Atlas <input id="atlasFile" type="file" accept=".atlas"></label>
+<label class="control">Add textures <input id="textureFiles" type="file" accept=".png,.webp,.jpg,.jpeg" multiple></label>
+<label class="control">Complete set <input id="allFiles" type="file" accept=".json,.skel,.atlas,.png,.webp,.jpg,.jpeg" multiple></label>
+<p id="pendingFiles">No files selected</p><div class="tools"><button id="clearTextures">Clear textures</button><button id="loadSpine">Load preview</button></div>
+<label class="control">Animation <select id="animation"></select></label>
+<label class="control">Skin <select id="skin"></select></label>
+<label class="control">Animation speed <input id="animationSpeed" type="number" min=".1" max="4" step=".1" value="1"></label>
+<label class="control">Show Spine <input id="showSpine" type="checkbox" checked></label>
+<datalist id="boneNames"></datalist>
+<small>Bone offsets use positive uniform scale and heading; reflection, shear and nonuniform scale are approximated.</small></details>
 <details open><summary>Geometry and appearance</summary><div id="geometry"></div><small>Warp distorts the portal surface, not the scene behind it.</small></details>
 <details open><summary>Timing and independent spacing</summary><div id="timing"></div><small>The loop aperture is always open. Loop swirl speed is adjusted to close the phase.</small></details>
 <details open><summary>Emitters and independent layers</summary><div class="tools"><select id="emitterSelect" aria-label="Emitter"></select><button id="addEmitter">Add</button><button id="duplicateEmitter">Copy</button><button id="removeEmitter">Delete</button></div>
 <div id="emitterControls"></div><label class="control">Layer <select id="layerSelect"><option value="emitter">Emitter</option><option value="aperture">Aperture</option><option value="rim">Rim and runes</option><option value="particles">Particles</option></select></label><div id="layerControls"></div></details>
 <details open><summary>Authoring curves</summary><label class="control">Curve <select id="curveSelect"><option value="apertureCurve">Aperture open</option><option value="swirlCurve">Swirl speed</option><option value="rimCurve">Rim width</option><option value="rateCurve">Emission rate</option><option value="intervalCurve">Time interval</option><option value="spacingCurve">Arc spacing</option><option value="alphaCurve">Particle alpha</option></select></label><div id="curve"></div></details>
 <div id="palette"></div><details open><summary>Preset JSON</summary><textarea id="preset" aria-label="Preset JSON" spellcheck="false"></textarea><div class="tools"><button id="applyPreset">Apply JSON</button><button id="syncPreset">Refresh JSON</button><button id="downloadPreset">Download</button><button id="resetSettings">Defaults</button></div></details>
-<small>Standalone FX preview only. Spine assets, bone/attachment pose resolution, PNG sequence and developer ZIP are not included yet. Local or bone anchors are retained in presets but unresolved in this preview.</small>
+<small>Spine 4.2 JSON/SKEL and bone/local anchors. Missing anchors hide only dependent layers. Slot/attachment anchors, PNG sequence and developer ZIP are not included yet.</small>
 </aside></main>
 <!-- VENDOR -->
 <!-- CORES -->
+<script id="sampleData" type="application/json">__SAMPLE_DATA__</script>
 <!-- APP -->
 </body></html>

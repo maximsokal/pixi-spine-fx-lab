@@ -7,24 +7,25 @@
  const transforms={enabled:null,visible:null,x:[-16384,16384,.01],y:[-16384,16384,.01],rotation:[-3600,3600,.01],scale:[.01,20,.01],timeOffset:[-3600,3600,.01],seed:[-2147483648,2147483647,1]};
  const labels={portalRadius:'Portal radius (px)',rimWidth:'Rim width (px)',swirlSpeed:'Requested swirl (deg/s)',durationFrames:'Duration (frames)',particleLifetimeFrames:'Particle life (frames)',particleRate:'Particles / second',intervalFrames:'Interval (frames)',minIntervalFrames:'Min interval (frames)',timeJitter:'Temporal jitter',groupCount:'Burst count',groupDelayFrames:'Burst delay (frames)',spacing:'Arc spacing (px)',minGapPx:'Min gap (px)',maxGapPx:'Max gap (px)',spatialJitter:'Spatial jitter',timeOffset:'Delay (frames)',rotation:'Rotation (deg)',frequencySource:'Emission clock',x:'X (px)',y:'Y (px)'};
  let cfg=P.normalize(P.defaults()),plan=P.compile(cfg),selectedId=cfg.emitters[0].id,app=null,fx=null,palette=null,busy=false,playing=false,direction=1,time=0,previous=null,backend='webgl2',zoom=1,fitMode=true,drag=null;
+ let spineAsset=null,source=null,animation='',skin='',animationSpeed=1,spineVisible=true,poses={};
+ const pending={skeleton:null,atlas:null,images:new Map()};
  const status=(msg,error=false)=>{$('status').textContent=msg;$('status').dataset.error=String(error);};
  const selected=()=>cfg.emitters.find(e=>e.id===selectedId),kind=()=>$('layerSelect').value,end=()=> (cfg.durationFrames-1)/60,period=()=>cfg.durationFrames/60;
  function setPlaying(v){playing=v;previous=null;$('play').textContent=v?'Pause':'Play';}
- function lock(v){busy=v;for(const id of ['backend','frame','play','reverse','resetFrame','addEmitter','duplicateEmitter','removeEmitter','applyPreset','resetSettings'])$(id).disabled=v;if(!v)refreshEmitterButtons();}
+ function lock(v){busy=v;for(const id of ['backend','frame','play','reverse','resetFrame','addEmitter','duplicateEmitter','removeEmitter','applyPreset','resetSettings','sample','removeSpine','skeletonFile','atlasFile','textureFiles','allFiles','clearTextures','loadSpine','animation','skin','animationSpeed','showSpine'])$(id).disabled=v;if(!v)refreshEmitterButtons();}
  function syncPreset(){$('preset').value=JSON.stringify(cfg,null,2);}
- function parentFor(e,k){
-  const t=k==='emitter'?e:e.layers[k];
-  if(t.anchor.type==='world')return {x:0,y:0,rotation:0,scale:1};
-  if(t.anchor.type==='inherit'&&e.anchor.type==='world')return e;
-  return null;
- }
- function origin(e,k){if(!e)return null;const p=parentFor(e,k),t=k==='emitter'?e:e.layers[k];if(!p)return null;const a=p.rotation*DEG,x=t.x*p.scale,y=t.y*p.scale;return {x:p.x+x*Math.cos(a)-y*Math.sin(a),y:p.y+x*Math.sin(a)+y*Math.cos(a)};}
+ const identity={x:0,y:0,rotation:0,scale:1};
+ const validPose=p=>p&&[p.x,p.y,p.rotation,p.scale].every(Number.isFinite)&&p.scale>1e-10;
+ function compose(p,t){if(!validPose(p))return null;const a=p.rotation*DEG,x=t.x*p.scale,y=t.y*p.scale;const q={x:p.x+x*Math.cos(a)-y*Math.sin(a),y:p.y+x*Math.sin(a)+y*Math.cos(a),rotation:p.rotation+t.rotation,scale:p.scale*t.scale};return validPose(q)?q:null;}
+ function base(t){const type=t.anchor.type;if(type==='world')return identity;const key=type==='local'?'$local':t.anchor.name;return Object.hasOwn(poses,key)?poses[key]:null;}
+ function parentFor(e,k){const t=k==='emitter'?e:e.layers[k];return t.anchor.type==='inherit'?compose(base(e),e):base(t);}
+ function origin(e,k){if(!e)return null;return compose(parentFor(e,k),k==='emitter'?e:e.layers[k]);}
  function updateHandle(){const p=origin(selected(),kind()),h=$('originHandle');h.hidden=!p||p.x<0||p.y<0||p.x>512||p.y>512;if(!h.hidden){h.style.left=p.x/512*100+'%';h.style.top=p.y/512*100+'%';}}
  function seek(t){
   time=cfg.mode==='loop'?((t%period())+period())%period():clamp(t,0,end());
   const frame=clamp(Math.floor(time*60+1e-7),0,cfg.durationFrames-1);
   $('frame').max=cfg.durationFrames-1;$('frame').value=frame;$('frameLabel').textContent=frame+' / '+(cfg.durationFrames-1);
-  const s=fx?.seek(time);app?.render();updateHandle();
+  poses=pose(spineAsset,time);const s=fx?.seek(time,poses);app?.render();updateHandle();
   $('effectiveSpeed').textContent='Effective swirl: '+plan.effectiveSpeed.toFixed(2)+'°/s · '+(cfg.durationFrames/60).toFixed(2)+' s · '+plan.reserved+' reserved primitives';
   $('anchorDiagnostics').textContent=(s?.diagnostics||[]).map(d=>d.emitterId+' / '+d.layer+': '+d.reason).join('; ');
  }
@@ -40,7 +41,7 @@
   const label=document.createElement('label');label.className='control';label.textContent=labels[key]||key;
   let el;
   if(Array.isArray(range)&&typeof range[0]==='string'){el=document.createElement('select');for(const opt of range)el.add(new Option(opt,opt));el.value=value;}
-  else{el=document.createElement('input');el.type=range?'number':key==='anchorName'?'text':'checkbox';if(range){[el.min,el.max,el.step]=range;el.value=value;}else if(el.type==='text'){el.maxLength=128;el.value=value;}else el.checked=value;}
+  else{el=document.createElement('input');el.type=range?'number':key==='anchorName'?'text':'checkbox';if(range){[el.min,el.max,el.step]=range;el.value=value;}else if(el.type==='text'){el.maxLength=128;el.setAttribute('list','boneNames');el.value=value;}else el.checked=value;}
   el.id=prefix+key;label.append(el);parent.append(label);
   el.onchange=()=>{try{
    if(el.type==='number'&&(!el.value.trim()||!el.validity.valid))throw Error('Invalid '+key);
@@ -64,14 +65,51 @@
  function setZoom(z,fit=false){fitMode=fit;zoom=clamp(z,.1,4);$('surface').style.width=512*zoom+'px';$('zoomLabel').textContent=Math.round(zoom*100)+'%';}
  function fit(){const v=$('viewport');setZoom(Math.min(1,(v.clientWidth-16)/512,(v.clientHeight-16)/512),true);}
  async function initialize(requested){
-  if(busy)return;lock(true);setPlaying(false);let next=new PIXI.Application(),nextFx;
+  if(busy)return;lock(true);setPlaying(false);let next=new PIXI.Application(),nextFx,nextAsset;
   try{await next.init({width:512,height:512,resolution:1,backgroundAlpha:0,autoStart:false,preference:requested==='webgpu'?'webgpu':'webgl',preferWebGLVersion:requested==='webgl1'?1:2});
    const actual=next.renderer.gl?(next.renderer.gl instanceof WebGL2RenderingContext?'webgl2':'webgl1'):'webgpu';
    if(actual!==requested)throw Error('Requested '+requested+', got '+actual);
-   nextFx=FxPortalRuntime.createPortal({PIXI,host:next.stage,settings:cfg});nextFx.seek(time);next.render();
-   if(fx){fx.destroy();app.destroy(true,{children:true});}app=next;fx=nextFx;backend=actual;$('surface').prepend(app.canvas);$('backendActual').textContent=actual.toUpperCase();$('backend').value=backend;document.body.dataset.ready='true';seek(time);if(fitMode)fit();status('Ready');
-  }catch(e){nextFx?.destroy();if(next.renderer)next.destroy(true,{children:true});$('backend').value=backend;status(e.message,true);}finally{lock(false);}
+   if(source){nextAsset=await FxPortalSpine.create(source);next.stage.addChild(nextAsset.model);}
+   nextFx=FxPortalRuntime.createPortal({PIXI,host:next.stage,settings:cfg});nextFx.seek(time,pose(nextAsset,time));next.render();
+   spineAsset?.destroy();if(fx){fx.destroy();app.destroy(true,{children:true});}spineAsset=nextAsset||null;app=next;fx=nextFx;backend=actual;$('surface').prepend(app.canvas);$('backendActual').textContent=actual.toUpperCase();$('backend').value=backend;document.body.dataset.ready='true';seek(time);if(fitMode)fit();status('Ready');
+  }catch(e){nextAsset?.destroy();nextFx?.destroy();if(next.renderer)next.destroy(true,{children:true});$('backend').value=backend;status(e.message,true);}finally{lock(false);}
  }
+ function pose(asset,t,anim=animation,skinName=skin){return asset?asset.pose(t,{animation:anim,skin:skinName,speed:animationSpeed,visible:spineVisible}):{};}
+ function populateSpine(){
+  const a=$('animation'),sk=$('skin'),bones=$('boneNames');a.replaceChildren();sk.replaceChildren();bones.replaceChildren();
+  if(!spineAsset){$('assetLabel').textContent='No Spine asset loaded';return;}
+  a.add(new Option('Setup pose',''));for(const name of spineAsset.animations)a.add(new Option(name,name));
+  for(const name of spineAsset.skins)sk.add(new Option(name,name));
+  for(const name of spineAsset.bones){const option=document.createElement('option');option.value=name;bones.append(option);}
+  a.value=animation;sk.value=skin;$('assetLabel').textContent=source.name+' ? Spine '+spineAsset.version+' ? '+spineAsset.pages+' atlas pages';
+ }
+ function renderPending(){$('pendingFiles').textContent=[pending.skeleton?.name,pending.atlas?.name,...pending.images.keys()].filter(Boolean).join(', ')||'No files selected';}
+ function collect(files){
+  const skeletons=files.filter(f=>/\.(json|skel)$/i.test(f.name)),atlases=files.filter(f=>/\.atlas$/i.test(f.name)),images=files.filter(f=>/\.(png|webp|jpe?g)$/i.test(f.name));
+  if(skeletons.length>1||atlases.length>1)throw Error('Select exactly one skeleton and atlas');
+  const keys=images.map(f=>f.webkitRelativePath||f.name);if(new Set(keys).size!==keys.length)throw Error('Ambiguous duplicate texture names');
+  if(skeletons.length)pending.skeleton=skeletons[0];if(atlases.length)pending.atlas=atlases[0];for(let i=0;i<images.length;i++)pending.images.set(keys[i],images[i]);renderPending();
+ }
+ async function loadSpine(input){
+  if(busy||!app)return;lock(true);setPlaying(false);let candidate=null;
+  try{
+   candidate=await FxPortalSpine.create(input);const a=candidate.defaultAnimation,sk=candidate.defaultSkin,p=pose(candidate,time,a,sk);
+   app.stage.addChildAt(candidate.model,0);const wasVisible=spineAsset?.model.visible;if(spineAsset)spineAsset.model.visible=false;
+   try{fx.seek(time,p);app.render();}catch(e){if(spineAsset)spineAsset.model.visible=wasVisible;fx.seek(time,poses);throw e;}
+   spineAsset?.destroy();spineAsset=candidate;candidate=null;source=spineAsset.source;animation=a;skin=sk;populateSpine();seek(time);refreshEmitters();status('Loaded '+source.name);
+  }catch(e){candidate?.destroy();app.render();status('Load failed: '+e.message,true);}finally{lock(false);}
+ }
+ $('sample').onclick=()=>loadSpine(FxPortalSpine.sample(JSON.parse($('sampleData').textContent)));
+ for(const id of ['skeletonFile','atlasFile','textureFiles','allFiles'])$(id).onchange=()=>{try{if(!busy)collect([...$(id).files]);}catch(e){status(e.message,true);}finally{$(id).value='';}};
+ $('clearTextures').onclick=()=>{if(!busy){pending.images.clear();renderPending();}};
+ $('loadSpine').onclick=()=>loadSpine({name:pending.skeleton?.name,skeleton:pending.skeleton,atlas:pending.atlas,images:new Map(pending.images)});
+ $('removeSpine').onclick=()=>{if(busy)return;spineAsset?.destroy();spineAsset=source=null;animation=skin='';populateSpine();seek(time);refreshEmitters();status('Ready');};
+ $('animation').onchange=()=>{if(busy)return;animation=$('animation').value;seek(time);};
+ $('skin').onchange=()=>{if(busy)return;skin=$('skin').value;seek(time);};
+ $('showSpine').onchange=()=>{if(busy)return;spineVisible=$('showSpine').checked;seek(time);};
+ $('animationSpeed').onchange=()=>{const value=Number($('animationSpeed').value);if(!Number.isFinite(value)||value<.1||value>4){$('animationSpeed').value=animationSpeed;status('Invalid animation speed',true);return;}animationSpeed=value;seek(time);};
+ $('surface').ondragover=e=>e.preventDefault();
+ $('surface').ondrop=e=>{e.preventDefault();if(!busy)try{collect([...e.dataTransfer.files]);status('Files selected; click Load preview');}catch(error){status(error.message,true);}};
  $('play').onclick=()=>{if(playing){setPlaying(false);return;}direction=1;if(cfg.mode==='oneShot'&&time>=end())seek(0);setPlaying(true);};
  $('reverse').onclick=()=>{direction=-1;if(cfg.mode==='oneShot'&&time<=0)seek(end());setPlaying(true);};
  $('resetFrame').onclick=()=>{setPlaying(false);seek(0);};
