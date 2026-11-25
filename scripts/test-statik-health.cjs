@@ -18,7 +18,7 @@ const emit = data => console.log(JSON.stringify(data));
 if (mode === 'crash' && command === 'index') { console.error('fixture crash'); process.exit(7); }
 if (command === 'index') {
   assert.deepEqual(args, ['.', '--exclude', 'assets/template/vendor/**', '--format', 'json']);
-  emit({ files_indexed: mode === 'empty' ? 0 : 229, symbols_extracted: 11836, references_found: 33334, duration_ms: 2 });
+  emit({ files_indexed: mode === 'empty' ? 0 : mode === 'index-larger' ? 230 : mode === 'index-smaller' ? 228 : 229, symbols_extracted: 11836, references_found: 33334, duration_ms: 2 });
 } else if (command === 'dead-code') {
   assert.deepEqual(args, ['--scope', 'files', '--no-index', '--format', 'json']);
   if (mode === 'malformed') { console.log('not json'); process.exit(0); }
@@ -49,6 +49,7 @@ if (process.argv[2] === '--fixture') {
   for (const [mode, code, label] of [
     ['healthy', 0, 'PASS'], ['empty', 2, 'DEGRADED'], ['roots', 2, 'DEGRADED'],
     ['missing-edge', 2, 'DEGRADED'], ['wrong-root', 2, 'DEGRADED'], ['indirect', 2, 'DEGRADED'],
+    ['index-larger', 2, 'DEGRADED'], ['index-smaller', 2, 'DEGRADED'],
     ['dead-list-mismatch', 1, 'ERROR'], ['edge-count-mismatch', 1, 'ERROR'], ['transitive-count-mismatch', 1, 'ERROR'], ['duplicate-edge', 1, 'ERROR'],
     ['malformed', 1, 'ERROR'], ['bad-count', 1, 'ERROR'], ['absent', 2, 'UNVERIFIED'],
     ['crash', 1, 'ERROR'], ['lint-failure', 1, 'ERROR'],

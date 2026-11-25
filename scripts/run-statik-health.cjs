@@ -57,6 +57,10 @@ function runHealth(command = process.env.STATIK_BIN || 'statik', prefix = []) {
         !Array.isArray(dead.dead_files) || dead.dead_files.length !== s.dead_files) {
       throw Error('invalid dead-code summary counts');
     }
+    // Unfiltered graph and index must describe the same set size; stale or missing rows invalidate coverage.
+    if (s.total_files !== indexed.files_indexed) {
+      return report('DEGRADED', `index files=${indexed.files_indexed}, graph files=${s.total_files}; lint not run`, 2);
+    }
     if (!s.total_files || !s.entry_points) {
       return report('DEGRADED', `files=${s.total_files}, entry_points=${s.entry_points}; lint not run`, 2);
     }
