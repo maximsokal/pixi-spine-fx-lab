@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Teleport &amp; Dash Trail FX Lab</title><style>
+
+:root{color-scheme:dark;font:14px/1.45 system-ui,sans-serif;background:#111722;color:#e4ebf5}*{box-sizing:border-box}body{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}button,select,input[type=number],input[type=text],textarea{background:#222e40;border:1px solid #46566c;border-radius:5px;padding:6px}
+button{cursor:pointer}button:disabled{opacity:.4;cursor:default}header{min-height:58px;padding:9px 16px;border-bottom:1px solid #334258;display:flex;align-items:center;justify-content:space-between;gap:10px}h1{font-size:19px;margin:0}small{color:#a8b8ce}
+main{height:calc(100dvh - 58px);display:grid;grid-template-columns:minmax(0,1fr) 420px}
+.preview{display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px;min-width:0;overflow:hidden;background:#151d2b}
+.tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+#viewport{width:100%;min-height:120px;flex:1;overflow:auto;display:grid;place-items:safe center;padding:8px}
+#surface{position:relative;width:512px;aspect-ratio:1;flex:none;outline:1px solid #64758c}
+#surface canvas{width:100%;height:100%;display:block}.dark{background:#101420}.light{background:#faf8f3}.checker{background-color:#d7dde4;background-image:conic-gradient(#abb7c6 25%,transparent 0 50%,#abb7c6 0 75%,transparent 0);background-size:24px 24px}
+aside{overflow:auto;background:#1a2331;border-left:1px solid #34435b;padding:12px;min-width:0}
+details{border:1px solid #37465c;border-radius:6px;margin:0 0 10px;background:#202b3c;padding:10px}summary{font-weight:650;cursor:pointer;margin-bottom:6px}
+.control{display:grid;grid-template-columns:minmax(0,1fr) 115px;align-items:center;gap:8px;margin:7px 0}.control input,.control select{width:100%;min-width:0}.control input[type=checkbox]{width:auto;justify-self:end}
+textarea{display:block;width:100%;height:140px;font:11px/1.5 ui-monospace,monospace}#status{color:#acd5e7;min-height:20px;overflow-wrap:anywhere}#status[data-error=true]{color:#ffb1a6}
+@media(max-width:860px){main{height:auto;display:block}.preview{min-height:360px}#viewport{min-height:290px;max-height:75vh}aside{overflow:visible;border-left:0}}
+
+#guides{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;touch-action:none;overflow:hidden}
+#guides circle[data-kind]{pointer-events:all;cursor:move;touch-action:none}
+#guides path,#guides line{vector-effect:non-scaling-stroke}
+#birthMarkers{height:24px;position:relative;width:100%;background:#243144;border-radius:4px;overflow:hidden}
+#birthMarkers button{position:absolute;top:3px;width:8px;height:18px;padding:0;background:#7dd3fc;border:0;transform:translateX(-50%)}
+#birthList{max-height:96px;overflow:auto;font:11px/1.5 ui-monospace,monospace;white-space:pre-wrap}
+#status,#anchorDiagnostics{max-width:100%;overflow-wrap:anywhere}#assetLabel,#pendingFiles{overflow-wrap:anywhere}
+fieldset{border:0;padding:0;margin:0;min-width:0}fieldset:disabled{opacity:.7}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #7dd3fc;outline-offset:2px}
+.path-values{display:grid;grid-template-columns:1fr 1fr;gap:6px}.path-values label{display:grid;gap:4px}.path-values input{width:100%;min-width:0}
+</style></head><body>
+<header><div><h1>Teleport &amp; Dash Trail FX Lab</h1><small>GAME-07 · offline authoring preview · 60 FPS</small></div><span id="backendActual">Starting...</span></header>
+<main><section class="preview" aria-label="Effect preview">
+<div class="tools"><button id="play">Play</button><button id="reverse">Reverse</button><button id="resetFrame">Reset frame</button><label>Frame <input id="frame" type="range" min="0" max="39" step="1" value="0"></label><output id="frameLabel">0 / 39</output></div>
+<div id="birthMarkers" aria-label="Scheduled afterimage births"></div>
+<div id="viewport"><div id="surface" class="checker"><svg id="guides" viewBox="0 0 512 512" aria-label="Emitter and path guides"></svg></div></div>
+<div class="tools"><label>Background <select id="background"><option value="dark">Dark</option><option value="checker" selected>Checkerboard</option><option value="light">Light</option></select></label><label>Guides <input id="showGuides" type="checkbox" checked></label>
+<button id="zoomOut" aria-label="Zoom out">−</button><output id="zoomLabel">100%</output><button id="zoomIn" aria-label="Zoom in">+</button><button id="fit">Fit</button><button id="actualSize">100%</button>
+<label>Backend <select id="backend"><option value="webgl2">WebGL 2</option><option value="webgl1">WebGL 1</option><option value="webgpu">WebGPU</option></select></label></div>
+<output id="scheduleSummary"></output><output id="anchorDiagnostics"></output><div id="status" role="status" aria-live="polite"></div>
+</section><aside aria-label="Effect settings"><fieldset id="settingsPanel">
+<details open><summary>Movement &amp; trail</summary><div id="movement"></div><small>Dash length is the measured cubic arc, not endpoint distance. Teleport is a discontinuous jump.</small></details>
+<details open><summary>Afterimage spacing &amp; lifetime</summary><div id="spacing"></div><small>Count limits scheduled births. Time spacing and traveled-distance spacing use independent clocks.</small><pre id="birthList"></pre></details>
+<details><summary>Flash &amp; particles</summary><div id="accents"></div></details>
+<details id="emitterPanel" open><summary>Emitters &amp; independent layers</summary><label class="control">Emitter <select id="emitterSelect"></select></label><div class="tools"><button id="addEmitter">Add</button><button id="duplicateEmitter">Duplicate</button><button id="removeEmitter">Remove</button></div><label class="control">Layer <select id="layerSelect"><option value="emitter">Emitter</option><option value="trail">Trail</option><option value="echoes">Afterimages</option><option value="flash">Flash</option><option value="particles">Particles</option></select></label><div id="transformControls"></div><small>World, local and bone anchors use a uniform scale and heading. Inherited layer offsets follow the emitter.</small></details>
+<details id="pathPanel" open><summary>Shared cubic path</summary><label class="control">Segment <select id="segmentSelect"></select></label><label class="control">Control point <select id="pointSelect"><option value="p0">Start</option><option value="p1" selected>Handle 1</option><option value="p2">Handle 2</option><option value="p3">End</option></select></label><div class="path-values"><label>X <input type="number" id="pointX" min="-600" max="600" step="any"></label><label>Y <input type="number" id="pointY" min="-600" max="600" step="any"></label></div><div class="tools"><button id="applyPoint">Apply point</button><button id="splitPath">Split segment</button><button id="resetPath">Straight path</button></div><small>Shared path in emitter/trail-local pixels. Start is fixed at origin; drag the emitter to move it. Adjacent knots stay joined.</small></details>
+<details id="curvePanel" open><summary>Animation curves</summary><label class="control">Curve <select id="curveSelect"><option value="progressCurve">Dash progress</option><option value="widthCurve">Trail width</option><option value="echoAlphaCurve">Echo alpha</option><option value="rateCurve">Temporal rate</option><option value="intervalCurve">Temporal interval</option><option value="spacingCurve">Spatial gap</option></select></label><div id="curve"></div></details>
+<div id="palette"></div>
+<details id="spinePanel"><summary>Spine 4.2 assets &amp; animation</summary><div class="tools"><button id="sample">Load Doctor head sample</button><button id="removeSpine">Remove Spine</button></div><p id="assetLabel">No Spine asset loaded</p>
+<label class="control">Skeleton <input id="skeletonFile" type="file" accept=".json,.skel"></label><label class="control">Atlas <input id="atlasFile" type="file" accept=".atlas"></label><label class="control">Add textures <input id="textureFiles" type="file" accept=".png,.webp,.jpg,.jpeg" multiple></label><label class="control">Complete set <input id="allFiles" type="file" accept=".json,.skel,.atlas,.png,.webp,.jpg,.jpeg" multiple></label>
+<p id="pendingFiles">No files selected</p><div class="tools"><button id="clearTextures">Clear textures</button><button id="loadSpine">Load preview</button></div>
+<label class="control">Animation <select id="animation"></select></label><label class="control">Skin <select id="skin"></select></label><label class="control">Animation speed <input id="animationSpeed" type="number" min="0" max="10" step="any" value="1"></label><label class="control">Loop animation <input id="loopAnimation" type="checkbox" checked></label><label class="control">Show source <input id="showSpine" type="checkbox" checked></label><datalist id="boneNames"></datalist></details>
+<details><summary>Preset JSON</summary><textarea id="preset" aria-label="Effect preset" spellcheck="false"></textarea><div class="tools"><button id="applyPreset">Apply JSON</button><button id="syncPreset">Restore JSON</button><button id="downloadPreset">Download JSON</button><button id="resetSettings">Reset settings</button></div></details>
+<small>Authoring preview. PNG sequence and developer ZIP export are not available until T04.</small>
+</fieldset></aside></main>
+<!-- VENDOR -->
+<script type="application/json" id="sampleData">__SAMPLE_DATA__</script>
+<!-- CORES -->
+<!-- APP -->
+</body></html>
