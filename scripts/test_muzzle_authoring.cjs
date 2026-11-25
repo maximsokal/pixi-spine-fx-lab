@@ -1,0 +1,11 @@
+'use strict';
+const {test}=require('node:test'),A=require('node:assert/strict');
+const U=require('../assets/muzzle-flash/src/muzzle-authoring.js');
+const cfg={effect:{exportFrames:40,layers:{core:{x:1,y:2}}},anchors:{core:{x:0}},smoke:{x:3},smokeAnchor:{x:4}};
+const near=(a,b)=>A.ok(Math.abs(a-b)<1e-8);
+test('40 exclusive endpoint frames, deterministic clamped seek',()=>{A.equal(U.frameCount(cfg),40);A.equal(U.seek(1,cfg),39/60);A.equal(U.frame(39/60,cfg),39);A.equal(U.seek(-1,cfg),0);A.equal(U.advance(0,.1,cfg),.1);});
+test('invalid clocks and counts reject',()=>{A.throws(()=>U.advance(0,-1,cfg));A.throws(()=>U.seek(NaN,cfg));A.throws(()=>U.frameCount({effect:{exportFrames:0}}));});
+test('drag inverse matches local rotated offset',()=>{const p={x:100,y:200,rotation:90},v=U.origin(p,{x:12,y:-5}),o=U.offset(p,v.x,v.y);near(o.x,12);near(o.y,-5);A.equal(U.offset(null,1,2),null);});
+test('CSS zoom changes neither logical point nor offset',()=>{A.deepEqual(U.pointer(150,150,{left:100,top:100,width:100,height:100}),{x:256,y:256});A.deepEqual(U.pointer(350,350,{left:100,top:100,width:500,height:500}),{x:256,y:256});A.throws(()=>U.pointer(0,0,{left:0,top:0,width:0,height:1}));});
+test('layer and anchor selection independent',()=>{A.equal(U.layer(cfg,'core'),cfg.effect.layers.core);A.equal(U.layer(cfg,'smoke'),cfg.smoke);A.equal(U.anchor(cfg,'smoke'),cfg.smokeAnchor);A.throws(()=>U.layer(cfg,'bad'));});
+test('strict file selection preserves page names and rejects duplicates',()=>{const sk={name:'x.skel'},at={name:'x.atlas'},p={name:'x.png',webkitRelativePath:'folder/x.png'};const s=U.collect([sk,at,p]);A.equal(s.skeleton,sk);A.equal(s.images.get('folder/x.png'),p);A.throws(()=>U.collect([sk,at,p,p]));A.throws(()=>U.collect([sk,at]));});
