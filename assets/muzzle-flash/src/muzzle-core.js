@@ -1,10 +1,11 @@
 // GAME-01 M01b: canonical settings and pure, compiled absolute-time sampler.
 (function(root,make){
  'use strict';
- const load=(name,path)=>root[name]||(typeof require==='function'?require(path):null);
- const api=Object.freeze(make(load('FxCurves','../../template/src/curve-core.js'),
-  load('FxSpacing','../../template/src/spacing-core.js'),load('FxColors','../../template/src/color-core.js'),
-  load('FxMuzzleGeometry','./muzzle-geometry.js')));
+ const api=Object.freeze(make(
+  root.FxCurves||(typeof require==='function'?require('../../template/src/curve-core.js'):null),
+  root.FxSpacing||(typeof require==='function'?require('../../template/src/spacing-core.js'):null),
+  root.FxColors||(typeof require==='function'?require('../../template/src/color-core.js'):null),
+  root.FxMuzzleGeometry||(typeof require==='function'?require('./muzzle-geometry.js'):null)));
  if(typeof module==='object'&&module.exports)module.exports=api;else root.FxMuzzle=api;
 })(globalThis,function(C,S,COL,G){
  'use strict';
