@@ -31,7 +31,7 @@ textarea{display:block;width:100%;height:120px;font:11px/1.5 ui-monospace,monosp
 <div class="tools"><label>Background <select id="background"><option value="dark">Dark</option><option value="checker">Checkerboard</option><option value="light">Light</option></select></label>
 <label>Zoom <select id="zoom"><option value="0.5">50%</option><option value="1" selected>100%</option><option value="2">200%</option></select></label>
 <label>Backend <select id="backend"><option value="webgl2">WebGL 2</option><option value="webgl1">WebGL 1</option><option value="webgpu">WebGPU</option></select></label></div>
-<div id="status" role="status" aria-live="polite"></div><small>Drag the selected emitter or layer origin. Guides are DOM-only.</small>
+<div id="status" role="status" aria-live="polite"></div><small>Drag the selected emitter or layer origin. Guides are DOM-only.</small><output id="anchorDiagnostics" aria-live="polite"></output>
 </section><aside aria-label="Effect settings">
 <details><summary>Spine 4.2 assets and animation</summary>
 <div class="tools"><button id="sample">Load Doctor head sample</button><button id="removeSpine">Remove Spine</button></div>
@@ -52,7 +52,7 @@ textarea{display:block;width:100%;height:120px;font:11px/1.5 ui-monospace,monosp
 <details open><summary>Authoring curves</summary><label class="control">Curve <select id="curveSelect"><option value="radiusCurve">Radius</option><option value="widthCurve">Width</option><option value="opacityCurve">Opacity</option><option value="intervalCurve">Time interval</option><option value="arcSpacingCurve">Arc spacing</option></select></label><div id="curve"></div></details>
 <div id="palette"></div>
 <details open><summary>Preset JSON</summary><textarea id="preset" aria-label="Preset JSON" spellcheck="false"></textarea><div class="tools"><button id="applyPreset">Apply JSON</button><button id="syncPreset">Refresh JSON</button><button id="downloadPreset">Download</button><button id="resetSettings">Defaults</button></div></details>
-<small>Preview implementation: Bone anchors, PNG sequence and developer ZIP are not yet included.</small>
+<small>World, local and bone anchors follow the current Spine pose. Missing anchors hide dependent layers. Attachment anchors, PNG sequence and developer ZIP are not yet included.</small>
 </aside></main>
 <!-- VENDOR -->
 <!-- CORES -->

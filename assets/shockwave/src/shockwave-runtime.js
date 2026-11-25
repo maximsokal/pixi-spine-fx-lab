@@ -6,7 +6,7 @@
   if(!PIXI||typeof PIXI.MeshSimple!=='function'||!host||host.destroyed)
    throw TypeError('GAME-05 requires a live Pixi 8.22 host');
   const S=root.FxShockwave;
-  let plan=S.createPlan(settings),dead=false,last=null,seconds=0,totalCreated=0;
+  let plan=S.createPlan(settings),dead=false,last=null,seconds=0,totalCreated=0,poses={};
   const wrapper=new PIXI.Container(),owners=new Map();
   wrapper.label='GAME-05 shockwave';
   const textures=[];
@@ -87,21 +87,23 @@
     view.tint=color(item.rgba);view.alpha=item.rgba[3];view.visible=true;
    }
   }
-  function seek(t){
+  function seek(t,nextPoses=poses){
    if(dead)throw Error('GAME-05 renderer destroyed');
-   const next=plan.sample(t);
+   const snapshot=Object.fromEntries(Object.entries(nextPoses).map(([k,p])=>[k,p?{...p}:null])),next=plan.sample(t,snapshot);
    for(const row of next.emitters){
     const owner=ownerFor(row.id);
-    owner.container.position.set(row.origin.x,row.origin.y);
-    owner.container.rotation=row.origin.rotation*DEG;
     for(const kind of KINDS){
-     const layer=owner.layers[kind],transform=row.transforms[kind];
-     layer.surface.position.set(transform.x,transform.y);
-     layer.surface.rotation=transform.rotation*DEG;
+     const layer=owner.layers[kind],transform=row.resolved[kind];
+     layer.surface.visible=!!transform;
+     if(transform){
+      layer.surface.position.set(transform.x,transform.y);
+      layer.surface.rotation=transform.rotation*DEG;
+      layer.surface.scale.set(transform.scale);
+     }
      paint(layer,row.layers[kind]);
     }
    }
-   last=next;seconds=t;return last;
+   last=next;seconds=t;poses=snapshot;return last;
   }
   function configure(next){
    if(dead)throw Error('GAME-05 renderer destroyed');

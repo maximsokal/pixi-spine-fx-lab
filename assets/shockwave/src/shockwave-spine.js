@@ -6,6 +6,28 @@
    atlas:new Blob([spec.atlas]),images:new Map(Object.entries(spec.images).map(([name,b64])=>
     [name,new Blob([Uint8Array.from(atob(b64),c=>c.charCodeAt(0))],{type:'image/png'})]))};
  }
+ // Coordinates are in the FX host (model's direct parent), not camera pixels.
+ // The v1 core supports a positive uniform scale and rotation, not a full affine
+ // basis. Project onto the transformed +X axis, preserving origin and heading.
+ // Spine Pixi sets Skeleton.yDown=true, so negative determinants are normal.
+ // Reflection, nonuniform scaling and shear of local FX offsets are not reproduced.
+ function anchorPoses(model){
+  const m=model.localTransform;const values=[m?.a,m?.b,m?.c,m?.d,m?.tx,m?.ty];
+  if(!values.every(Number.isFinite))throw Error('Invalid Spine model transform');
+  const [a,b,c,d,tx,ty]=values,result=Object.create(null);
+  function put(name,x,y,ax,ay,bx,by){
+   const scale=Math.hypot(ax,ay),sy=Math.hypot(bx,by),det=ax*by-ay*bx;
+   if(![x,y,scale,sy,det].every(Number.isFinite)||scale<=1e-10||sy<=1e-10||Math.abs(det)<=1e-10)return;
+   result[name]={x,y,rotation:Math.atan2(ay,ax)*180/Math.PI,scale};
+  }
+  put('$local',tx,ty,a,b,c,d);
+  for(const bone of model.skeleton.bones){
+   if(!bone.active||bone.data.name==='$local')continue;
+   put(bone.data.name,a*bone.worldX+c*bone.worldY+tx,b*bone.worldX+d*bone.worldY+ty,
+    a*bone.a+c*bone.c,b*bone.a+d*bone.c,a*bone.b+c*bone.d,b*bone.b+d*bone.d);
+  }
+  return result;
+ }
  async function create(source){
   if(!source?.skeleton||!source?.atlas||!source.images?.size)throw Error('Select one skeleton, one atlas and all texture pages');
   const binary=/\.skel$/i.test(source.name);
@@ -60,5 +82,5 @@
     defaultSkin:parsed.defaultSkin?.name||skins[0]||'',defaultAnimation:animations.includes('idle')?'idle':animations[0]||'',destroy};
   }catch(error){destroy();throw error;}
  }
- root.FxShockwaveSpine=Object.freeze({create,sample});
+ root.FxShockwaveSpine=Object.freeze({create,sample,anchorPoses});
 })(globalThis);
