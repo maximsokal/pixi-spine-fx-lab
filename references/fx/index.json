@@ -546,6 +546,26 @@
         6,
         7
       ]
+    },
+    {
+      "effectId": "fx.game.poison-cloud",
+      "category": "game",
+      "path": "references/fx/game/poison-cloud.md",
+      "keywords": [
+        "poison cloud",
+        "toxic fog",
+        "poison spores",
+        "ядовитое облако",
+        "отруйна хмара"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
     }
   ]
 }

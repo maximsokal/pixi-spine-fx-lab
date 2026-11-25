@@ -673,7 +673,7 @@
       "issue": 49,
       "title": "Poison Cloud",
       "priority": "P2",
-      "localEffectId": null,
+      "localEffectId": "fx.game.poison-cloud",
       "coreIssues": [
         3,
         4,

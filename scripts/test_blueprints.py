@@ -21,7 +21,7 @@ class BlueprintTests(unittest.TestCase):
     def test_registry_is_small_and_complete(self):
         self.assertEqual(self.catalog["blueprintSchemaVersion"], 1)
         self.assertEqual(set(self.catalog["categories"]), {"fire", "ice", "game", "water", "air"})
-        self.assertEqual(len(self.blueprints), 24)
+        self.assertEqual(len(self.blueprints), 25)
         self.assertEqual(set(self.blueprints), {
             "fx.fire.burn-transition", "fx.fire.torch-flame",
             "fx.fire.fire-explosion", "fx.fire.fireball-projectile",
@@ -29,14 +29,14 @@ class BlueprintTests(unittest.TestCase):
             "fx.fire.smoke-plume",
             "fx.fire.heat-haze",
             "fx.water.water-splash", "fx.water.rainfall", "fx.water.water-ripples", "fx.water.waterfall", "fx.water.rising-bubbles", "fx.water.steam-jet", "fx.air.wind-gust",
-            "fx.ice.frost-dissolve", "fx.game.hit-flash", "fx.air.snowfall", "fx.game.loot-sparkle", "fx.game.shockwave", "fx.game.magic-portal", "fx.game.teleport-dash", "fx.game.magic-shield", "fx.game.healing-aura", "fx.game.muzzle-flash"})
-        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 24)
-        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 24)
+            "fx.ice.frost-dissolve", "fx.game.hit-flash", "fx.air.snowfall", "fx.game.loot-sparkle", "fx.game.shockwave", "fx.game.magic-portal", "fx.game.teleport-dash", "fx.game.magic-shield", "fx.game.healing-aura", "fx.game.muzzle-flash", "fx.game.poison-cloud"})
+        self.assertEqual(len({row["path"] for row in self.catalog["entries"]}), 25)
+        self.assertEqual(len({row["effectId"] for row in self.catalog["entries"]}), 25)
         expected = {"fire":[3,4,5,6,7], "ice":[3,6,7], "game":[3,7], "water":[3,4,10,5,6,7], "air":[3,4,10,5,6,7]}
         for row in self.catalog["entries"]:
             if row["effectId"] in ("fx.fire.fireball-projectile", "fx.game.teleport-dash"):
                 self.assertEqual(row["dependsOnCoreIssues"],[3,4,10,5,6,7])
-            elif row["effectId"] in ("fx.game.muzzle-flash","fx.game.healing-aura","fx.game.magic-shield","fx.game.magic-portal","fx.game.shockwave","fx.game.loot-sparkle","fx.water.rainfall","fx.water.water-ripples","fx.water.rising-bubbles","fx.water.steam-jet","fx.air.snowfall"):
+            elif row["effectId"] in ("fx.game.poison-cloud","fx.game.muzzle-flash","fx.game.healing-aura","fx.game.magic-shield","fx.game.magic-portal","fx.game.shockwave","fx.game.loot-sparkle","fx.water.rainfall","fx.water.water-ripples","fx.water.rising-bubbles","fx.water.steam-jet","fx.air.snowfall"):
                 self.assertEqual(row["dependsOnCoreIssues"],[3,4,5,6,7])
             else:
                 self.assertEqual(row["dependsOnCoreIssues"],expected[row["category"]])
@@ -44,6 +44,9 @@ class BlueprintTests(unittest.TestCase):
     def test_routing_and_exact_contracts(self):
         cases = [
             ("Create a teleport and dash trail", "fx.game.teleport-dash", {"parameters","curves","spacing","pathGeometry","emitters","colors","timeline"}),
+            ("Create a poison cloud", "fx.game.poison-cloud", {"parameters","curves","spacing","emitters","colors","timeline"}),
+            ("Ядовитое облако", "fx.game.poison-cloud", {"parameters","curves","spacing","emitters","colors","timeline"}),
+            ("Отруйна хмара", "fx.game.poison-cloud", {"parameters","curves","spacing","emitters","colors","timeline"}),
             ("Create a muzzle flash", "fx.game.muzzle-flash", {"parameters","curves","spacing","emitters","colors","timeline"}),
             ("Дульная вспышка", "fx.game.muzzle-flash", {"parameters","curves","spacing","emitters","colors","timeline"}),
             ("Спалах пострілу", "fx.game.muzzle-flash", {"parameters","curves","spacing","emitters","colors","timeline"}),
@@ -107,7 +110,7 @@ class BlueprintTests(unittest.TestCase):
                     self.assertTrue((ROOT / file).is_file(), file)
 
     def test_no_fake_implementation(self):
-        for effect in ["fx.ice.frost-dissolve", "fx.game.hit-flash", "fx.air.snowfall", "fx.game.magic-shield", "fx.game.healing-aura", "fx.game.muzzle-flash"]:
+        for effect in ["fx.ice.frost-dissolve", "fx.game.hit-flash", "fx.air.snowfall", "fx.game.magic-shield", "fx.game.healing-aura", "fx.game.muzzle-flash", "fx.game.poison-cloud"]:
             data = self.blueprints[effect]
             self.assertEqual(data["implementation"]["status"], "specification-only")
             self.assertFalse(data["tests"]["verified"])
