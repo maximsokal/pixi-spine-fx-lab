@@ -6,10 +6,11 @@
  const general={flashLength:[8,260,1],coneAngle:[5,150,1],flashWidth:[2,100,1],flashDuration:[1,24,1],tongueCount:[1,20,1],sparkCount:[0,50,1],sparkLifeFrames:[1,60,1],sparkSpeed:[0,10000,1],burstFrames:[1,24,1],minInterval:[0,1,.001],timeJitter:[0,.45,.01],tongueGap:[1,30,.1],minGap:[1,30,.1],maxGap:[1,30,.1],spatialJitter:[0,.45,.01],exportFrames:[1,3600,1]};
  const transforms={enabled:null,x:[-10000,10000,.1],y:[-10000,10000,.1],rotation:[-360,360,.1],delayFrames:[0,60,1],opacity:[0,1,.01]};
  const smokeFields={count:[0,16,1],spreadFrames:[0,24,1],lifeFrames:[1,120,1],speed:[0,1000,1],radius:[1,100,.1],growth:[1,4,.1]};
+ let resumeExport=false;
  let cfg=initial(),scene=null,source=null,seconds=0,playing=false,previous=null,busy=false,drag=null,animation='',skin='';
  const status=(s,error=false)=>{$('status').textContent=s;$('status').dataset.error=String(error);};
  function play(v){playing=v;previous=null;$('play').textContent=v?'Pause':'Play';}
- function lock(v){busy=v;play(false);$('controls').disabled=v;$('transport').disabled=v;$('assets').disabled=v;$('backend').disabled=v;}
+ function lock(v){busy=v;play(false);$('controls').disabled=v;$('transport').disabled=v;$('assets').disabled=v;$('backend').disabled=v;$('exportFields').disabled=v;}
  function attempt(fn){try{fn();}catch(e){status(e.message,true);}}
  function context(s=scene){return {host:s.host,world:s.app.stage,model:s.asset?.model||null};}
  function options(){return {animation,skin,speed:Number($('speed').value),visible:$('showSpine').checked};}
@@ -56,7 +57,7 @@
    paint(next,seconds,opt);$('surface').prepend(next.app.canvas);const old=scene;scene=next;source=nextSource;animation=opt.animation;skin=opt.skin;cfg=next.fx.settings;destroy(old);
    $('actual').textContent=actual.toUpperCase();$('backend').value=actual;document.body.dataset.ready='true';populate();status('Ready');
   }catch(e){if(scene!==next)destroy(next);$('backend').value=scene?.actual||backend;status(e.message,true);}
-  finally{lock(false);if(scene){attempt(()=>{refresh();seek(seconds);});}else{$('controls').disabled=$('transport').disabled=$('assets').disabled=true;}}
+  finally{lock(false);if(scene){attempt(()=>{refresh();seek(seconds);});}else{$('controls').disabled=$('transport').disabled=$('assets').disabled=$('exportFields').disabled=true;}}
  }
  $('backend').onchange=()=>rebuild($('backend').value);$('background').onchange=()=>{$('surface').className=$('background').value;};$('zoom').oninput=()=>{$('surface').style.width=512*Number($('zoom').value)/100+'px';};
  $('load').onclick=()=>attempt(()=>rebuild(scene.actual,U.collect($('files').files),true));$('sample').onclick=()=>attempt(()=>rebuild(scene.actual,Sp.sample(JSON.parse($('sampleData').textContent)),true));$('remove').onclick=()=>rebuild(scene.actual,null,true);
@@ -64,6 +65,16 @@
  $('play').onclick=()=>{if(!playing&&seconds>=(U.frameCount(cfg)-1)/60)seek(0);play(!playing);};$('reset').onclick=()=>{play(false);attempt(()=>seek(0));};$('frame').oninput=()=>{play(false);attempt(()=>seek(Number($('frame').value)/60));};
  $('layer').onchange=()=>{controls();palette();handle();};$('curveKey').onchange=curve;$('apply').onclick=()=>attempt(()=>{change(JSON.parse($('preset').value));refresh();});$('defaults').onclick=()=>attempt(()=>{change(initial());refresh();});
  const h=$('handle');h.onpointerdown=e=>{if(busy||!scene)return;play(false);h.setPointerCapture(e.pointerId);drag=e.pointerId;};h.onpointermove=e=>{if(drag!==e.pointerId||busy)return;attempt(()=>{const p=U.pointer(e.clientX,e.clientY,$('surface').getBoundingClientRect()),o=U.offset(currentPose(),p.x,p.y);if(o)edit(c=>Object.assign(U.layer(c,selected()),o),false);});};h.onpointerup=h.onpointercancel=h.onlostpointercapture=()=>{drag=null;if(scene)controls();};
+ const E=FxShieldExportUi;
+ function readExport(){return E.readSpec(Object.fromEntries(['x','y','width','height','frames'].map(k=>[k,$('export-'+k).value])),cfg.effect.exportFrames);}
+ const job=E.createController({request(){
+  if(busy||!scene)throw Error('Preview unavailable');const spec=readExport(),opts=options();if(!$('speed').value||!$('speed').validity.valid)throw Error('Invalid speed');
+  const compile=S.createCompiler({compileEffect:M.compile,anchors:A,colors:FxColors,...context()});
+  return {...spec,codec:FxShieldExport,compile,settings:cfg,backend:scene.actual,assetInfo:scene.asset?{name:source.name,version:scene.asset.version,options:opts}:null,createScene:FxMuzzleBake.sceneFactory({source,poseOptions:opts}),yieldFrame:()=>new Promise(r=>setTimeout(r,0))};
+ },bake:FxMuzzleExport.bakeSequence,begin(){resumeExport=playing;lock(true);$('cancelExport').disabled=false;status('Baking PNG sequence');},end(){ $('cancelExport').disabled=true;lock(false);handle();play(resumeExport);},progress(n,total){$('exportProgress').max=total;$('exportProgress').value=n;$('exportCount').textContent=n+' / '+total;},report:status,download(bytes){
+  const url=URL.createObjectURL(new Blob([bytes],{type:'application/zip'})),a=document.createElement('a');a.href=url;a.download='muzzle-flash-png.zip';try{document.body.append(a);a.click();}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+ }});
+ $('exportPng').onclick=()=>job.run();$('cancelExport').onclick=()=>{if(job.cancel())status('Cancelling PNG export');};
  function tick(now){if(playing&&!busy&&scene){if(previous!==null)attempt(()=>{seek(U.advance(seconds,(now-previous)/1000,cfg));if(seconds>=(U.frameCount(cfg)-1)/60)play(false);});if(playing)previous=now;}requestAnimationFrame(tick);}
- window.addEventListener('pagehide',()=>{play(false);destroy(scene);scene=null;},{once:true});requestAnimationFrame(tick);rebuild('webgl2');
+ window.addEventListener('pagehide',()=>{job.cancel();play(false);destroy(scene);scene=null;},{once:true});requestAnimationFrame(tick);rebuild('webgl2');
 })();
