@@ -45,3 +45,10 @@ test('finite anchor transform whose derived extent overflows is not rendered',()
  A.deepEqual(s.diagnostics.map(d=>d.layer),['aperture']);
  A.ok(s.emitters[0].layers.rim.length>0);A.ok(s.emitters[0].layers.particles.length>0);
 });
+
+test('rim seam rejects hidden default-clamp and stepped endpoint jumps',()=>{
+ const c=P.defaults();c.rimCurve.clamp='default';c.rimCurve.keys.at(-1).y=.1;A.throws(()=>P.compile(c),/seam/);
+ const d=P.defaults();d.rimCurve.keys[1].mode='stepped';A.throws(()=>P.compile(d),/seam/);
+ const e=P.defaults();e.rimCurve.clamp='default';e.rimCurve.keys[0].y=.7;A.throws(()=>P.compile(e),/seam/);
+ const f=P.defaults();f.rimCurve.clamp='default';A.doesNotThrow(()=>P.compile(f));
+});

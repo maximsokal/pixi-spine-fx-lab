@@ -553,6 +553,4 @@ and exact original bytes in both developer ZIPs passed on desktop. Earlier
 actual Vite builds and WebGL2/WebGPU/fallback runs with JSON passed in 5d9d37a.
 A separate rebuilt SKEL developer example is not certified. No mobile/max-size
 performance certification. Optional scene refraction and attachment anchors
-remain excluded; exact affine transforms are not claimed. The previously
-reported one-sided/stepped rim-curve seam interpretation remains a separate
-edge case, not resolved by this acceptance slice.
+remain excluded; exact affine transforms are not claimed. The follow-up seam regression rejects unequal exact and one-sided rim curve endpoint values, including default clamp and stepped interpolation. Interior stepped keys remain supported. The issue backlog also routes GAME-06 to this reference.

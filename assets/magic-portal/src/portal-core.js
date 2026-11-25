@@ -32,7 +32,12 @@
   if(c.minGapPx>c.maxGapPx)fail('gap range');
   c.distribution=one(input.distribution,['even','random','stratified','clustered'],'distribution');c.frequencySource=one(input.frequencySource,['rate','interval'],'frequencySource');c.quality=one(input.quality,Object.keys(BUDGETS),'quality');
   for(const k of ['apertureCurve','swirlCurve','rimCurve','rateCurve','intervalCurve','spacingCurve','alphaCurve']){const v=C.normalize(input[k]),b=base[k];for(const prop of ['parameterKey','domain','inputUnit','valueUnit'])if(v[prop]!==b[prop])fail('invalid '+k);if(v.valueRange[0]<b.valueRange[0]||v.valueRange[1]>b.valueRange[1])fail('curve range '+k);c[k]=v}
-  if(Math.abs(C.evaluate(c.rimCurve,0)-C.evaluate(c.rimCurve,1))>1e-9)fail('rim width seam');
+  // Exact endpoint values alone miss default-clamp and stepped one-sided jumps.
+  const rc=c.rimCurve,first=rc.keys[0],last=rc.keys.at(-1),prior=rc.keys.at(-2);
+  const start=C.evaluate(rc,0),finish=C.evaluate(rc,1);
+  const right=first.x===0&&rc.keys.length>1?first.y:start;
+  const left=last.x===1&&prior?(prior.mode==='stepped'?prior.y:last.y):finish;
+  if([finish,right,left].some(v=>Math.abs(v-start)>1e-9))fail('rim width seam');
   if(c.mode==='oneShot'&&(C.evaluate(c.apertureCurve,0)!==0||C.evaluate(c.apertureCurve,1)!==0))fail('one-shot aperture endpoints');
   c.palette=COL.normalize(input.palette);if(c.palette.parameterKey!=='portalColor'||c.palette.domain!=='particleAge')fail('palette');
   const ids=new Set();function transform(t,layer){const a=t.anchor;fields(a,anchor('world'));one(a.type,layer?['inherit','world','local','bone']:['world','local','bone'],'anchor');if(typeof a.name!=='string'||a.name.length>128||(a.type==='bone'?!a.name.trim():a.name!==''))fail('anchor name');
