@@ -9,7 +9,7 @@
  const status=(m,error=false)=>{$('status').textContent=m;$('status').dataset.error=String(error);};
  const emitter=()=>cfg.emitters.find(e=>e.id===selected),layer=()=>$('layer').value,object=c=>c.emitters.find(e=>e.id===selected);
  function setPlaying(v){playing=v;previous=null;$('play').textContent=v?'Pause':'Play';}
- function lock(v){busy=v;setPlaying(false);for(const id of ['backend','files','sample','load','remove','animation','skin','speed','showSpine','apply','defaults','add','duplicate','delete','hit','clearHits','emitter','layer','curveKey','customSpacing','frame','play','reverse','reset','cropX','cropY','cropWidth','cropHeight','exportFrames','exportPng'])$(id).disabled=v;for(const el of document.querySelectorAll('#globalControls input,#globalControls select,#emitterControls input,#emitterControls select,#layerControls input,#layerControls select'))el.disabled=v;}
+ function lock(v){busy=v;setPlaying(false);for(const id of ['backend','files','sample','load','remove','animation','skin','speed','showSpine','apply','defaults','add','duplicate','delete','hit','clearHits','emitter','layer','curveKey','customSpacing','frame','play','reverse','reset','cropX','cropY','cropWidth','cropHeight','exportFrames','exportPng','exportWebgl','exportWebgpu'])$(id).disabled=v;for(const el of document.querySelectorAll('#globalControls input,#globalControls select,#emitterControls input,#emitterControls select,#layerControls input,#layerControls select'))el.disabled=v;}
  function pose(asset,t,anim=animation,sk=skin){return U.poseMap(Sp.pose(asset,t,{animation:anim,skin:sk,speed:Number($('speed').value),visible:$('showSpine').checked}));}
  function updateHandle(){const e=emitter(),p=e&&U.resolve(e,layer()==='emitter'?null:e.layers[layer()],poses),h=$('handle');h.hidden=!p;if(p){h.style.left=p.x/512*100+'%';h.style.top=p.y/512*100+'%';}}
  function seek(t){if(!scene)return;const next=cfg.mode==='loop'?U.advance(t,0,cfg):Math.max(0,Math.min(U.lastFrame(cfg)/60,t));const p=pose(scene.asset,next),result=scene.fx.seek(next,p);scene.app.render();time=next;poses=p;const frame=Math.min(U.lastFrame(cfg),Math.floor(time*60+1e-8));$('frame').max=U.lastFrame(cfg);$('frame').value=frame;$('frameLabel').textContent=frame+' / '+U.lastFrame(cfg);$('diagnostics').textContent=result.diagnostics.map(d=>d.emitterId+' / '+d.layer+': '+d.reason).join('; ');updateHandle();}
@@ -55,5 +55,19 @@
   download(bytes){const url=URL.createObjectURL(new Blob([bytes],{type:'application/zip'})),a=document.createElement('a');a.href=url;a.download='magic-shield-png.zip';try{document.body.append(a);a.click();}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}}
  });
  $('exportPng').onclick=()=>job.run();$('cancelExport').onclick=()=>{if(job.cancel())status('Cancelling PNG export');};cropGuide();
+ async function developerExport(target){
+  if(busy||!scene)return;
+  const resume=playing;try{
+   const spec=readExport(),options={animation,skin,speed:Number($('speed').value),visible:$('showSpine').checked};
+   if(!$('speed').value||!$('speed').validity.valid)throw Error('Invalid animation speed');
+   const D=FxShieldDeveloper,sources=Object.fromEntries(D.FILES.map(name=>[name,$(name)?.textContent]));
+   const params={...spec,target,settings:cfg,previewSeconds:time,source:assetSource,options,assetInfo:scene.asset?{version:scene.asset.version}:null,sources,licenses:$('runtimeLicenses').textContent,compile:S.compile,cropSpec:FxShieldExport.cropSpec,makeZip:FxShieldExport.makeZip};
+   lock(true);status('Preparing '+target+' developer archive');
+   const result=await D.developer(params),url=URL.createObjectURL(new Blob([result.zip],{type:'application/zip'})),a=document.createElement('a');
+   a.href=url;a.download='magic-shield-developer-'+target+'.zip';try{document.body.append(a);a.click();}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+   status('Developer archive exported');
+  }catch(error){status(error.message,true);}finally{lock(false);controls();setPlaying(resume);}
+ }
+ $('exportWebgl').onclick=()=>developerExport('webgl');$('exportWebgpu').onclick=()=>developerExport('webgpu');
  function tick(now){if(playing&&!busy&&scene){if(previous!==null)attempt(()=>{const next=U.advance(time,Math.min(.1,(now-previous)/1000)*direction,cfg);seek(next);if(cfg.mode==='oneShot'&&(time===0||time===U.lastFrame(cfg)/60))setPlaying(false);});if(playing)previous=now;}requestAnimationFrame(tick);}requestAnimationFrame(tick);initialize('webgl2');
 })();
