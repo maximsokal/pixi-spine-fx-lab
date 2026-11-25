@@ -203,4 +203,20 @@ for(let d=0;d<=at.length;d+=5){
  assert.deepEqual(combined.events.map(e=>e.angle),[0,0,Math.PI,Math.PI]);
  assert.deepEqual(S.combineSchedule({...opts,mode:'time'}).events,S.combineSchedule({...opts,motion,mode:'time'}).events);
 }
+// A discontinuous jump must copy the destination, not reconstruct it arithmetically.
+{
+ const motion=[{time:0,x:999950,y:-999950},{time:1,x:1000000,y:-1000000},{time:2,x:0.1,y:-0.3},{time:3,x:20,y:30}];
+ const times=[1.5,2-1e-7,2,2+1e-7,2.5];
+ const schedule={events:times.map(time=>({time}))};
+ const opts={schedule,placement:place,motion,mode:'both',teleportThresholdPx:200,maxEvents:100};
+ const result=S.combineSchedule(opts);
+ assert.equal(result.events.length,5);
+ assert.deepEqual(result.events.slice(0,2).map(({x,y})=>[x,y]),[[1000000,-1000000],[1000000,-1000000]]);
+ assert.deepEqual([result.events[2].x,result.events[2].y],[motion[2].x,motion[2].y],'exact destination coordinate identity');
+ assert.equal(result.events[2].angle,-Math.PI/4);
+ assert.deepEqual(result,S.combineSchedule({...opts,motion:motion.map((m,i)=>i===2?{...m,teleport:true}:m)}));
+ assert.ok(result.events[3].x>motion[2].x&&result.events[3].y>motion[2].y);
+ assert.deepEqual(result.events.map(e=>e.distance),[10,20,30,40,50]);
+}
+
 console.log('PASS FX-CORE-02 temporal scheduling, 30/60/120 FPS, burst/custom/jitter/caps, arc-length, modes, stationary/teleport/reverse/zero');

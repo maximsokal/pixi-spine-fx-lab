@@ -359,9 +359,13 @@
             d=a.distance+(b.distance-a.distance)*fraction;
             const lo=stops[left],hi=stops[right];
             // A discontinuity is a jump at the destination timestamp, not motion.
-            const f=b.teleport?(e.time>=b.time?1:0):fraction;
-            motionPoint={x:lo.x+(hi.x-lo.x)*f,y:lo.y+(hi.y-lo.y)*f,
-              angle:b.angle};
+            if(b.teleport){
+              const pose=e.time>=b.time?hi:lo;
+              motionPoint={x:pose.x,y:pose.y,angle:b.angle};
+            }else{
+              motionPoint={x:lo.x+(hi.x-lo.x)*fraction,y:lo.y+(hi.y-lo.y)*fraction,
+                angle:b.angle};
+            }
           }else motionPoint={...stops[0],angle:0};
         }
         if(d+1e-9>=threshold(next)){
