@@ -242,7 +242,7 @@ class ReportContractTests(unittest.TestCase):
         refs = fxv.catalog_requirements(ROOT)
         self.assertEqual(set(refs), {"fx.fire.burn-transition", "fx.fire.torch-flame",
                                      "fx.fire.fire-explosion", "fx.fire.fireball-projectile", "fx.fire.embers-sparks", "fx.fire.smoke-plume", "fx.fire.heat-haze", "fx.water.water-splash", "fx.water.rainfall", "fx.water.water-ripples", "fx.water.waterfall", "fx.water.rising-bubbles", "fx.water.steam-jet", "fx.air.wind-gust",
-                                     "fx.ice.frost-dissolve", "fx.game.hit-flash", "fx.air.snowfall", "fx.game.loot-sparkle", "fx.game.shockwave"})
+                                     "fx.ice.frost-dissolve", "fx.game.hit-flash", "fx.air.snowfall", "fx.game.loot-sparkle", "fx.game.shockwave", "fx.game.magic-portal"})
         for item in refs.values():
             self.assertEqual(set(item["phases"]), {"original","active","burned"}
                              if item["effectId"] == "fx.fire.burn-transition"
