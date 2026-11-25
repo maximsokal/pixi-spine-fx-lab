@@ -12,7 +12,7 @@
  const status=(msg,error=false)=>{$('status').textContent=msg;$('status').dataset.error=String(error);};
  const selected=()=>cfg.emitters.find(e=>e.id===selectedId),kind=()=>$('layerSelect').value,end=()=> (cfg.durationFrames-1)/60,period=()=>cfg.durationFrames/60;
  function setPlaying(v){playing=v;previous=null;$('play').textContent=v?'Pause':'Play';}
- function lock(v){busy=v;for(const id of ['backend','frame','play','reverse','resetFrame','addEmitter','duplicateEmitter','removeEmitter','applyPreset','resetSettings','sample','removeSpine','skeletonFile','atlasFile','textureFiles','allFiles','clearTextures','loadSpine','animation','skin','animationSpeed','showSpine','bakePng','bakeFrames','bakeX','bakeY','bakeWidth','bakeHeight','showCrop','cropHandle'])$(id).disabled=v;if(!v)refreshEmitterButtons();}
+ function lock(v){busy=v;for(const id of ['backend','frame','play','reverse','resetFrame','addEmitter','duplicateEmitter','removeEmitter','applyPreset','resetSettings','sample','removeSpine','skeletonFile','atlasFile','textureFiles','allFiles','clearTextures','loadSpine','animation','skin','animationSpeed','showSpine','webglZip','webgpuZip','bakePng','bakeFrames','bakeX','bakeY','bakeWidth','bakeHeight','showCrop','cropHandle'])$(id).disabled=v;if(!v)refreshEmitterButtons();}
  function syncPreset(){$('preset').value=JSON.stringify(cfg,null,2);}
  const identity={x:0,y:0,rotation:0,scale:1};
  const validPose=p=>p&&[p.x,p.y,p.rotation,p.scale].every(Number.isFinite)&&p.scale>1e-10;
@@ -22,7 +22,7 @@
  function origin(e,k){if(!e)return null;return compose(parentFor(e,k),k==='emitter'?e:e.layers[k]);}
  function updateHandle(){const p=origin(selected(),kind()),h=$('originHandle');h.hidden=!p||p.x<0||p.y<0||p.x>512||p.y>512;if(!h.hidden){h.style.left=p.x/512*100+'%';h.style.top=p.y/512*100+'%';}}
  function seek(t){
-  time=cfg.mode==='loop'?((t%period())+period())%period():clamp(t,0,end());
+  time=cfg.mode==='loop'?(t>=0&&t<period()?t:((t%period())+period())%period()):clamp(t,0,end());
   const frame=clamp(Math.floor(time*60+1e-7),0,cfg.durationFrames-1);
   $('frame').max=cfg.durationFrames-1;$('frame').value=frame;$('frameLabel').textContent=frame+' / '+(cfg.durationFrames-1);
   poses=pose(spineAsset,time);const s=fx?.seek(time,poses);app?.render();updateHandle();
@@ -139,6 +139,23 @@
    status('Exported '+frameCount+' PNG frames');
   }catch(e){status(e.message,true)}finally{bakeAbort=null;$('cancelBake').disabled=true;lock(false);direction=wasDirection;if(wasPlaying)setPlaying(true)}
  }
+
+async function exportDeveloper(target){
+  if(busy||!fx)return;
+  let crop,frameCount;try{crop=readCrop();frameCount=integer('bakeFrames')}catch(e){status(e.message,true);return}
+  const settings=structuredClone(cfg),retained=source?{...source,images:new Map(source.images)}:null;
+  const options={animation,skin,speed:animationSpeed,visible:spineVisible},assetInfo=spineAsset?{version:spineAsset.version}:null;
+  const previewSeconds=time,wasPlaying=playing,wasDirection=direction;
+  setPlaying(false);lock(true);
+  try{
+   const names=['curve-core.js','spacing-core.js','color-core.js','timeline-core.js','portal-core.js','portal-runtime.js','portal-spine.js'];
+   const r=await FxPortalExportBrowser.developer({settings,target,source:retained,options,assetInfo,previewSeconds,crop,frameCount,sources:Object.fromEntries(names.map(n=>[n,$(n).textContent])),licenses:$('runtimeLicenses').textContent});
+   const url=URL.createObjectURL(new Blob([r.zip],{type:'application/zip'})),a=document.createElement('a');
+   a.href=url;a.download='MagicPortal_'+target+'.zip';try{a.click()}finally{setTimeout(()=>URL.revokeObjectURL(url),30000)}
+   status('Exported '+target+' developer ZIP');
+  }catch(e){status(e.message,true)}finally{lock(false);direction=wasDirection;if(wasPlaying)setPlaying(true)}
+ }
+ $('webglZip').onclick=()=>exportDeveloper('webgl');$('webgpuZip').onclick=()=>exportDeveloper('webgpu');
 
  $('bakePng').onclick=bake;$('cancelBake').onclick=()=>bakeAbort?.abort();guide();
  $('play').onclick=()=>{if(playing){setPlaying(false);return;}direction=1;if(cfg.mode==='oneShot'&&time>=end())seek(0);setPlaying(true);};

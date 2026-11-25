@@ -57,7 +57,8 @@ textarea{display:block;width:100%;height:140px;font:11px/1.5 ui-monospace,monosp
 <div id="emitterControls"></div><label class="control">Layer <select id="layerSelect"><option value="emitter">Emitter</option><option value="aperture">Aperture</option><option value="rim">Rim and runes</option><option value="particles">Particles</option></select></label><div id="layerControls"></div></details>
 <details open><summary>Authoring curves</summary><label class="control">Curve <select id="curveSelect"><option value="apertureCurve">Aperture open</option><option value="swirlCurve">Swirl speed</option><option value="rimCurve">Rim width</option><option value="rateCurve">Emission rate</option><option value="intervalCurve">Time interval</option><option value="spacingCurve">Arc spacing</option><option value="alphaCurve">Particle alpha</option></select></label><div id="curve"></div></details>
 <div id="palette"></div><details open><summary>Preset JSON</summary><textarea id="preset" aria-label="Preset JSON" spellcheck="false"></textarea><div class="tools"><button id="applyPreset">Apply JSON</button><button id="syncPreset">Refresh JSON</button><button id="downloadPreset">Download</button><button id="resetSettings">Defaults</button></div></details>
-<small>Spine 4.2 JSON/SKEL and bone/local anchors. Missing anchors hide only dependent layers. Slot/attachment anchors and developer ZIP are not included yet.</small>
+<details open><summary>Developer projects</summary><div class="tools"><button id="webglZip">WebGL ZIP</button><button id="webgpuZip">WebGPU ZIP</button></div><small>Pinned Vite project, current preset and original Spine files; WebGPU prefers GPU with WebGL fallback.</small></details>
+<small>Spine 4.2 JSON/SKEL and bone/local anchors. Missing anchors hide only dependent layers. Slot/attachment anchors are not included.</small>
 </aside></main>
 <!-- VENDOR -->
 <!-- CORES -->

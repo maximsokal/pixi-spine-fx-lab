@@ -1,0 +1,29 @@
+'use strict';
+const A=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+(async()=>{
+ const folder=path.resolve(process.argv[2]),target=process.argv[3],port=Number(process.argv[4]),fallback=process.argv[5]==='fallback';
+ const preset=JSON.parse(fs.readFileSync(path.join(folder,'preset.json'),'utf8'));
+ const pkg=JSON.parse(fs.readFileSync(path.join(folder,'package.json'),'utf8'));
+ A.equal(pkg.dependencies['pixi.js'],'8.22.0');A.equal(pkg.dependencies['@esotericsoftware/spine-pixi-v8'],'4.2.120');
+ const base='http://127.0.0.1:'+port;
+ const server=spawn(process.execPath,[path.join(folder,'node_modules/vite/bin/vite.js'),'preview','--host','127.0.0.1','--port',String(port),'--strictPort'],{cwd:folder,stdio:'inherit'});
+ let browser;
+ try{
+  for(let i=0;i<100;i++){try{if((await fetch(base)).ok)break}catch{}await new Promise(r=>setTimeout(r,100))}
+  browser=await chromium.launch({headless:true,...(process.env.BROWSER_EXECUTABLE?{executablePath:process.env.BROWSER_EXECUTABLE}:{}),args:['--no-sandbox','--enable-unsafe-webgpu']});
+  const page=await browser.newPage(),errors=[],external=[],failed=[];
+  page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.status()>=400)failed.push(r.url())});
+  await page.route('**/*',r=>{if(r.request().url().startsWith(base+'/'))return r.continue();external.push(r.request().url());return r.abort()});
+  if(fallback)await page.addInitScript(()=>Object.defineProperty(Navigator.prototype,'gpu',{get:()=>undefined,configurable:true}));
+  await page.goto(base);await page.waitForFunction(()=>globalThis.portalDemo?.sample);
+  const d=await page.evaluate(()=>({backend:portalDemo.backend,preset:portalDemo.preset,asset:portalDemo.asset,sample:portalDemo.sample}));
+  A.equal(d.backend,target==='webgpu'&&!fallback?'webgpu':'webgl2');A.deepEqual(d.preset,preset);await page.evaluate(()=>{const p=portalDemo.preset;p.settings.portalRadius=1;});A.deepEqual(await page.evaluate(()=>portalDemo.preset),preset);A.equal(d.asset.pages,2);
+  const seek=async t=>{await page.evaluate(t=>portalDemo.seek(t),t);return page.locator('canvas').screenshot()};
+  const a=await seek(.25),b=await seek(.4);A.ok(!a.equals(b));A.ok(a.equals(await seek(.25)));
+  const seam=await seek(0);A.deepEqual(await seek(preset.settings.durationFrames/60),seam);A.deepEqual(await seek(-.25),await seek(preset.settings.durationFrames/60-.25));
+  await page.evaluate(()=>portalDemo.destroy());A.equal(await page.locator('canvas').count(),0);
+  A.deepEqual(errors,[]);A.deepEqual(external,[]);A.deepEqual(failed,[]);
+  console.log('PASS extracted built developer ZIP',d.backend,JSON.stringify(d.asset));
+ }finally{await browser?.close();server.kill()}
+})().catch(e=>{console.error(e);process.exitCode=1});
