@@ -18,8 +18,8 @@
   const options=Object.freeze({animation:'',skin:'',speed:1,visible:true,...poseOptions});
   if(typeof options.animation!=='string'||typeof options.skin!=='string'||typeof options.visible!=='boolean'||!Number.isFinite(options.speed)||options.speed<.1||options.speed>4)fail('invalid Spine options');
   return async function createScene({settings,backend,crop}){
-   const {PIXI,FxShieldRuntime:R,FxShieldAuthoring:U,FxShockwaveSpine:Sp,FxShieldExport:X}=env;
-   if(!PIXI||!R||!U||!X||!Sp)fail('runtime unavailable');
+   const {PIXI,FxShieldRuntime:R,FxShieldAuthoring:U,FxShockwaveSpine:Sp,FxShieldPhysics:P,FxShieldExport:X}=env;
+   if(!PIXI||!R||!U||!X||!Sp||!P)fail('runtime unavailable');
    if(!['webgl1','webgl2','webgpu'].includes(backend))fail('invalid backend');
    const c=X.cropSpec(crop),clock=Object.freeze({mode:settings.mode,durationFrames:settings.durationFrames});
    if(!['loop','oneShot'].includes(clock.mode)||!Number.isInteger(clock.durationFrames)||clock.durationFrames<2||clock.durationFrames>3600)fail('invalid timeline');
@@ -32,12 +32,12 @@
     const maxTextureSize=actual==='webgpu'?r.gpu.device.limits.maxTextureDimension2D:r.gl.getParameter(r.gl.MAX_TEXTURE_SIZE);
     if(!Number.isSafeInteger(maxTextureSize)||Math.max(TILE,c.width,c.height)>maxTextureSize)fail('crop exceeds actual texture limit');
     root=new PIXI.Container();const behind=new PIXI.Container(),models=new PIXI.Container(),front=new PIXI.Container();root.addChild(behind,models,front);
-    if(saved){asset=await Sp.create(saved);models.addChild(asset.model);if(options.animation&&asset.model.skeleton.physicsConstraints?.length)fail('animated Spine physics requires deterministic replay; export unavailable');}
+    if(saved){asset=await Sp.create(saved);models.addChild(asset.model);}
     fx=R.createShield({PIXI,front,behind,settings});target=PIXI.RenderTexture.create({width:TILE,height:TILE,resolution:1,antialias:false});if(actual==='webgpu')reader=gpuReader(r,target,env);
     async function readFrame(seconds){
      if(dead||reading)fail('scene unavailable');if(!Number.isFinite(seconds)||seconds<0||seconds>1e6)fail('invalid frame time');reading=true;
      try{
-      const time=U.advance(seconds,0,clock),poses=U.poseMap(Sp.pose(asset,time,options));fx.seek(time,poses);
+      const time=U.advance(seconds,0,clock),poses=U.poseMap(P.pose(asset,time,options,Sp));fx.seek(time,poses);
       const out=new Uint8Array(c.width*c.height*4),right=c.x+c.width,bottom=c.y+c.height;
       for(let ty=Math.floor(c.y/TILE)*TILE;ty<bottom;ty+=TILE)for(let tx=Math.floor(c.x/TILE)*TILE;tx<right;tx+=TILE){
        root.position.set(-tx,-ty);r.render({container:root,target,clear:true,clearColor:[0,0,0,0]});
