@@ -82,12 +82,16 @@
   });
   if(reserved>BUDGETS[c.quality])fail('quality budget exceeded');freeze(rows);
   function compose(p,t){const a=p.rotation*DEG,x=t.x*p.scale,y=t.y*p.scale;return {x:p.x+x*Math.cos(a)-y*Math.sin(a),y:p.y+x*Math.sin(a)+y*Math.cos(a),rotation:p.rotation+t.rotation,scale:p.scale*t.scale}}
-  function resolve(t,parent,poses){let p={x:0,y:0,rotation:0,scale:1};if(t.anchor.type==='inherit')p=parent;else if(t.anchor.type!=='world'){const key=t.anchor.type==='local'?'$local':t.anchor.name;p=poses&&Object.hasOwn(poses,key)?poses[key]:null;if(!p||![p.x,p.y,p.rotation,p.scale].every(Number.isFinite)||p.scale<=0)return null}return p?compose(p,t):null}
+  function validPose(p){return p&&[p.x,p.y,p.rotation,p.scale].every(Number.isFinite)&&p.scale>1e-10}
+  function resolve(t,parent,poses){let p={x:0,y:0,rotation:0,scale:1};if(t.anchor.type==='inherit')p=parent;else if(t.anchor.type!=='world'){const key=t.anchor.type==='local'?'$local':t.anchor.name;p=poses&&Object.hasOwn(poses,key)?poses[key]:null}if(!validPose(p))return null;const result=compose(p,t);return validPose(result)?result:null}
+  // A finite anchor alone does not guarantee finite generated positions or radii.
+  // Bound the largest orbit, rim width and particle size before emitting geometry.
+  function finiteExtent(pose){const extent=(c.portalRadius*1.5+c.rimWidth*2+4)*pose.scale;return Number.isFinite(extent)&&Number.isFinite(Math.abs(pose.x)+extent)&&Number.isFinite(Math.abs(pose.y)+extent)}
   function sample(time,poses={}){
    num(time,'time',0,1e7);const exact=time*60,raw=Math.abs(exact-Math.round(exact))<6e-8?Math.round(exact):exact,frame=loop?mod(raw,period):Math.min(raw,end),diagnostics=[];let cost=0;
    const emitters=c.emitters.map((e,i)=>{const row=rows[i],origin=resolve(e,null,poses),layers={aperture:[],rim:[],particles:[]};
     for(const k of LAYERS){const l=e.layers[k];if(!active(e,l)||!loop&&(raw>=end||raw===0))continue;
-     const pose=resolve(l,origin,poses);if(!pose){diagnostics.push({emitterId:e.id,layer:k,reason:'missing anchor'});continue}
+     const pose=resolve(l,origin,poses);if(!pose||!finiteExtent(pose)){diagnostics.push({emitterId:e.id,layer:k,reason:pose?'invalid anchor geometry':'missing anchor'});continue}
      const local=loop?mod(frame-e.timeOffset-l.timeOffset,period):frame-e.timeOffset-l.timeOffset;
      if(!loop&&(local<0||local>=end))continue;
      const u=local/end,open=loop?1:C.evaluate(c.apertureCurve,u)*clamp((end-frame)/6,0,1)*clamp(frame/6,0,1);

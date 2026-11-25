@@ -26,3 +26,22 @@ test('aperture curve affects one-shot independently of swirl, rim width curve af
  const c=P.defaults();c.mode='oneShot';const a=P.compile(c);c.apertureCurve.keys[1].y=.4;const b=P.compile(c);A.notDeepEqual(layers(a,.2),layers(b,.2));A.deepEqual(a.emitters[0].births,b.emitters[0].births);
  const d=P.defaults(),x=P.compile(d);flat(d.rimCurve,.4);const y=P.compile(d);A.notDeepEqual(layers(x,.4).rim,layers(y,.4).rim);A.deepEqual(layers(x,.4).aperture,layers(y,.4).aperture);A.deepEqual(layers(x,.4).particles,layers(y,.4).particles);
 });
+
+test('invalid composed anchors hide dependent layers, preserve world layers and recover',()=>{
+ const c=P.defaults(),e=c.emitters[0];e.anchor={type:'bone',name:'hip'};e.layers.rim.anchor={type:'world',name:''};e.layers.rim.x=100;e.layers.rim.y=100;
+ const p=P.compile(c),world=p.sample(.25).emitters[0].layers.rim;
+ for(const scale of [1e308,1e-300]){
+  const s=p.sample(.25,{hip:{x:0,y:0,rotation:0,scale}}),l=s.emitters[0].layers;
+  A.equal(l.aperture.length,0);A.equal(l.particles.length,0);A.deepEqual(l.rim,world);
+  A.deepEqual(s.diagnostics.map(d=>d.layer),['aperture','particles']);
+ }
+ const good=p.sample(.25,{hip:{x:10,y:20,rotation:30,scale:2}});
+ A.equal(good.diagnostics.length,0);A.equal(good.emitters[0].layers.aperture[0].radius,180);A.deepEqual(good.emitters[0].layers.rim,world);
+});
+test('finite anchor transform whose derived extent overflows is not rendered',()=>{
+ const c=P.defaults(),e=c.emitters[0];e.layers.aperture.anchor={type:'bone',name:'hip'};
+ const p=P.compile(c),s=p.sample(.25,{hip:{x:0,y:0,rotation:0,scale:1e307}});
+ A.equal(s.emitters[0].layers.aperture.length,0);
+ A.deepEqual(s.diagnostics.map(d=>d.layer),['aperture']);
+ A.ok(s.emitters[0].layers.rim.length>0);A.ok(s.emitters[0].layers.particles.length>0);
+});
