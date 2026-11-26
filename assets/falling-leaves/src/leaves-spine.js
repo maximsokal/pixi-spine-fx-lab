@@ -4,9 +4,9 @@
   async function readSpine(source,{PIXI,spine}){
    const bytes=await source.skeleton.arrayBuffer(),binary=/\.skel$/i.test(source.skeletonName);
    const raw=binary?new Uint8Array(bytes):JSON.parse(new TextDecoder().decode(bytes));
-   let version=raw.skeleton?.spine;
+   let version=raw?.skeleton?.spine;
    if(binary){const input=new spine.BinaryInput(raw);input.readInt32();input.readInt32();version=input.readString();}
-   if(!version?.startsWith('4.2.'))throw Error('Falling Leaves requires Spine 4.2; received '+version);
+   if(typeof version!=='string'||!/^4\.2\.(?:0|[1-9]\d*)$/.test(version))throw Error('Falling Leaves requires Spine 4.2; received '+version);
    const atlas=new spine.TextureAtlas(await source.atlas.text());let model=null;
    try{
     for(const page of atlas.pages){const name=page.name.replaceAll('\\','/');let blob=source.images.get(name);
