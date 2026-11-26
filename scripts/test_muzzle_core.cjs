@@ -75,3 +75,24 @@ test('curve control changes geometry, alpha and real color',()=>{
  assert.notDeepEqual(a.core[0].vertices,b.core[0].vertices);
  assert.deepEqual(b.core[0].rgba,[12,34,56,.5]);
 });
+
+function integratedTravel(keys){
+ const d=M.defaults();d.sparkCount=1;d.sparkLifeFrames=60;d.curves.sparkSpeed.keys=keys;
+ const base=structuredClone(d);base.curves.sparkSpeed.keys=[{id:'a',x:0,y:1,mode:'linear'},{id:'b',x:1,y:1,mode:'linear'}];
+ const p=M.compile(d),q=M.compile(base),distance=v=>Math.hypot(v.x-256,v.y-256);
+ return age=>distance(p.sample(age).sparks[0])/distance(q.sample(age).sparks[0])*age;
+}
+test('sub-grid stepped speed pulse contributes its exact area to actual spark travel',()=>{
+ const travel=integratedTravel([{id:'a',x:0,y:0,mode:'stepped'},{id:'b',x:.1001,y:4,mode:'stepped'},{id:'c',x:.1002,y:0,mode:'stepped'},{id:'d',x:1,y:0,mode:'linear'}]);
+ close(travel(.1),0,1e-10);close(travel(.10015),.0002,1e-10);close(travel(.2),.0004,1e-10);
+});
+test('linear and stepped segment integrals are exact at partial intervals',()=>{
+ const linear=integratedTravel([{id:'a',x:0,y:1,mode:'linear'},{id:'b',x:1,y:.1,mode:'linear'}]);
+ for(const age of [.001,.25,.731])close(linear(age),age-.45*age*age,1e-10);
+ const mixed=integratedTravel([{id:'a',x:0,y:2,mode:'stepped'},{id:'b',x:.2,y:1,mode:'linear'},{id:'c',x:.6,y:3,mode:'stepped'},{id:'d',x:1,y:0,mode:'linear'}]);
+ for(const [age,want] of [[.2,.4],[.4,.7],[.6,1.2],[.9,2.1]])close(mixed(age),want,1e-10);
+});
+test('Bezier speed integrates over authored x, including vertical tangent',()=>{
+ const travel=integratedTravel([{id:'a',x:0,y:0,mode:'bezier',out:[0,4/3]},{id:'b',x:1,y:4,mode:'linear',in:[0,8/3]}]);
+ for(const age of [.001,.125,.5,.99])close(travel(age),3*Math.pow(age,4/3),1e-9);
+});

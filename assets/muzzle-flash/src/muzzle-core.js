@@ -89,6 +89,37 @@
   return out;
  }
  function freeze(o){if(o&&typeof o==='object'&&!Object.isFrozen(o)){Object.values(o).forEach(freeze);Object.freeze(o);}return o;}
+ // Integrate the authored segments, not a fixed age grid: narrow stepped
+ // pulses must contribute their full area even between preview frames.
+ function compileSpeed(curve){
+  const keys=curve.keys,segments=[],prefix=[0],node=Math.sqrt(3/5);
+  const bezier=(a,b,c,d,t)=>{const u=1-t;return u*u*u*a+3*u*u*t*b+3*u*t*t*c+t*t*t*d;};
+  for(let i=0;i<keys.length-1;i++){
+   const a=keys[i],b=keys[i+1],width=b.x-a.x;
+   let area;
+   if(a.mode==='stepped')area=f=>width*f*a.y;
+   else if(a.mode==='linear')area=f=>width*f*(a.y+(b.y-a.y)*f/2);
+   else{
+    // Normalize the x handles locally to avoid cancellation on tiny segments.
+    const x1=(a.out[0]-a.x)/width,x2=(b.in[0]-a.x)/width;
+    const integrand=t=>{const u=1-t,dx=3*(u*u*x1+2*u*t*(x2-x1)+t*t*(1-x2));return bezier(a.y,a.out[1],b.in[1],b.y,t)*dx;};
+    area=f=>{
+     if(f<=0)return 0;let t=1;
+     if(f<1){let lo=0,hi=1;for(let j=0;j<48;j++){const mid=(lo+hi)/2;if(bezier(0,x1,x2,1,mid)<f)lo=mid;else hi=mid;}t=(lo+hi)/2;}
+     // y(t)*x'(t) is degree <=5; three-point Gauss-Legendre is exact.
+     const h=t/2;return width*h*(5/9*integrand(h*(1-node))+8/9*integrand(h)+5/9*integrand(h*(1+node)));
+    };
+   }
+   segments.push({a,b,width,area});prefix.push(prefix[i]+area(1));
+  }
+  return age=>{
+   if(age===0)return keys[0].y;
+   let lo=0,hi=segments.length;
+   while(hi-lo>1){const mid=(lo+hi)>>1;if(keys[mid].x<=age)lo=mid;else hi=mid;}
+   const s=segments[lo],f=Math.max(0,Math.min(1,(age-s.a.x)/s.width));
+   return Math.max(0,Math.min(4,(prefix[lo]+s.area(f))/age));
+  };
+ }
  function compile(input){
   const cfg=freeze(normalize(input)),span=cfg.flashLength*(cfg.coneAngle*RAD);
   // An exact linear arc-length coordinate, not a geometric approximation of the circle.
@@ -118,14 +149,7 @@
    }
   }
   const widths=Array.from({length:17},(_,i)=>C.evaluate(cfg.curves.flashWidth,i/16));
-  // Integrate speed once per preset; sample the cumulative normalized-age integral.
-  const N=256,integral=[0];
-  for(let i=0;i<N;i++)integral.push(integral[i]+C.evaluate(cfg.curves.sparkSpeed,(i+.5)/N)/N);
-  function meanSpeed(age){
-   if(age===0)return C.evaluate(cfg.curves.sparkSpeed,0);
-   const x=age*N,i=Math.min(N-1,Math.floor(x));
-   return (integral[i]+(integral[i+1]-integral[i])*(x-i))/age;
-  }
+  const meanSpeed=compileSpeed(cfg.curves.sparkSpeed);
   const meta=freeze({tongueDistances:ds,events,spatialCapped:placement.capped,
    spatialLimited:ds.length<cfg.tongueCount,temporalCapped:capped});
   function sample(seconds,anchor={x:256,y:256,rotation:0}){
