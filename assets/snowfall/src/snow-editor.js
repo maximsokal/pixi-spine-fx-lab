@@ -49,6 +49,16 @@
    get settings(){return cfg},get selectedId(){return selectedId},get time(){return time},
    get playing(){return playing},get direction(){return direction},get end(){return end()}});
  }
+ // Resolve the same affine anchor mapping as the renderer; never apply a
+ // stage-space pointer delta directly to bone-local coordinates.
+ function originDelta(resolve,anchor,dx,dy){
+  const p=resolve({...anchor,x:0,y:0}),u=resolve({...anchor,x:1,y:0}),v=resolve({...anchor,x:0,y:1});
+  if(![p,u,v].every(q=>q&&Number.isFinite(q.x)&&Number.isFinite(q.y)))return null;
+  const a=u.x-p.x,b=v.x-p.x,c=u.y-p.y,d=v.y-p.y,det=a*d-b*c;
+  if(!Number.isFinite(det)||Math.abs(det)<=1e-10*Math.hypot(a,c)*Math.hypot(b,d))return null;
+  const x=(d*dx-b*dy)/det,y=(a*dy-c*dx)/det;
+  return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:null;
+ }
  function mount(){
   const {PIXI,spine,FxSnowRuntime,FxTimeline,FxCurveEditor,FxColorUi}=root,$=id=>document.getElementById(id);
   let scene=null,asset=null,busy=false,editors=[],lockedControls=[];
@@ -80,8 +90,8 @@
    const e=selection(session.settings);
    for(const kind of ['origin',...Core.LAYERS]){
     const h=$('handle-'+kind),surface=scene?.fx.emitters.get(e?.id)?.layers[kind]?.surface;
-    const p=kind==='origin'&&e?.anchor.type==='world'?e.anchor:surface?.visible?surface:null;
-    h.hidden=!p;if(p){h.style.left=(p.x+({origin:0,near:24,far:-24,windSwirls:0}[kind]))+'px';h.style.top=(p.y+(kind==='windSwirls'?24:0))+'px';}
+    const p=kind==='origin'?(e&&scene?scene.fx.resolveAnchor(e.anchor):null):surface?.visible?surface:null;
+    h.hidden=!p||!Number.isFinite(p.x)||!Number.isFinite(p.y);if(!h.hidden){h.style.left=(p.x+({origin:0,near:24,far:-24,windSwirls:0}[kind]))+'px';h.style.top=(p.y+(kind==='windSwirls'?24:0))+'px';}
    }
   }
   function attempt(fn,rebuild=false){if(busy)return false;
@@ -231,13 +241,17 @@
    const h=$('handle-'+kind);let drag=null;
    h.onpointerdown=event=>{if(busy||h.hidden)return;drag={x:event.clientX,y:event.clientY};h.setPointerCapture(event.pointerId);event.preventDefault();};
    h.onpointermove=event=>{
-    if(!drag||busy)return;const rect=$('preview').getBoundingClientRect(),e=selection(session.settings);
-    if(!e||!rect.width||!rect.height)return;
+    if(!drag||busy)return;const rect=scene?.app.canvas.getBoundingClientRect(),e=selection(session.settings);
+    if(!e||!rect||!(rect.width>0&&rect.height>0))return;
     const dx=(event.clientX-drag.x)*512/rect.width,dy=(event.clientY-drag.y)*512/rect.height;
     drag={x:event.clientX,y:event.clientY};
     attempt(()=>session.edit(c=>{
      const next=selection(c);
-     if(kind==='origin'){next.anchor.x=Math.max(-10000,Math.min(10000,next.anchor.x+dx));next.anchor.y=Math.max(-10000,Math.min(10000,next.anchor.y+dy));}
+     if(kind==='origin'){
+      const delta=originDelta(scene.fx.resolveAnchor,next.anchor,dx,dy);
+      if(!delta)throw Error('AIR-02 unresolved or singular anchor transform');
+      next.anchor.x=Math.max(-10000,Math.min(10000,next.anchor.x+delta.x));next.anchor.y=Math.max(-10000,Math.min(10000,next.anchor.y+delta.y));
+     }
      else{
       const l=next.layers[kind],a=l.anchor.type==='inherit'?next.anchor:l.anchor,
        angle=(next.rotation+a.rotation)*Math.PI/180,co=Math.cos(angle),si=Math.sin(angle);
