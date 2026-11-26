@@ -613,6 +613,28 @@
       ]
     },
     {
+      "effectId": "fx.game.energy-projectile",
+      "category": "game",
+      "path": "references/fx/game/energy-projectile.md",
+      "keywords": [
+        "energy projectile",
+        "energy bullet",
+        "энергетический снаряд",
+        "енергетичний снаряд",
+        "энергетическая пуля",
+        "енергетична куля"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        10,
+        5,
+        6,
+        7
+      ]
+    },
+    {
       "effectId": "fx.game.dissolve",
       "category": "game",
       "path": "references/fx/game/dissolve.md",

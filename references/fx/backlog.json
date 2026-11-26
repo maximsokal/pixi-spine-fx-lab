@@ -574,7 +574,7 @@
       "issue": 43,
       "title": "Energy Projectile",
       "priority": "P1",
-      "localEffectId": null,
+      "localEffectId": "fx.game.energy-projectile",
       "coreIssues": [
         3,
         4,

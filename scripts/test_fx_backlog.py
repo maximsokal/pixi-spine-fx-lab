@@ -17,7 +17,7 @@ class BacklogTests(unittest.TestCase):
         rows = B.validate(self.data, self.registry)
         self.assertEqual([r['issue'] for r in rows], list(range(11, 52)))
         self.assertEqual(len(self.data['core']), 8)
-        self.assertEqual(sum(r['localEffectId'] is not None for r in rows), 25)
+        self.assertEqual(sum(r['localEffectId'] is not None for r in rows), 26)
 
     def test_exact_selection_never_substitutes_a_similar_effect(self):
         for key in ('GAME-02', 'game-02', '41', 'Hit Sparks'):
@@ -42,6 +42,13 @@ class BacklogTests(unittest.TestCase):
             self.assertEqual(result['issue'], 42)
             self.assertEqual(result['source'], 'local-blueprint')
             self.assertEqual(result['localBlueprint']['effectId'], 'fx.game.sword-slash')
+            self.assertEqual(result['localBlueprint']['status'], 'specification-only')
+            self.assertIn('references/contracts/path-geometry.md', result['contracts'])
+
+    def test_energy_candidate_is_linked_but_unverified(self):
+        for query in ('GAME-04', '43', 'Energy Projectile'):
+            result = B.select(self.data, self.registry, query)
+            self.assertEqual(result['localBlueprint']['effectId'], 'fx.game.energy-projectile')
             self.assertEqual(result['localBlueprint']['status'], 'specification-only')
             self.assertIn('references/contracts/path-geometry.md', result['contracts'])
 
