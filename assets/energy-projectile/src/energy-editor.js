@@ -5,12 +5,12 @@
  const doc=env.document,$=id=>doc.getElementById(id),H=env.FxEnergyProjectile,U=env.FxEnergyAuthoring,R=env.FxEnergyRuntime,Sp=env.FxShockwaveSpine,P=env.PIXI,clone=v=>JSON.parse(JSON.stringify(v));
  const ranges={smoothing:[0,1],durationFrames:[6,3600,1],chargeFrames:[0,120,1],fadeFrames:[1,120,1],coreRadius:[3,100],travelSpeed:[0,1200],tailLength:[0,320],trailGap:[1,80],glow:[0,2],particleRate:[0,160],trailRate:[0,160],orbitGap:[1,80],orbitPulseHz:[0,20],orbitLifeFrames:[1,120,1],trailLifeFrames:[1,120,1],particleSize:[.25,20],trailWidth:[0,200],intervalFrames:[.25,600],minIntervalFrames:[0,120],timeJitter:[0,.45],burstCount:[1,16,1],burstDelayFrames:[.25,60],minGap:[1,80],maxGap:[1,80],spatialJitter:[0,.45]};
  const labels={travelSpeed:'Travel speed (px/s)',coreRadius:'Core radius (px)',tailLength:'Tail length (px)',trailGap:'Trail gap (px)',orbitGap:'Orbit gap (px)',particleRate:'Orbit rate (/s)',trailRate:'Trail rate (/s)',orbitPulseHz:'Orbit pulse (Hz)',durationFrames:'Authored duration (frames)',intervalFrames:'Interval (frames)'};
- const keys=['p0','p1','p2','p3'];let scene=null,busy=false,closed=false,playing=false,last=null,raf=0,drag=null;
+ const keys=['p0','p1','p2','p3'];let scene=null,busy=false,closed=false,playing=false,last=null,raf=0,drag=null,exportJob=null;
  const cfg=()=>scene.session.settings,session=()=>scene.session,id=()=>$('emitter').value,layer=()=>$('layer').value,index=()=>Number($('segment').value)||0,locked=()=>busy||closed||!scene;
  const status=(msg,error=false)=>{$('status').textContent=msg;$('status').dataset.error=String(error);};
  function play(v){playing=v;last=null;$('play').textContent=v?'Pause':'Play';}
  function attempt(fn){try{return fn();}catch(e){play(false);status(e.message,true);return false;}}
- function lock(v){busy=v;play(false);for(const k of ['controls','assets','transport'])$(k).disabled=locked();$('backend').disabled=v||closed;handles();}
+ function lock(v){busy=v;play(false);for(const k of ['controls','assets','transport','exportFields'])$(k).disabled=locked();$('backend').disabled=v||closed;handles();}
  function selectOptions(el,values,preferred){el.replaceChildren(...values.map(x=>new env.Option(x.label??x.value??x,x.value??x)));el.value=values.some(x=>(x.value??x)===preferred)?preferred:String(values[0]?.value??values[0]??'');}
  function selection(){const c=cfg(),old=id(),seg=String(index());selectOptions($('emitter'),c.emitters.map(e=>e.id),old);selectOptions($('segment'),c.trajectory.segments.map((_,i)=>String(i)),seg);$('addEmitter').disabled=c.emitters.length>=4;$('removeEmitter').disabled=c.emitters.length<=1;$('splitSegment').disabled=c.trajectory.segments.length>=64;}
  const eFor=c=>c.emitters.find(e=>e.id===id()),lFor=c=>eFor(c).layers[layer()],aFor=c=>$('anchorScope').value==='layer'?lFor(c).anchor:eFor(c).anchor;
@@ -70,8 +70,27 @@
  h.onpointermove=e=>{if(locked()||!drag||drag.id!==e.pointerId||drag.k!==k||drag.emitter!==id()||drag.layer!==layer()||drag.segment!==index())return;attempt(()=>{const q=U.pointer(e.clientX,e.clientY,$('surface').getBoundingClientRect());move(k,q.x+drag.dx,q.y+drag.dy);});};
  h.onpointerup=h.onpointercancel=h.onlostpointercapture=()=>{if(drag?.k===k){drag=null;if(!locked())controls();}};
  h.onkeydown=e=>{const d={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(!d||locked())return;e.preventDefault();play(false);attempt(()=>{const p=position(k);if(p){move(k,p.x+d[0]*(e.shiftKey?10:1),p.y+d[1]*(e.shiftKey?10:1));controls();}});};}
+ function download(bytes,name){const url=env.URL.createObjectURL(new env.Blob([bytes],{type:'application/zip'})),a=doc.createElement('a');a.href=url;a.download=name;try{doc.body.append(a);a.click();}finally{a.remove();env.setTimeout(()=>env.URL.revokeObjectURL(url),1000);}}
+ async function runExport(target){
+  if(locked()||exportJob)return false;
+  const X=env.FxShieldExport,D=env.FxEnergyDeveloper,s=session(),wasPlaying=playing,controller=new env.AbortController();exportJob=controller;
+  try{
+   const spec=env.FxShieldExportUi.readSpec(Object.fromEntries(['x','y','width','height','frames'].map(k=>[k,$('export-'+k).value])),s.meta.frames),assetInfo=s.asset?{name:s.source.name,version:s.asset.version,options:s.options}:null;
+   const params={...spec,settings:s.settings,compile:H.compile,signal:controller.signal,assetInfo};
+   lock(true);$('cancelExport').disabled=false;$('exportProgress').max=spec.frameCount;$('exportProgress').value=0;$('exportCount').textContent='0 / '+spec.frameCount;
+   let result;
+   if(target==='png'){
+    status('Baking PNG sequence');result=await env.FxEnergyExport.bakeSequence({...params,codec:X,backend:scene.actual,createScene:env.FxEnergyBake.sceneFactory({source:s.source,poseOptions:s.options,env}),progress:(n,total)=>{if(!closed){$('exportProgress').value=n;$('exportCount').textContent=n+' / '+total;}},yieldFrame:()=>new Promise(resolve=>env.setTimeout(resolve,0))});
+   }else{
+    status('Packaging '+target+' developer ZIP');const texts=names=>Object.fromEntries(names.map(k=>[k,$(k)?.textContent]));result=await D.developer({...params,target,previewSeconds:s.seconds,source:s.source,options:s.options,sources:texts(D.FILES),vendors:texts(D.VENDORS),licenses:$('runtimeLicenses')?.textContent,cropSpec:X.cropSpec,makeZip:X.makeZip});
+   }
+   if(closed||controller.signal.aborted)return false;download(result.zip,'energy-projectile-'+(target==='png'?'png':'developer-'+target)+'.zip');$('exportProgress').value=spec.frameCount;$('exportCount').textContent='Archive ready';status('Export complete');return true;
+  }catch(e){if(!closed&&!controller.signal.aborted)status(e.message,true);return false;}
+  finally{exportJob=null;if(!closed){$('cancelExport').disabled=true;if(controller.signal.aborted){$('exportProgress').value=0;$('exportCount').textContent='Cancelled';status('Export cancelled');}lock(false);play(wasPlaying);}}
+ }
+ $('exportPng').onclick=()=>runExport('png');$('exportWebgl').onclick=()=>runExport('webgl');$('exportWebgpu').onclick=()=>runExport('webgpu');$('cancelExport').onclick=()=>{if(exportJob){exportJob.abort();status('Cancelling export');}};
  function tick(now){if(closed)return;if(playing&&!locked()){if(last!==null)attempt(()=>{const s=session(),dt=Math.max(0,(now-last)/1000),loop=cfg().mode==='flightLoop',reverse=$('reverse').checked;let t=reverse?(loop?((s.seconds-dt)%s.meta.duration+s.meta.duration)%s.meta.duration:Math.max(0,s.seconds-dt)):U.advance(s.seconds,dt,s.meta,loop);paint(t);if(!loop&&(reverse?t<=0:t>=(s.meta.frames-1)/60))play(false);});if(playing)last=now;}raf=env.requestAnimationFrame(tick);}
- function destroy(){if(closed)return;closed=true;play(false);env.cancelAnimationFrame(raf);dispose(scene);scene=null;}
+ function destroy(){if(closed)return;closed=true;exportJob?.abort();play(false);env.cancelAnimationFrame(raf);dispose(scene);scene=null;}
  env.addEventListener('pagehide',destroy,{once:true});raf=env.requestAnimationFrame(tick);const ready=rebuild('webgl2');return Object.freeze({ready,destroy,get session(){return scene?.session??null;}});
  }
  if(typeof module==='object'&&module.exports)module.exports={mount};else mount();

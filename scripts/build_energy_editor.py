@@ -26,6 +26,8 @@ def build(root):
     cores = [tag(template, 'src/' + name) for name in ('curve-core.js', 'spacing-core.js', 'path-core.js', 'color-core.js', 'timeline-core.js', 'curve-editor.js', 'color-ui.js')]
     cores.append(tag(root / 'assets/shockwave/src', 'shockwave-spine.js'))
     cores.extend(tag(source, name) for name in ('energy-core.js', 'energy-anchors.js', 'energy-runtime.js', 'energy-pose.js', 'energy-authoring.js'))
+    cores.extend(tag(root / 'assets/magic-shield/src', name) for name in ('shield-export.js', 'shield-export-ui.js'))
+    cores.extend(tag(source, name) for name in ('energy-export.js', 'energy-bake.js', 'energy-developer.js'))
     sample = json.dumps(sample_data(template, manifest), separators=(',', ':')).replace('</', '<\\/')
     replacements = {'<!-- VENDOR -->': vendor, '<!-- CORES -->': '\n'.join(cores), '__SAMPLE_DATA__': sample, '<!-- APP -->': tag(source, 'energy-editor.js')}
     for marker in replacements:
