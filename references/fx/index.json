@@ -5,7 +5,8 @@
     "ice",
     "game",
     "water",
-    "air"
+    "air",
+    "earth"
   ],
   "entries": [
     {
@@ -627,6 +628,27 @@
         3,
         4,
         10,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "effectId": "fx.earth.falling-leaves",
+      "category": "earth",
+      "path": "references/fx/earth/falling-leaves.md",
+      "keywords": [
+        "falling leaves",
+        "autumn leaves",
+        "leaf drift",
+        "листопад",
+        "падающие листья",
+        "опадаюче листя"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        4,
         5,
         6,
         7

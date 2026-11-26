@@ -390,7 +390,7 @@
       "issue": 32,
       "title": "Falling Leaves",
       "priority": "P2",
-      "localEffectId": null,
+      "localEffectId": "fx.earth.falling-leaves",
       "coreIssues": [
         3,
         4,
