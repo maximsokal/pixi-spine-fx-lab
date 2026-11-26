@@ -587,6 +587,27 @@
         6,
         7
       ]
+    },
+    {
+      "effectId": "fx.game.dissolve",
+      "category": "game",
+      "path": "references/fx/game/dissolve.md",
+      "keywords": [
+        "dissolve disintegration",
+        "disintegration",
+        "directional dissolve",
+        "распад изображения",
+        "розпад зображення"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        10,
+        5,
+        6,
+        7
+      ]
     }
   ]
 }

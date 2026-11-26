@@ -689,7 +689,7 @@
       "issue": 50,
       "title": "Dissolve / Disintegration",
       "priority": "P0",
-      "localEffectId": null,
+      "localEffectId": "fx.game.dissolve",
       "coreIssues": [
         3,
         4,
