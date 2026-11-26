@@ -30,7 +30,7 @@ class SwordSlashBuilderTests(unittest.TestCase):
         self.source = self.root / 'assets/sword-slash/src'
         self.vendors = ['vendor/pixi-8.22.0.min.js', 'vendor/spine-pixi-v8-4.2.120.min.js']
         self.shared = ['curve-core.js', 'spacing-core.js', 'path-core.js', 'color-core.js', 'timeline-core.js', 'curve-editor.js', 'color-ui.js']
-        self.fx = ['sword-slash-' + n + '.js' for n in ('core', 'anchors', 'pose', 'history', 'runtime', 'authoring', 'export', 'bake', 'editor')]
+        self.fx = ['sword-slash-' + n + '.js' for n in ('core', 'anchors', 'pose', 'history', 'runtime', 'authoring', 'export', 'bake', 'developer', 'editor')]
         self.manifest = {'runtime': {'pixi': '8.22.0', 'spinePixiV8': '4.2.120', 'spineExport': '4.2.x'}, 'browserScripts': self.vendors,
                          'sample': {'label': 'Synthetic', 'skeleton': 'sample/test.json', 'atlas': 'sample/test.atlas', 'images': ['sample/page.png']}}
         self.write(self.template / 'template.json', json.dumps(self.manifest))
@@ -56,7 +56,7 @@ class SwordSlashBuilderTests(unittest.TestCase):
         result = build(self.root)
         parser = Scripts()
         parser.feed(result)
-        self.assertEqual(parser.ids, ['runtimeLicenses', *[Path(v).name for v in self.vendors], *self.shared, 'shockwave-spine.js', *self.fx[:-3], 'shield-export.js', 'shield-export-ui.js', *self.fx[-3:-1], 'sampleData', self.fx[-1]])
+        self.assertEqual(parser.ids, ['runtimeLicenses', *[Path(v).name for v in self.vendors], *self.shared, 'shockwave-spine.js', *self.fx[:-4], 'shield-export.js', 'shield-export-ui.js', *self.fx[-4:-1], 'sampleData', self.fx[-1]])
         self.assertEqual(parser.external, [])
         self.assertIn('Zml4dHVyZQ==', result)
         self.assertNotIn('__SAMPLE_DATA__', result)

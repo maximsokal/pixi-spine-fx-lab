@@ -27,7 +27,7 @@ def build(root):
     cores.append(tag(root / 'assets/shockwave/src', 'shockwave-spine.js'))
     cores.extend(tag(source, name) for name in ('sword-slash-core.js', 'sword-slash-anchors.js', 'sword-slash-pose.js', 'sword-slash-history.js', 'sword-slash-runtime.js', 'sword-slash-authoring.js'))
     cores.extend(tag(root / 'assets/magic-shield/src', name) for name in ('shield-export.js', 'shield-export-ui.js'))
-    cores.extend(tag(source, name) for name in ('sword-slash-export.js', 'sword-slash-bake.js'))
+    cores.extend(tag(source, name) for name in ('sword-slash-export.js', 'sword-slash-bake.js', 'sword-slash-developer.js'))
     sample = json.dumps(sample_data(template, manifest), separators=(',', ':')).replace('</', '<\\/')
     replacements = {'<!-- VENDOR -->': vendor, '<!-- CORES -->': '\n'.join(cores), '__SAMPLE_DATA__': sample, '<!-- APP -->': tag(source, 'sword-slash-editor.js')}
     for marker in replacements:

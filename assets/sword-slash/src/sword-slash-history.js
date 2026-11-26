@@ -102,12 +102,14 @@
   }
   return result;
  }
+ function prepare(input){const v=config(input),plan=H.compile(input.effect);return {v,plan,settings:freeze({schemaVersion:1,effect:plan.settings,...v})};}
+ function normalizeSettings(input){return prepare(input).settings;}
  function createCompiler({host,world,model=null,Spine=null,historyAsset=null,poseOptions={},loader=null}){
   return function(input){
-   const v=config(input),plan=H.compile(input.effect),settings=freeze({schemaVersion:1,effect:plan.settings,...v}),recorded=record({plan,...v,historyAsset,poseOptions,loader,host,world,model,Spine});
+   const {v,plan,settings}=prepare(input),recorded=record({plan,...v,historyAsset,poseOptions,loader,host,world,model,Spine});
    function resolvePoses(){const poses=Object.fromEntries(LAYERS.map(k=>[k,v.trajectory[k]==='recorded'?null:A.resolve(v.anchors[k],{host,world,model,Spine})]));return {poses,missing:LAYERS.filter(k=>settings.effect.layers[k].enabled&&(v.trajectory[k]==='recorded'?!recorded[k]?.runs.length:!poses[k]))};}
    return Object.freeze({settings,meta:freeze({...plan.meta,recorded}),resolvePoses,sample(t){number(t,0,3600);const out=plan.sample(t,resolvePoses().poses);for(const k of LAYERS)if(v.trajectory[k]==='recorded')out[k]=sampleRecorded(recorded[k],settings.effect,k,t-settings.effect.layers[k].delayFrames/FPS);return out;}});
   };
  }
- return {VERSION:1,defaults,createCompiler};
+ return {VERSION:1,defaults,normalizeSettings,createCompiler};
 });
