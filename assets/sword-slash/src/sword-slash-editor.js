@@ -5,12 +5,12 @@
  const clone=v=>JSON.parse(JSON.stringify(v)),initial=()=>History.defaults();
  const ranges={arcAngle:[10,330,1],trailLength:[20,450,'any'],startWidth:[.5,70,'any'],middleWidth:[.5,120,'any'],endWidth:[.5,70,'any'],lifetimeFrames:[2,90,1],edgeGlow:[0,2,'any'],sweepFrames:[2,120,1],exportFrames:[1,3600,1],intervalFrames:[1,60,1],rate:[0,120,'any'],minIntervalFrames:[0,120,'any'],timeJitter:[0,.45,'any'],gap:[1,80,'any'],minGap:[1,80,'any'],maxGap:[1,80,'any'],spatialJitter:[0,.45,'any'],contactFrame:[0,119,1],sparkCount:[0,64,1],sparkLifetimeFrames:[1,90,1],sparkSpeed:[0,900,'any']};
  const labels={arcAngle:'Arc angle (deg)',trailLength:'Trail length (px)',startWidth:'Base start width (px)',middleWidth:'Base middle width (px)',endWidth:'Base end width (px)',lifetimeFrames:'Trail lifetime (frames)',exportFrames:'Timeline frames',gap:'Spatial gap (px)',rate:'Temporal rate (/s)',intervalFrames:'Temporal interval (frames)'};
- let scene=null,busy=false,closed=false,playing=false,last=null,raf=0,drag=null;
+ let scene=null,busy=false,closed=false,playing=false,last=null,raf=0,drag=null,exportJob=null,resume=false;
  const cfg=()=>scene.session.settings,selected=()=>$('layer').value,locked=()=>busy||closed||!scene;
  const status=(s,error=false)=>{$('status').textContent=s;$('status').dataset.error=String(error);};
  function play(v){playing=v;last=null;$('play').textContent=v?'Pause':'Play';}
  function attempt(fn){try{return fn();}catch(e){play(false);status(e.message,true);}}
- function lock(v){busy=v;play(false);for(const id of ['controls','transport','assets'])$(id).disabled=locked();$('backend').disabled=v||closed;handles();}
+ function lock(v){busy=v;play(false);for(const id of ['controls','transport','assets','exportFields'])$(id).disabled=locked();$('backend').disabled=v||closed;handles();}
  function pose(){return scene&&A.resolve(cfg().anchors[selected()],{host:scene.host,world:scene.app.stage,model:scene.session.asset?.model,Spine:spine});}
  function basis(){const p=pose(),l=cfg().effect.layers[selected()],o=U.origin(p,l);return o&&{...o,rotation:p.rotation+l.rotation};}
  function localToWorld(p,b){const a=b.rotation*Math.PI/180;return {x:b.x+p[0]*Math.cos(a)-p[1]*Math.sin(a),y:b.y+p[0]*Math.sin(a)+p[1]*Math.cos(a)};}
@@ -75,6 +75,17 @@
   h.onpointerup=h.onpointercancel=h.onlostpointercapture=()=>{if(drag?.which===which){drag=null;if(!locked())controls();}};
   h.onkeydown=e=>{const d={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(!d||locked())return;e.preventDefault();play(false);attempt(()=>{const p=position();if(p){move(which,p.x+d[0]*(e.shiftKey?10:1),p.y+d[1]*(e.shiftKey?10:1));controls();}});};
  }
+ function downloadPng(bytes){const url=URL.createObjectURL(new Blob([bytes],{type:'application/zip'})),a=document.createElement('a');a.href=url;a.download='sword-slash-png.zip';try{document.body.append(a);a.click();}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}}
+ function pngJob(){
+  if(!exportJob)exportJob=FxShieldExportUi.createController({
+   request(){if(locked())throw Error('Preview unavailable');const s=scene.session,spec=FxShieldExportUi.readSpec(Object.fromEntries(['x','y','width','height','frames'].map(k=>[k,$('export-'+k).value])),U.frameCount(cfg()));return {...spec,codec:FxShieldExport,settings:cfg(),backend:scene.actual,assetInfo:s.asset?{name:s.source.name,version:s.asset.version,options:s.options}:null,createScene:FxSwordSlashBake.sceneFactory({source:s.source,poseOptions:s.options}),yieldFrame:()=>new Promise(resolve=>setTimeout(resolve,0))};},
+   bake:FxSwordSlashExport.bakeSequence,begin(){resume=playing;lock(true);$('cancelExport').disabled=false;status('Baking PNG sequence');},
+   end(){if(!closed){$('cancelExport').disabled=true;lock(false);play(resume);}},
+   progress(n,total){if(!closed){$('exportProgress').max=total;$('exportProgress').value=n;$('exportCount').textContent=n+' / '+total;}},
+   report:(message,error)=>{if(!closed)status(message,error);},download:bytes=>{if(!closed)downloadPng(bytes);}
+  });return exportJob;
+ }
+ $('exportPng').onclick=()=>attempt(()=>pngJob().run());$('cancelExport').onclick=()=>exportJob?.cancel();
  function tick(now){if(closed)return;if(playing&&!locked()){if(last!==null)attempt(()=>{paint(U.advance(scene.session.seconds,(now-last)/1000,cfg()));if(scene.session.seconds>=U.seek(3600,cfg()))play(false);});if(playing)last=now;}raf=requestAnimationFrame(tick);}
- window.addEventListener('pagehide',()=>{closed=true;play(false);cancelAnimationFrame(raf);dispose(scene);scene=null;},{once:true});raf=requestAnimationFrame(tick);rebuild('webgl2');
+ window.addEventListener('pagehide',()=>{closed=true;exportJob?.cancel();play(false);cancelAnimationFrame(raf);dispose(scene);scene=null;},{once:true});raf=requestAnimationFrame(tick);rebuild('webgl2');
 })();

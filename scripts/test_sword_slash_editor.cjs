@@ -2,17 +2,17 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 async function runEditorScenarios(sources,editor,ui,assert){
- const G={FxSwordSlashPose:{pose(a,t,o){if(a){a.model.visible=o.visible;a.model.skeleton.bones[0].worldX=t*180*o.speed;}return {};}}};
+ let downloads=0,pending,request;const G={FxSwordSlashPose:{pose(a,t,o){if(a){a.model.visible=o.visible;a.model.skeleton.bones[0].worldX=t*180*o.speed;}return {};}}};
  for(const src of sources)new Function('globalThis','module','require',src)(G,undefined,undefined);
  class Element{
   constructor(tag='div'){this.tag=tag;this.children=[];this.style={};this.dataset={};this.validity={valid:true};this._value='';this.checked=false;this.hidden=false;this.disabled=false;this.textContent='';}
   set value(v){this._value=String(v);}get value(){return this._value;}
   append(...v){this.children.push(...v);}prepend(...v){this.children.unshift(...v);}add(v){this.append(v);}
-  replaceChildren(...v){this.children=v;}setAttribute(){}setPointerCapture(){}
+  replaceChildren(...v){this.children=v;}setAttribute(){}setPointerCapture(){}click(){downloads++;}remove(){}
   getBoundingClientRect(){return {left:0,top:0,width:512,height:512};}
  }
  const nodes=Object.fromEntries([...ui.matchAll(/\bid="([^"]+)"/g)].map(m=>[m[1],new Element()]));
- Object.assign(nodes.layer,{value:'main'});Object.assign(nodes.curveKey,{value:'reveal'});Object.assign(nodes.backend,{value:'webgl2'});Object.assign(nodes.speed,{value:'1'});nodes.showSpine.checked=true;nodes.sampleData.textContent='{}';
+ Object.assign(nodes.layer,{value:'main'});Object.assign(nodes.curveKey,{value:'reveal'});Object.assign(nodes.backend,{value:'webgl2'});Object.assign(nodes.speed,{value:'1'});nodes.showSpine.checked=true;nodes.sampleData.textContent='{}';for(const [k,v] of Object.entries({x:0,y:0,width:512,height:512,frames:3}))nodes['export-'+k].value=v;
  const document={getElementById:id=>{if(!nodes[id])throw Error('Unknown id '+id);return nodes[id];},createElement:tag=>new Element(tag),body:new Element()};
  function Option(label,value){return {label,value};}
  class Container{constructor(){this.children=[];}addChild(...c){for(const x of c){x.parent=this;this.children.push(x);}}toLocal(p){return {...p};}}
@@ -22,7 +22,7 @@ async function runEditorScenarios(sources,editor,ui,assert){
  const loader={sample:()=>({name:'fixture'}),anchorPoses:()=>({}),async create(source){const b={active:true,a:1,b:0,c:0,d:1,worldX:0,worldY:0,data:{name:'weapon'}};const m={skeleton:{bones:[b],slots:[],findBone:n=>n==='weapon'?b:null},visible:true};const a={model:m,source,defaultAnimation:'swing',defaultSkin:'base',animations:['swing'],skins:['base'],destroy(){this.dead=true;}};assets.push(a);return a;}};
  const runtime={createRenderer({compile,settings}){const plan=compile(settings),r={settings:plan.settings,meta:plan.meta,seek:t=>plan.sample(t),destroy(){this.dead=true;}};renderers.push(r);return r;}};
  // Actual compiler/session/kernels. DOM, GPU, Spine pose/asset decoder are fixtures.
- const env={...G,document,Option,PIXI:{Application:App,Container,RendererType:{WEBGPU:2}},spine:{},WebGL2RenderingContext:GL2,window:{addEventListener:(name,fn)=>{if(name==='pagehide')close=fn;}},requestAnimationFrame:()=>1,cancelAnimationFrame:()=>{},FxShockwaveSpine:loader,FxSwordSlashRuntime:runtime,FxCurveEditor:{mount(h,o){curve=o;}},FxColorUi:{mount(h,o){palette=o;}}};
+ const env={...G,document,Option,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){}},Blob:class {},setTimeout:fn=>fn(),FxShieldExport:{},FxSwordSlashBake:{sceneFactory:()=>()=>{}},FxSwordSlashExport:{bakeSequence(p){request=p;return new Promise(resolve=>{pending=()=>{p.progress(3,3);resolve({zip:new Uint8Array(1)});};});}},PIXI:{Application:App,Container,RendererType:{WEBGPU:2}},spine:{},WebGL2RenderingContext:GL2,window:{addEventListener:(name,fn)=>{if(name==='pagehide')close=fn;}},requestAnimationFrame:()=>1,cancelAnimationFrame:()=>{},FxShockwaveSpine:loader,FxSwordSlashRuntime:runtime,FxCurveEditor:{mount(h,o){curve=o;}},FxColorUi:{mount(h,o){palette=o;}}};
  new Function(...Object.keys(env),editor)(...Object.values(env));
  for(let i=0;i<12;i++)await Promise.resolve();
  const cfg=()=>JSON.parse(nodes.preset.value);
@@ -48,9 +48,13 @@ async function runEditorScenarios(sources,editor,ui,assert){
  rejectGPU=true;nodes.backend.value='webgpu';await nodes.backend.onchange();assert.equal(nodes.actual.textContent,'WEBGL1');assert.equal(nodes.backend.value,'webgl1');assert.equal(cfg().trajectory.main,'recorded');
  await nodes.remove.onclick();assert.equal(cfg().trajectory.main,'recorded');assert.equal(nodes.assetName.textContent,'fixture');
  change('layerFields','trajectory','authored');await nodes.remove.onclick();assert.equal(nodes.assetName.textContent,'No Spine asset');
- close();assert.ok(assets.every(a=>a.dead));assert.ok(renderers.every(r=>r.dead));assert.ok(apps.filter(a=>a.renderer).every(a=>a.dead));
+ const oldPreset=nodes.preset.value,oldFrame=nodes.frame.value;
+ const first=nodes.exportPng.onclick();assert.equal(nodes.controls.disabled,true);assert.equal(nodes.exportFields.disabled,true);assert.equal(request.frameCount,3);assert.equal(request.backend,'webgl1');assert.equal(request.crop.width,512);assert.equal(await nodes.exportPng.onclick(),false);
+ nodes.cancelExport.onclick();pending();assert.equal(await first,false);assert.equal(downloads,0);assert.equal(nodes.controls.disabled,false);assert.equal(nodes.cancelExport.disabled,true);assert.equal(nodes.preset.value,oldPreset);assert.equal(nodes.frame.value,oldFrame);
+ const second=nodes.exportPng.onclick();pending();assert.equal(await second,true);assert.equal(downloads,1);assert.equal(nodes.exportCount.textContent,'3 / 3');assert.equal(nodes.preset.value,oldPreset);assert.equal(nodes.frame.value,oldFrame);
+ const third=nodes.exportPng.onclick();close();pending();assert.equal(await third,false);assert.equal(downloads,1);assert.ok(assets.every(a=>a.dead));assert.ok(renderers.every(r=>r.dead));assert.ok(apps.filter(a=>a.renderer).every(a=>a.dead));
 }
 
 const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
-const paths=["assets/template/src/curve-core.js","assets/template/src/spacing-core.js","assets/template/src/path-core.js","assets/template/src/color-core.js","assets/sword-slash/src/sword-slash-core.js","assets/sword-slash/src/sword-slash-anchors.js","assets/sword-slash/src/sword-slash-history.js","assets/sword-slash/src/sword-slash-authoring.js"];
+const paths=["assets/template/src/curve-core.js","assets/template/src/spacing-core.js","assets/template/src/path-core.js","assets/template/src/color-core.js","assets/sword-slash/src/sword-slash-core.js","assets/sword-slash/src/sword-slash-anchors.js","assets/sword-slash/src/sword-slash-history.js","assets/sword-slash/src/sword-slash-authoring.js","assets/magic-shield/src/shield-export-ui.js"];
 test('Sword Slash editor orchestration (DOM, GPU and Spine loader fixtures)',async()=>runEditorScenarios(paths.map(read),read('assets/sword-slash/src/sword-slash-editor.js'),read('assets/sword-slash/src/ui.html'),assert));
