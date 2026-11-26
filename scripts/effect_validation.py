@@ -152,17 +152,39 @@ def validate_report(report, root, evidence_dir):
     required={"schemaVersion","effectId","effectVersion","sourceCommit","status",
               "environment","fixture","checks","warnings"}
     require(set(report)==required, "invalid/missing report fields")
-    require(report["schemaVersion"]==1, "unsupported report schema version")
+    require(type(report["schemaVersion"]) is int and report["schemaVersion"]==1,
+            "unsupported report schema version")
+    # Python's JSON parser accepts NaN/Infinity by default. Reject them even
+    # in nested measurements and settings supplied via the direct API.
+    try:
+        json.dumps(report, allow_nan=False)
+    except (ValueError, TypeError, OverflowError, RecursionError) as exc:
+        raise ValidationError("report must contain finite JSON values") from exc
+
+    def finite_number(value):
+        if type(value) not in (int,float):
+            return False
+        try:
+            return math.isfinite(value)
+        except OverflowError:
+            return False
     refs=catalog_requirements(root)
-    require(report["effectId"] in refs, "unknown effect ID")
+    require(isinstance(report["effectId"],str) and report["effectId"] in refs, "unknown effect ID")
     doc=refs[report["effectId"]]["blueprint"]
     require(report["effectVersion"]==doc["effectVersion"],"effect version mismatch")
     require(isinstance(report["sourceCommit"],str) and
             COMMIT.fullmatch(report["sourceCommit"]),"commit SHA40 required")
-    require(report["status"] in STATUS, "invalid report status")
+    require(isinstance(report["status"],str) and report["status"] in STATUS, "invalid report status")
     require(isinstance(report["warnings"],list) and
             all(isinstance(w,str) and w for w in report["warnings"]),
             "warnings must be string list")
+    checks=report["checks"]
+    require(isinstance(checks,list) and checks,
+            "checks required")
+    require(all(isinstance(c,dict) and
+                {"id","kind","status","expected","actual","tolerance","evidence"} <= set(c)
+                for c in checks),
+            "check fields missing")
     env=report["environment"]
     require(isinstance(env,dict) and
             {"browser","device","requestedBackend","actualBackend",
@@ -181,9 +203,9 @@ def validate_report(report, root, evidence_dir):
     else:
         for key in ("browser","device","gpu"):
             require(isinstance(env[key],str) and env[key].strip(), "missing "+key)
-        require(env["requestedBackend"] in {"webgl","webgpu"},
+        require(isinstance(env["requestedBackend"],str) and env["requestedBackend"] in {"webgl","webgpu"},
                 "requested backend must be explicit")
-        require(env["actualBackend"] in BACKENDS,
+        require(isinstance(env["actualBackend"],str) and env["actualBackend"] in BACKENDS,
                 "actual backend must be webgl1, webgl2 or webgpu")
         require((env["requestedBackend"]=="webgpu") == (env["actualBackend"]=="webgpu"),
                 "backend fallback cannot be PASS")
@@ -205,7 +227,7 @@ def validate_report(report, root, evidence_dir):
     require(isinstance(fx["settings"],dict) and fx["settings"],
             "exact parameter JSON required")
     if doc["rng"]["policy"]=="seeded-per-instance":
-        require(fx["settings"].get("seed")==fx["seed"],
+        require(type(fx["settings"].get("seed")) is int and fx["settings"]["seed"]==fx["seed"],
                 "seed differs from settings")
     require(type(fx["width"]) is int and 1<=fx["width"]<=4096 and
             type(fx["height"]) is int and 1<=fx["height"]<=4096,
@@ -215,17 +237,10 @@ def validate_report(report, root, evidence_dir):
             "source asset identifier required")
     times=fx["frameTimesSeconds"]
     require(isinstance(times,list) and len(times)==3 and
-            all(type(v) in (float,int) and math.isfinite(v) and v>=0 for v in times) and
+            all(finite_number(v) and v>=0 for v in times) and
             times[0]==0 and times[0]<times[1]<times[2] and
             abs(times[1]-times[2]/2)<1e-5,
             "0 / midpoint / endpoint sampling must be recorded in seconds")
-    checks=report["checks"]
-    require(isinstance(checks,list) and checks,
-            "checks required")
-    require(all(isinstance(c,dict) and
-                {"id","kind","status","expected","actual","tolerance","evidence"} <= set(c)
-                for c in checks),
-            "check fields missing")
     ids=[c["id"] for c in checks]
     require(all(isinstance(x,str) and re.fullmatch(r"[a-z][A-Za-z0-9._-]+",x) for x in ids)
             and len(ids)==len(set(ids)), "invalid or duplicate check ID")
@@ -239,8 +254,8 @@ def validate_report(report, root, evidence_dir):
     statuses=[]
     for c in checks:
         statuses.append(c["status"])
-        require(c["status"] in STATUS, "invalid check status")
-        require(c["kind"] in KINDS, "invalid check kind")
+        require(isinstance(c["status"],str) and c["status"] in STATUS, "invalid check status")
+        require(isinstance(c["kind"],str) and c["kind"] in KINDS, "invalid check kind")
         if c["id"] in phase_checks:
             require(c["kind"]=="visual", "required phase must be visual: "+c["id"])
         elif c["id"] in parameter_checks:
@@ -250,7 +265,7 @@ def validate_report(report, root, evidence_dir):
         require(isinstance(c["expected"],str) and c["expected"].strip(),
                 "missing expected measurement")
         require(isinstance(c["tolerance"],dict), "missing numeric/color tolerance")
-        require(all(type(v) in (int,float) and math.isfinite(v) and v>=0
+        require(all(finite_number(v) and v>=0
                     for v in c["tolerance"].values()), "tolerances must be finite nonnegative")
         require(isinstance(c["evidence"],list), "evidence list required")
         for file in c["evidence"]:
