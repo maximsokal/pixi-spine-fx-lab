@@ -11,13 +11,16 @@
   const model=asset.model,skeleton=model.skeleton;
   if(!skeleton.physicsConstraints?.length){
    const previous=cache.get(model);
-   if(!previous||previous.animation!==animation||previous.skin!==skin){
-    model.state.clearTracks();skeleton.setSkin(null);if(skin)skeleton.setSkinByName(skin);skeleton.setToSetupPose();
-    if(animation)model.state.setAnimation(0,animation,true);
-   }
-   const entry=model.state.getCurrent(0);if(entry)entry.trackTime=seconds*speed;
-   skeleton.setToSetupPose();model.update(0);model.visible=visible;model.updateLocalTransform();
-   cache.set(model,{animation,skin,speed,frame:0});return loader.anchorPoses(model);
+   try{
+    if(!previous||previous.animation!==animation||previous.skin!==skin){
+     cache.delete(model);model.state.clearTracks();skeleton.setSkin(null);if(skin)skeleton.setSkinByName(skin);skeleton.setToSetupPose();
+     if(animation)model.state.setAnimation(0,animation,true);
+    }
+    const entry=model.state.getCurrent(0);if(entry)entry.trackTime=seconds*speed;
+    skeleton.setToSetupPose();model.update(0);model.visible=visible;model.updateLocalTransform();
+    const result=loader.anchorPoses(model);
+    cache.set(model,{animation,skin,speed,frame:0});return result;
+   }catch(error){cache.delete(model);throw error;}
   }
   // Physics advances on authored frames, never on browser RAF deltas or tile count.
   // Zero speed freezes at the initial animation pose; subdivide faster playback.
