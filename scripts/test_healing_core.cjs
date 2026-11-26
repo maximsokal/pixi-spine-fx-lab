@@ -14,3 +14,44 @@ test('seeded jitter, palette and style affect actual motion or primitives',()=>{
 test('zero rate, pulse and invalid/cap conditions',()=>{const c=H.defaults();c.particleRate=0;c.pulseRate=0;const p=H.compile(c);A.equal(p.effectiveHz,0);A.equal(layer(p,.4,'motes').length,0);A.equal(layer(p,.4,'lines').length,0);for(const change of [x=>{x.durationFrames=2;x.lifetimeFrames=1;},x=>{x.durationFrames=3600;x.particleRate=120;},x=>{x.minGapPx=30;x.maxGapPx=5;},x=>{x.burstEnabled=true;x.burstDelayFrames=30;},x=>{x.glowCurve.keys[2].y=.5;}]){const x=H.defaults();change(x);A.throws(()=>H.compile(x));}});
 test('spacing base value, alternate interval source, and Bezier age curve have numerical effects',()=>{const c=H.defaults(),p=H.compile(c);c.spacingPx=28;const q=H.compile(c);A.ok(q.schedules[0].motes.anchors.length<p.schedules[0].motes.anchors.length);c.frequencySource='interval';c.intervalFrames=6;const a=H.compile(c);A.equal(a.schedules[0].motes.births.length,10);flat(c.intervalCurve,2);A.equal(H.compile(c).schedules[0].motes.births.length,5);c.alphaCurve.keys[0].mode='bezier';c.alphaCurve.keys[0].out=[.1,0];c.alphaCurve.keys[1].in=[.1,.9];const b=H.compile(c);A.notDeepEqual(layer(b,.4,'motes'),layer(a,.4,'motes'));});
 test('positive anchor pose, pulse/line independence and reserved peak across frames',()=>{const c=H.defaults();c.emitters[0].anchor={type:'bone',name:'head'};c.emitters[0].x=0;c.emitters[0].y=0;c.emitters[0].layers.pulse.enabled=true;c.burstEnabled=true;const p=H.compile(c),poses={bones:{head:{x:25,y:30,rotation:90,scale:2}}};const f=p.sample(.4,poses);A.ok(f.emitters[0].layers.pulse.length);close(f.emitters[0].layers.glow[0].x,25);close(f.emitters[0].layers.glow[0].y,30);close(f.emitters[0].layers.glow[0].radius,170);for(let i=0;i<=600;i++){const s=p.sample(i/600,poses);A.ok(s.cost<=p.reserved);for(const k of ['motes','lines'])A.ok(s.emitters[0].layers[k].length<=p.schedules[0][k].maxActive);}const births=p.schedules[0].motes.births.filter(x=>x.stream==='burst');for(const frame of new Set(births.map(x=>x.frame)))A.equal(new Set(births.filter(x=>x.frame===frame).map(x=>x.anchorIndex)).size,3);c.emitters[0].layers.pulse.seed++;const q=H.compile(c);A.notDeepEqual(q.sample(.4,poses).emitters[0].layers.pulse,f.emitters[0].layers.pulse);A.deepEqual(q.sample(.4,poses).emitters[0].layers.motes,f.emitters[0].layers.motes);});
+
+test('one-frame life at 60/s never exceeds capacity and never drops an authored birth',()=>{
+ const c=H.defaults();c.particleRate=60;c.lifetimeFrames=1;flat(c.alphaCurve,1);const p=H.compile(c);
+ for(const key of ['motes','lines']){
+  const row=p.schedules[0][key];A.equal(row.maxActive,1);
+  A.deepEqual(row.births.map(b=>b.frame),Array.from({length:60},(_,i)=>i));
+  for(let i=0;i<60;i++){const v=layer(p,i/60,key);A.equal(v.length,1);A.equal(v[0].bornFrame,i);A.equal(v[0].age,0);}
+ }
+});
+test('fractional births and expiries never exceed the compiled pool',()=>{
+ for(const rate of [18,40,60,90,120])for(const life of [1,2,12,60]){
+  const c=H.defaults();c.particleRate=rate;c.lifetimeFrames=life;flat(c.alphaCurve,1);const p=H.compile(c);
+  for(const key of ['motes','lines']){
+   const row=p.schedules[0][key],times=[...row.births.map(b=>b.frame),...row.births.map(b=>(b.frame+life)%60)];
+   for(const frame of times)for(const delta of [-1e-6,0,1e-6]){
+    const phase=((frame+delta+60)%60)/60,v=layer(p,phase,key);
+    A.ok(v.length<=row.maxActive,'capacity at '+rate+'/'+life+'/'+frame+' '+key);
+    A.equal(new Set(v.map(p=>p.id)).size,v.length);A.ok(v.every(p=>p.age>=0&&p.age<life),'age at '+rate+'/'+life+'/'+frame+' '+key);
+   }
+  }
+ }
+});
+test('half-open wrapped expiration and whole-period lifetime at fractional times',()=>{
+ const c=H.defaults();c.particleRate=40;c.lifetimeFrames=2;flat(c.alphaCurve,1);let p=H.compile(c);
+ const birth=p.schedules[0].motes.births.at(-1).frame;A.ok(birth>58,'expected wrapped birth');
+ const expiry=birth-(60-c.lifetimeFrames);
+ const before=layer(p,(expiry-1e-6)/60,'motes'),at=layer(p,expiry/60,'motes');
+ A.ok(before.some(x=>x.bornFrame===birth),'must survive before expiry');A.ok(!at.some(x=>x.bornFrame===birth),'must expire at endpoint');
+ c.lifetimeFrames=60;p=H.compile(c);
+ for(const seconds of [0,.125,.275,.5,.999999,1,1.275]){
+  const v=layer(p,seconds,'motes');A.equal(v.length,p.schedules[0].motes.births.length);A.ok(v.every(x=>x.age<60),'whole-period age');
+ }
+});
+test('one-shot uses the same half-open endpoints, including delayed bursts',()=>{
+ const c=H.defaults();Object.assign(c,{mode:'oneShot',durationFrames:40,lifetimeFrames:1,particleRate:60,burstEnabled:true,burstRate:3,burstCount:2,burstDelayFrames:1});flat(c.alphaCurve,1);const p=H.compile(c);
+ for(let i=0;i<=78;i++)for(const key of ['motes','lines']){
+  const v=layer(p,i/120,key);A.ok(v.length<=p.schedules[0][key].maxActive);A.ok(v.every(x=>x.age>=0&&x.age<1));
+  if(i>=2&&i<78)A.ok(v.some(x=>x.id.includes('-base')),'base birth missing at '+i);
+ }
+ A.equal(p.sample(39/60).cost,0);
+});
