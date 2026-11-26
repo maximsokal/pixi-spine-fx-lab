@@ -21,7 +21,7 @@ class BuilderTests(unittest.TestCase):
         self.write(self.src + 'ui.html', '<script type="application/json">__SAMPLE_DATA__</script><!-- VENDOR --><!-- CORES --><!-- APP -->')
         for name in ['curve-core', 'spacing-core', 'color-core', 'timeline-core', 'curve-editor', 'color-ui']:
             self.write(self.template + 'src/' + name + '.js', '// ' + name)
-        for name in ['dissolve-core', 'dissolve-shader', 'dissolve-surface', 'dissolve-runtime', 'dissolve-authoring', 'dissolve-editor']:
+        for name in ['dissolve-core', 'dissolve-shader', 'dissolve-surface', 'dissolve-runtime', 'dissolve-authoring', 'dissolve-export', 'dissolve-bake', 'dissolve-export-ui', 'dissolve-developer', 'dissolve-editor']:
             self.write(self.src + name + '.js', '// ' + name)
         self.write('assets/shockwave/src/shockwave-spine.js', '// spine loader')
         for p in ['vendor/pixi.js', 'vendor/spine.js', 'licenses/pixi.txt', 'licenses/spine.txt']:
@@ -40,7 +40,7 @@ class BuilderTests(unittest.TestCase):
         result = build(self.root)
         names = ['pixi.js', 'spine.js', 'curve-core.js', 'spacing-core.js', 'color-core.js', 'timeline-core.js',
                  'curve-editor.js', 'color-ui.js', 'shockwave-spine.js', 'dissolve-core.js', 'dissolve-shader.js', 'dissolve-surface.js', 'dissolve-runtime.js',
-                 'dissolve-authoring.js', 'dissolve-editor.js']
+                 'dissolve-authoring.js', 'dissolve-export.js', 'dissolve-bake.js', 'dissolve-export-ui.js', 'dissolve-developer.js', 'dissolve-editor.js']
         offsets = [result.index('id="' + name + '"') for name in names]
         self.assertEqual(offsets, sorted(offsets))
         self.assertIn('"p.png":"YmluYXJ5IGZpeHR1cmU="', result)

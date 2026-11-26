@@ -1,0 +1,6 @@
+'use strict';
+const {test}=require('node:test'),A=require('node:assert/strict');
+const U=require('../assets/dissolve/src/dissolve-export-ui.js');
+const fields={x:'0',y:'0',width:'512',height:'512',frames:''};
+test('center-relative crop, signed offsets and odd dimensions',()=>{A.deepEqual(U.readSpec(fields,60),{crop:{x:0,y:0,width:512,height:512},frameCount:60});A.deepEqual(U.readSpec({...fields,x:'-300',y:'12',width:'5',height:'3',frames:'40'},60),{crop:{x:-46,y:267,width:5,height:3},frameCount:40});for(const patch of [{x:'1.5'},{width:'0'},{height:'4097'},{frames:'0'},{x:'-16384',width:'4096'}])A.throws(()=>U.readSpec({...fields,...patch},60));});
+test('one job, cancel without download, then retry successfully',async()=>{let release,downloads=0,ends=0,progress=[];const C=U.createController({request:()=>({frameCount:40}),bake:()=>new Promise(r=>{release=r;}),begin(){},end(){ends++;},progress:(...a)=>progress.push(a),report(){},download(){downloads++;}});const a=C.run();A.equal(C.active,true);A.equal(await C.run(),false);A.equal(C.cancel(),true);release({zip:Uint8Array.of(1)});A.equal(await a,false);A.equal(downloads,0);A.equal(ends,1);const b=C.run();release({zip:Uint8Array.of(1)});A.equal(await b,true);A.equal(downloads,1);A.equal(ends,2);A.deepEqual(progress,[[0,40],[0,40]]);});
