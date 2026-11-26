@@ -17,7 +17,7 @@
     "arch:statik:dead-code": "node scripts/run-statik.cjs dead-code",
     "arch:statik:impact": "node scripts/run-statik.cjs impact",
     "arch:statik:health": "node scripts/run-statik-health.cjs",
-    "arch:statik:test": "node --test scripts/test-statik-health.cjs",
+    "arch:statik:test": "node --test scripts/test-statik-health.cjs scripts/test-statik-canary-identity.cjs",
     "arch:check": "npm run arch:deps && npm run arch:unused && npm run arch:statik:health",
     "arch:deps:test": "node --test scripts/test-dependency-coverage.cjs"
   },
