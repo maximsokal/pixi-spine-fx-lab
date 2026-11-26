@@ -24,7 +24,9 @@ def build(root):
     notices = '\n'.join(text(local(template, 'licenses/' + name)) for name in ('pixi.txt', 'spine.txt'))
     vendor = '<script type="text/plain" id="runtimeLicenses">' + safe(notices) + '</script>\n' + '\n'.join(tag(template, name) for name in vendors)
     cores = [tag(template, 'src/' + name) for name in ('curve-core.js', 'spacing-core.js', 'color-core.js', 'timeline-core.js', 'curve-editor.js', 'color-ui.js')]
-    cores.extend(tag(source, name) for name in ('leaves-core.js', 'leaves-runtime.js'))
+    cores.extend(tag(source, name) for name in ('leaves-core.js', 'leaves-runtime.js', 'leaves-spine.js'))
+    cores.append(tag(root / 'assets/magic-shield/src', 'shield-export.js'))
+    cores.append(tag(source, 'leaves-export.js'))
     sample = json.dumps(sample_data(template, manifest), separators=(',', ':')).replace('</', '<\\/')
     replacements = {'<!-- VENDOR -->': vendor, '<!-- CORES -->': '\n'.join(cores), '__SAMPLE_DATA__': sample, '<!-- APP -->': tag(source, 'leaves-editor.js')}
     for marker in replacements:

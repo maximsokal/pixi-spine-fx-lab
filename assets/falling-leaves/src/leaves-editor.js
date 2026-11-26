@@ -68,6 +68,7 @@
   let scene=null,asset=null,busy=false,editors=[],lockedControls=[];
   const status=(msg,error=false)=>{$('status').textContent=msg;$('status').classList.toggle('error',error);};
   function setBusy(v){
+   if(busy===!!v)return;
    busy=!!v;
    if(busy){lockedControls=[...document.querySelectorAll('main input,main button,main select,main textarea')].filter(e=>e.id!=='cancel'&&!e.disabled);for(const e of lockedControls)e.disabled=true;}
    else{for(const e of lockedControls)e.disabled=false;lockedControls=[];}
@@ -170,35 +171,13 @@
     isLocked:()=>busy,onChange:v=>{if(busy)throw Error('Editor busy');session.edit(c=>c.palette=v);refreshTime();}}));
    refreshTime();
   }
-  async function readSpine(source){
-   const bytes=await source.skeleton.arrayBuffer(),binary=/\.skel$/i.test(source.skeletonName);
-   const raw=binary?new Uint8Array(bytes):JSON.parse(new TextDecoder().decode(bytes));
-   let version=raw.skeleton?.spine;
-   if(binary){const input=new spine.BinaryInput(raw);input.readInt32();input.readInt32();version=input.readString();}
-   if(!version?.startsWith('4.2.'))throw Error('Falling Leaves requires Spine 4.2; received '+version);
-   const atlas=new spine.TextureAtlas(await source.atlas.text());let model=null;
-   try{
-    for(const page of atlas.pages){const name=page.name.replaceAll('\\','/');let blob=source.images.get(name);
-     if(!blob){const matches=[...source.images].filter(([k])=>k.replaceAll('\\','/').split('/').at(-1)===name.split('/').at(-1));if(matches.length===1)blob=matches[0][1];}
-     if(!blob)throw Error('Missing atlas page '+name);
-     const url=URL.createObjectURL(blob);let image;
-     try{image=new Image();image.src=url;await image.decode();}finally{URL.revokeObjectURL(url);}
-     page.setTexture(spine.SpineTexture.from(new PIXI.ImageSource({resource:image,alphaMode:page.pma?'premultiplied-alpha':'premultiply-alpha-on-upload',autoGenerateMipmaps:false})));
-    }
-    const loader=new spine.AtlasAttachmentLoader(atlas),parser=binary?new spine.SkeletonBinary(loader):new spine.SkeletonJson(loader);
-    const data=parser.readSkeletonData(raw);model=new spine.Spine({skeletonData:data,autoUpdate:false});model.update(0);
-    const b=model.getLocalBounds();if(!(b.width>0&&b.height>0))throw Error('Empty Spine skeleton');
-    const scale=Math.min(260/b.width,330/b.height,2);model.scale.set(scale);model.position.set(256-(b.x+b.width/2)*scale,260-(b.y+b.height/2)*scale);
-    return {model,atlas,data,version};
-   }catch(e){model?.destroy();atlas.dispose();throw e;}
-  }
   async function makeScene(which,source,settings,skin='',animation=''){
    const app=new PIXI.Application();let host,fx,sp=null,initialized=false;
    try{
     await app.init({width:512,height:512,resolution:1,backgroundAlpha:0,preference:which==='webgpu'?'webgpu':'webgl',
      preferWebGLVersion:which==='webgl1'?1:2,antialias:which!=='webgl1',autoStart:false,sharedTicker:false});
     initialized=true;host=new PIXI.Container();app.stage.addChild(host);
-    if(source){sp=await readSpine(source);host.addChild(sp.model);
+    if(source){sp=await root.FxLeavesSpine.readSpine(source,{PIXI,spine});host.addChild(sp.model);
      if(skin&&sp.data.skins.some(s=>s.name===skin)){sp.model.skeleton.setSkinByName(skin);sp.model.skeleton.setSlotsToSetupPose();}
      if(animation&&sp.data.animations.some(a=>a.name===animation))sp.model.state.setAnimation(0,animation,true);sp.model.update(0);}
     fx=FxLeavesRuntime.createLeaves({PIXI,app,host,model:sp?.model??null,settings});
@@ -274,7 +253,7 @@
   refresh();switchScene(null);
   return Object.freeze({session,makeScene,status,setBusy,get busy(){return busy},get scene(){return scene},
    get asset(){return asset?{...asset,skin:$('skin').value,animation:$('animation').value}:null},
-   getSettings:()=>session.settings,getActualBackend:()=>scene?.actual??{actual:'unavailable',requested:$('backend').value},
+   getSettings:()=>session.settings,getPoseOptions:()=>({followFx:$('followFx').checked,spineTime:Number($('spineTime').value),visible:$('showSpine').checked}),getActualBackend:()=>scene?.actual??{actual:'unavailable',requested:$('backend').value},
    setSettings:c=>attempt(()=>session.replace(c),true),seek:t=>attempt(()=>session.seek(t)),
    stop:()=>session.pause(),refreshTime});
  }

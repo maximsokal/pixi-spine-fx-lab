@@ -58,11 +58,11 @@ textarea{width:100%;min-height:95px;resize:vertical;font-family:ui-monospace,Con
 <details open><summary>Independent emitters and layers</summary><div class="inside" id="emitterControls"></div></details>
 <details><summary>RGBA gradient</summary><div class="inside" id="gradient"></div></details>
 <details><summary>Five editable curves</summary><div class="inside" id="curves"></div></details>
-<details open><summary>Preset</summary><div class="inside"><div class="stack"><button id="savePreset">Save preset JSON</button><button id="loadPreset">Import preset</button><input id="presetFile" type="file" accept=".json,application/json" hidden><button id="defaults">Reset settings</button></div><p class="small">120-frame loop at 60 FPS. Preview only: PNG and developer ZIP exports are pending L04. Camera zoom and background do not affect logical coordinates.</p></div></details>
+<details open><summary>Preset</summary><div class="inside"><div class="stack"><button id="savePreset">Save preset JSON</button><button id="loadPreset">Import preset</button><input id="presetFile" type="file" accept=".json,application/json" hidden><button id="defaults">Reset settings</button></div><div class="stack"><button class="primary" id="bake">Bake 120 PNG frames</button><button id="cancel" disabled>Cancel</button><button id="webglZip">WebGL dev ZIP</button><button id="webgpuZip">WebGPU dev ZIP</button></div><p class="small">120-frame loop at 60 FPS. PNG excludes the Spine model. Developer examples retain selected assets and pose settings. Preview zoom and background do not affect export.</p></div></details>
 </aside></main>
 <!-- VENDOR -->
 <!-- CORES -->
 <script id="sampleData" type="application/json">__SAMPLE_DATA__</script>
 <!-- APP -->
-<script>FxLeavesEditor.mount();</script>
+<script>FxLeavesExport.bind(FxLeavesEditor.mount());</script>
 </body></html>

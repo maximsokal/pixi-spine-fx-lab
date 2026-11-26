@@ -28,8 +28,9 @@ class LeavesBuilderTests(unittest.TestCase):
                                     'src/timeline-core.js', 'src/curve-editor.js', 'src/color-ui.js',
                                     'licenses/spine.txt', 'licenses/pixi.txt']:
             self.write(self.template / name, '// ' + name)
-        for name in ['leaves-core.js', 'leaves-runtime.js', 'leaves-editor.js']:
+        for name in ['leaves-core.js', 'leaves-runtime.js', 'leaves-spine.js', 'leaves-export.js', 'leaves-editor.js']:
             self.write(self.fx / name, '// ' + name + '\nconst example = "</script> <!-- APP -->";')
+        self.write(self.root / 'assets/magic-shield/src/shield-export.js', '// shield-export.js')
         self.markers = ['<!-- VENDOR -->', '<!-- CORES -->', '__SAMPLE_DATA__', '<!-- APP -->']
         self.write(self.fx / 'ui.html', '\n'.join(self.markers))
 
@@ -42,10 +43,10 @@ class LeavesBuilderTests(unittest.TestCase):
         result = build(self.root)
         order = ['pixi-8.22.0.min.js', 'spine-pixi-v8-4.2.120.min.js', 'curve-core.js',
                  'spacing-core.js', 'color-core.js', 'timeline-core.js', 'curve-editor.js',
-                 'color-ui.js', 'leaves-core.js', 'leaves-runtime.js', 'leaves-editor.js']
+                 'color-ui.js', 'leaves-core.js', 'leaves-runtime.js', 'leaves-spine.js', 'shield-export.js', 'leaves-export.js', 'leaves-editor.js']
         self.assertEqual(sorted(result.index(s) for s in order), [result.index(s) for s in order])
         self.assertIn('<\\/script> <!-- APP -->', result)
-        self.assertEqual(result.count('<!-- APP -->'), 3)
+        self.assertEqual(result.count('<!-- APP -->'), 5)
         self.assertIn('ZmFrZSBieXRlcw==', result)
         self.assertIn('c2Vjb25kIHBhZ2U=', result)
         self.assertNotIn('<script src=', result)
