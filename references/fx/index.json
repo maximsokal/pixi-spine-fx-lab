@@ -589,6 +589,29 @@
       ]
     },
     {
+      "effectId": "fx.game.sword-slash",
+      "category": "game",
+      "path": "references/fx/game/sword-slash.md",
+      "keywords": [
+        "sword slash",
+        "weapon slash",
+        "blade slash",
+        "взмах меча",
+        "след меча",
+        "змах меча",
+        "слід меча"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        10,
+        5,
+        6,
+        7
+      ]
+    },
+    {
       "effectId": "fx.game.dissolve",
       "category": "game",
       "path": "references/fx/game/dissolve.md",

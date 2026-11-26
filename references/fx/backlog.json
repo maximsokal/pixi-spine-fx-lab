@@ -557,7 +557,7 @@
       "issue": 42,
       "title": "Sword Slash",
       "priority": "P0",
-      "localEffectId": null,
+      "localEffectId": "fx.game.sword-slash",
       "coreIssues": [
         3,
         4,
