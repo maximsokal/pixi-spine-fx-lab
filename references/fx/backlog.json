@@ -489,7 +489,7 @@
       "issue": 38,
       "title": "Chain Lightning",
       "priority": "P1",
-      "localEffectId": null,
+      "localEffectId": "fx.ice.chain-lightning",
       "coreIssues": [
         3,
         4,

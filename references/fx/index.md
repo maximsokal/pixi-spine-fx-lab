@@ -20,6 +20,7 @@ The small [index.json](index.json) is the machine-readable routing index. Each e
 | AIR | [Wind Gust](air/wind-gust.md) | **Reference implementation**, independent tapered curved 40-frame wind surge + optional dust, 60-frame loop | parameters, curves, spacing, pathGeometry, emitters, colors, timeline |
 | AIR | [Snowfall](air/snowfall.md) | **Implementation candidate (acceptance pending)**, independently anchored pre-rolled near/far snow and optional wind swirls | parameters, curves, spacing, emitters, colors, timeline |
 | EARTH | [Falling Leaves](earth/falling-leaves.md) | **Implementation candidate (acceptance pending)**, independent foreground/background sprites and optional gusts, 120-frame loop | parameters, curves, spacing, emitters, colors, timeline |
+| ICE | [Chain Lightning](ice/chain-lightning.md) | **Implementation candidate (acceptance pending)**, ordered multi-target arcs, independent branches and impact glow | parameters, curves, spacing, pathGeometry, emitters, colors, timeline |
 | ICE | [Electric Aura](ice/electric-aura.md) | **Implementation candidate (acceptance pending)**, periodic tapered electric arcs, independent halo and sparks | parameters, curves, spacing, pathGeometry, emitters, colors, timeline |
 | ICE | [Frost dissolve](ice/frost-dissolve.md) | **Specification only**, not a shipped editor | parameters, curves, colors, timeline |
 | GAME | [Hit flash](game/hit-flash.md) | **Specification only**, not a shipped editor | parameters, curves, timeline |
@@ -47,7 +48,7 @@ Run `python scripts/blueprint_router.py --route "hit flash damage"` to inspect a
 
 ## Optional geometry contract for specialized future effects
 
-Vine Growth (#33), Chain Lightning (#38), [Sword Slash](game/sword-slash.md) (#42), ribbons and trails may depend on [FX-CORE-08 Path Geometry](../contracts/path-geometry.md) after Curves and Spacing. It is an **implemented reusable geometry library**, not a ready-made effect. Do not load it for unrelated FIRE/ICE/GAME variants; future Blueprints explicitly include `pathGeometry` in `requiredContracts` when applicable.
+Vine Growth (#33), [Chain Lightning](ice/chain-lightning.md) (#38), [Sword Slash](game/sword-slash.md) (#42), ribbons and trails may depend on [FX-CORE-08 Path Geometry](../contracts/path-geometry.md) after Curves and Spacing. It is an **implemented reusable geometry library**, not a ready-made effect. Do not load it for unrelated FIRE/ICE/GAME variants; future Blueprints explicitly include `pathGeometry` in `requiredContracts` when applicable.
 
 ## Complete issue Blueprint catalog (#52)
 

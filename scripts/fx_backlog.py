@@ -49,6 +49,9 @@ def validate(data, registry):
             require(isinstance(effect, str) and effect in local and effect not in linked, 'Invalid local effect link')
             entry = local[effect]
             cat = ident.split('-')[0].lower()
+            # Electricity shares the ICE registry namespace (ELEC-01..03).
+            if cat == 'elec':
+                cat = 'ice'
             require(effect.startswith(f'fx.{cat}.') and entry.get('category') == cat, 'Local category mismatch')
             slug = effect.split('.')[-1]
             require(slug.isascii() and slug.replace('-', '').isalnum()

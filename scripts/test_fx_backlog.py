@@ -17,7 +17,7 @@ class BacklogTests(unittest.TestCase):
         rows = B.validate(self.data, self.registry)
         self.assertEqual([r['issue'] for r in rows], list(range(11, 52)))
         self.assertEqual(len(self.data['core']), 8)
-        self.assertEqual(sum(r['localEffectId'] is not None for r in rows), 27)
+        self.assertEqual(sum(r['localEffectId'] is not None for r in rows), 28)
 
     def test_exact_selection_never_substitutes_a_similar_effect(self):
         for key in ('GAME-02', 'game-02', '41', 'Hit Sparks'):
@@ -44,6 +44,25 @@ class BacklogTests(unittest.TestCase):
             self.assertEqual(result['localBlueprint']['effectId'], 'fx.game.sword-slash')
             self.assertEqual(result['localBlueprint']['status'], 'specification-only')
             self.assertIn('references/contracts/path-geometry.md', result['contracts'])
+
+    def test_chain_lightning_candidate_is_linked_but_unverified(self):
+        for query in ('ELEC-02', '38', 'Chain Lightning'):
+            result = B.select(self.data, self.registry, query)
+            self.assertEqual(result['issue'], 38)
+            self.assertEqual(result['localBlueprint']['effectId'], 'fx.ice.chain-lightning')
+            self.assertEqual(result['localBlueprint']['status'], 'specification-only')
+            self.assertIn('references/contracts/path-geometry.md', result['contracts'])
+        self.assertEqual(B.select(self.data, self.registry, 'ELEC-03')['localBlueprint']['effectId'],
+                         'fx.ice.electric-aura')
+        for effect, category in (('fx.elec.chain-lightning', 'elec'), ('fx.game.chain-lightning', 'game')):
+            data, registry = copy.deepcopy(self.data), copy.deepcopy(self.registry)
+            row = next(r for r in data['effects'] if r['id'] == 'ELEC-02')
+            entry = next(r for r in registry['entries'] if r['effectId'] == row['localEffectId'])
+            row['localEffectId'] = effect
+            entry.update(effectId=effect, category=category,
+                         path=f'references/fx/{category}/chain-lightning.md')
+            with self.assertRaisesRegex(ValueError, 'Local category mismatch'):
+                B.validate(data, registry)
 
     def test_electric_aura_candidate_is_linked_but_unverified(self):
         for query in ('ELEC-03', '39', 'Electric Aura'):
