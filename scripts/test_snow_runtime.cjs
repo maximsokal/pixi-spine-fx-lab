@@ -128,3 +128,28 @@ test('malformed attachment vertices cannot produce a phantom origin',()=>{
  const f=fixture(c),r=f.start();f.setAttachment({name:'bodyA',computeWorldVertices(slot,out){out[0]=0;out[1]=0}});
  r.seek(.1);assert.equal(record(r,'emitter1','near').surface.visible,false);assert.ok(r.totalActive>0);r.destroy();
 });
+
+test('real pinned Spine PointAttachment resolves local and world offsets and recovers after removal',()=>{
+ const fs=require('node:fs'),path=require('node:path'),vendor=path.resolve(__dirname,'../assets/template/vendor');
+ const read=n=>fs.readFileSync(path.join(vendor,n),'utf8'),doc={createElement:()=>({style:{},getContext:()=>null}),createElementNS:()=>({style:{}})},win={};
+ const P=new Function('navigator','document','window','self',read('pixi-8.22.0.min.js')+'\nreturn PIXI;')({userAgent:'Chromium',platform:'Linux'},doc,win,win);win.PIXI=P;
+ const Sp=new Function('PIXI','window','self','require',read('spine-pixi-v8-4.2.120.min.js')+'\nreturn spine;')(P,win,win,n=>{if(n==='pixi.js')return P;throw Error(n);});
+ const a={type:'attachment',space:'local',name:'tip',slot:'body',x:3,y:4,rotation:15},c=Snow.defaults();c.emitters[0].layers.near.anchor=a;
+ const f=fixture(c),pt=new Sp.PointAttachment('tip');pt.x=7;pt.y=-2;pt.rotation=30;f.setAttachment(pt);
+ const r=f.start();try{
+  assert.deepEqual(r.resolveAnchor(a),{x:130,y:226});
+  assert.deepEqual(r.resolveAnchor({...a,space:'world'}),{x:127,y:218});
+  r.seek(.2);const near=record(r,'emitter1','near').surface;
+  assert.equal(near.visible,true);assert.equal(near.x,130);assert.equal(near.y,226);assert.equal(near.rotation,15*Math.PI/180);
+  const far=record(r,'emitter1','far');f.setAttachment(null);r.seek(.2);
+  assert.equal(near.visible,false);assert.ok(r.diagnostics.some(d=>d.layer==='near'));assert.ok(far.batches.some(b=>b.particleChildren.length));
+  f.setAttachment(pt);r.seek(.2);assert.equal(near.visible,true);assert.equal(r.diagnostics.length,0);
+  f.bone.active=false;r.seek(.2);assert.equal(near.visible,false);
+ }finally{r.destroy();}
+});
+test('invalid point results and exceptions do not create a phantom origin',()=>{
+ const c=Snow.defaults(),a={type:'attachment',space:'world',name:'tip',slot:'body',x:0,y:0,rotation:0};c.emitters[0].layers.near.anchor=a;
+ const f=fixture(c),r=f.start();try{for(const at of [{name:'tip',computeWorldPosition(){return {x:NaN,y:2}}},{name:'tip',computeWorldPosition(){throw Error('bad')}},{name:'tip',computeWorldPosition(){return undefined}}]){
+  f.setAttachment(at);r.seek(.2);assert.equal(r.resolveAnchor(a),null);assert.equal(record(r,'emitter1','near').surface.visible,false);
+ }}finally{r.destroy();}
+});
