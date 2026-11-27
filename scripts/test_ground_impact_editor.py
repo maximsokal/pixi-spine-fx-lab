@@ -31,13 +31,32 @@ def run():
         page.locator('#frame').fill('17');page.locator('#frame').dispatch_event('input')
         assert abs(page.evaluate('editor.session.seconds')-17/60)<1e-9
         page.get_by_text("Preset JSON",exact=True).click()
-        page.locator('#preset').fill('{"gravity":-1}');page.locator('#apply').click()
-        assert page.evaluate('editor.session.settings.gravity')==600
+        preset=page.locator('#preset')
+        # The user's unapplied draft must survive timeline scrubbing and playback.
+        draft=page.evaluate('JSON.stringify({...editor.session.settings,gravity:650})')
+        preset.fill(draft)
+        page.locator('#frame').fill('18');page.locator('#frame').dispatch_event('input')
+        assert preset.input_value()==draft, 'scrubbing overwrote unapplied preset'
+        page.locator('#play').click()
+        page.wait_for_function('editor.session.seconds>18/60')
+        page.locator('#play').click()
+        assert preset.input_value()==draft, 'playback overwrote unapplied preset'
+        page.locator('#apply').click()
+        assert page.evaluate('editor.session.settings.gravity')==650
+        assert page.evaluate('JSON.parse(document.querySelector("#preset").value).gravity')==650
+        invalid='{"gravity":-1}'
+        preset.fill(invalid);page.locator('#apply').click()
+        assert page.evaluate('editor.session.settings.gravity')==650
+        assert preset.input_value()==invalid, 'rejected draft was lost'
+        preset.fill(page.evaluate('JSON.stringify({...editor.session.settings,gravity:600})'));page.locator('#apply').click()
+        page.locator('#frame').fill('17');page.locator('#frame').dispatch_event('input')
         page.get_by_label('Skeleton JSON / SKEL',exact=True).set_input_files({'name':'rig.json','mimeType':'application/json','buffer':b'{}'})
         page.get_by_label('Atlas',exact=True).set_input_files({'name':'rig.atlas','mimeType':'text/plain','buffer':b'a'})
         page.get_by_label('Textures',exact=True).set_input_files({'name':'a.png','mimeType':'image/png','buffer':b'a'})
         page.get_by_role('button',name='Load selected',exact=True).click()
         page.wait_for_function('editor.session.source?.name==="rig.json"')
+        draft=page.evaluate('JSON.stringify({...editor.session.settings,gravity:700})')
+        preset.fill(draft)
         page.evaluate('fixture.fail(true)');page.locator('#backend').select_option('webgpu')
         page.wait_for_function('document.querySelector("#status").textContent.includes("backend rejected")')
         assert page.locator('#actual').inner_text()=='webgl2'
@@ -48,6 +67,10 @@ def run():
         assert page.evaluate('editor.session.source.name')=='rig.json'
         assert abs(page.evaluate('editor.session.seconds')-17/60)<1e-9
         assert page.get_by_text('a.png',exact=True).is_visible()
+        assert preset.input_value()==draft, 'backend rebuild overwrote unapplied preset'
+        page.locator('#defaults').click()
+        assert page.evaluate('editor.session.settings.gravity')==500
+        assert page.evaluate('JSON.parse(document.querySelector("#preset").value).gravity')==500
         page.evaluate('editor.destroy()')
         assert page.evaluate('fixture.counts().closed')==2
         browser.close()
