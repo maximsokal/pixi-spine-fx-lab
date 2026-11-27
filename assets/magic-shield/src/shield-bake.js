@@ -17,7 +17,8 @@
   const saved=source?{name:source.name,skeleton:source.skeleton,atlas:source.atlas,images:new Map(source.images)}:null;
   const options=Object.freeze({animation:'',skin:'',speed:1,visible:true,...poseOptions});
   if(typeof options.animation!=='string'||typeof options.skin!=='string'||typeof options.visible!=='boolean'||!Number.isFinite(options.speed)||options.speed<.1||options.speed>4)fail('invalid Spine options');
-  return async function createScene({settings,backend,crop}){
+  return async function createScene({settings,backend,crop,signal}){
+   const check=()=>{if(signal?.aborted)fail('cancelled');};check();
    const {PIXI,FxShieldRuntime:R,FxShieldAuthoring:U,FxShockwaveSpine:Sp,FxShieldPhysics:P,FxShieldExport:X}=env;
    if(!PIXI||!R||!U||!X||!Sp||!P)fail('runtime unavailable');
    if(!['webgl1','webgl2','webgpu'].includes(backend))fail('invalid backend');
@@ -27,24 +28,26 @@
    function destroy(){if(dead)return;if(reading)fail('read in progress');dead=true;const errors=[];const dispose=f=>{try{f()}catch(e){errors.push(e);}};dispose(()=>reader?.destroy());dispose(()=>fx?.destroy());dispose(()=>asset?.destroy());dispose(()=>target?.destroy(true));dispose(()=>root?.destroy({children:true,texture:false,textureSource:false}));if(app?.renderer)dispose(()=>app.destroy(true,{children:true}));if(errors.length)throw new AggregateError(errors,'Bake scene cleanup failed');}
    try{
     app=new PIXI.Application();await app.init({width:1,height:1,resolution:1,backgroundAlpha:0,autoStart:false,preference:backend==='webgpu'?'webgpu':'webgl',preferWebGLVersion:backend==='webgl1'?1:2});
-    const r=app.renderer,actual=r.gl?(typeof env.WebGL2RenderingContext==='function'&&r.gl instanceof env.WebGL2RenderingContext?'webgl2':'webgl1'):'webgpu';
+    check();const r=app.renderer,actual=r.gl?(typeof env.WebGL2RenderingContext==='function'&&r.gl instanceof env.WebGL2RenderingContext?'webgl2':'webgl1'):'webgpu';
     if(actual!==backend)fail('requested '+backend+' but got '+actual);
     const maxTextureSize=actual==='webgpu'?r.gpu.device.limits.maxTextureDimension2D:r.gl.getParameter(r.gl.MAX_TEXTURE_SIZE);
     if(!Number.isSafeInteger(maxTextureSize)||Math.max(TILE,c.width,c.height)>maxTextureSize)fail('crop exceeds actual texture limit');
     root=new PIXI.Container();const behind=new PIXI.Container(),models=new PIXI.Container(),front=new PIXI.Container();root.addChild(behind,models,front);
-    if(saved){asset=await Sp.create(saved);models.addChild(asset.model);}
+    if(saved){asset=await Sp.create(saved);check();models.addChild(asset.model);}
     fx=R.createShield({PIXI,front,behind,settings});target=PIXI.RenderTexture.create({width:TILE,height:TILE,resolution:1,antialias:false});if(actual==='webgpu')reader=gpuReader(r,target,env);
     async function readFrame(seconds){
-     if(dead||reading)fail('scene unavailable');if(!Number.isFinite(seconds)||seconds<0||seconds>1e6)fail('invalid frame time');reading=true;
+     if(dead||reading)fail('scene unavailable');check();if(!Number.isFinite(seconds)||seconds<0||seconds>1e6)fail('invalid frame time');reading=true;
      try{
       const time=U.advance(seconds,0,clock),poses=U.poseMap(P.pose(asset,time,options,Sp));fx.seek(time,poses);
       const out=new Uint8Array(c.width*c.height*4),right=c.x+c.width,bottom=c.y+c.height;
       for(let ty=Math.floor(c.y/TILE)*TILE;ty<bottom;ty+=TILE)for(let tx=Math.floor(c.x/TILE)*TILE;tx<right;tx+=TILE){
-       root.position.set(-tx,-ty);r.render({container:root,target,clear:true,clearColor:[0,0,0,0]});
+       check();root.position.set(-tx,-ty);r.render({container:root,target,clear:true,clearColor:[0,0,0,0]});
        let pixels;if(reader)pixels=await reader.read();else{const p=r.extract.pixels(target);if(p.width!==TILE||p.height!==TILE)fail('unexpected tile dimensions');pixels=p.pixels;}
-       if(!(pixels instanceof Uint8Array||pixels instanceof Uint8ClampedArray)||pixels.length!==TILE*TILE*4)fail('invalid tile pixels');
+       check();if(!(pixels instanceof Uint8Array||pixels instanceof Uint8ClampedArray)||pixels.length!==TILE*TILE*4)fail('invalid tile pixels');
        const x0=Math.max(tx,c.x),x1=Math.min(tx+TILE,right),y0=Math.max(ty,c.y),y1=Math.min(ty+TILE,bottom);
        for(let y=y0;y<y1;y++){const start=((y-ty)*TILE+x0-tx)*4;out.set(pixels.subarray(start,start+(x1-x0)*4),((y-c.y)*c.width+x0-c.x)*4);}
+       // Yield a task, not just a microtask, so the Cancel click can run.
+       if(signal&&(tx+TILE<right||ty+TILE<bottom)){await new Promise(resolve=>setTimeout(resolve,0));check();}
       }
       return {pixels:reader?X.straightRgba(out,c.width,c.height,'premultiplied'):out,width:c.width,height:c.height,alpha:reader?'straight':'premultiplied'};
      }finally{reading=false;}
