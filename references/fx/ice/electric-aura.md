@@ -6,6 +6,8 @@ Build `python scripts/build_electric_aura_editor.py --output /tmp/ElectricAura_L
 
 Run `node --test scripts/test_electric_aura_*.cjs`, `python scripts/test_electric_aura_builder.py`, `python scripts/test_electric_aura_acceptance_checks.py`. For actual acceptance run `python scripts/test_electric_aura_browser.py /tmp/ElectricAura_Lab.html --backend webgl2 --output /tmp/aura-gl2` and repeat for webgl1/webgpu with separate empty directories. GPU/browser, Vite and architecture require evidence. No promotion based on CPU-only tests.
 
+Run the separate scalar-parameter audit with `node scripts/audit_electric_aura_parameters.cjs > /tmp/aura-parameters.json`. It exercises every catalog scalar with a concrete output witness, native CPU anchor/view objects, conditional anchor controls and budget checks. Exit 2 means one or more parameter witnesses failed; `--allow-incomplete` is for diagnostic collection only. This is a numeric fragment, not a complete release report or actual GPU evidence. Do not promote the Blueprint using this fragment alone.
+
 ## Machine-checkable Blueprint
 
 ```json
