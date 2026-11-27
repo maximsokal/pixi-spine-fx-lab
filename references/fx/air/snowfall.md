@@ -8,6 +8,10 @@ Run `node --test scripts/test_snow_zip.cjs` for the independent ZIP-store regres
 
 Preview, isolated PNG bake and both developer examples use the same `FxSnowPose` module. The Spine clock follows the canonical Snowfall period (or clamps at the one-shot end), even when exporting more than one period. Nonphysics animation supports absolute fractional time; physics constraints replay fixed 1/60-second authored steps, resetting on backwards seek or skin/animation changes. Physics-only setup poses also advance on authored frames. This is deterministic CPU pose behavior, not proof of GPU parity.
 
+## T06 candidate acceptance
+
+Run `node scripts/snow_evidence_core.cjs` for all 16 Blueprint scalar controls, five curves and independent-layer/timeline/spacing witnesses; nonzero exit on failure. Run `python scripts/test_snow_acceptance_checks.py` for independent Pillow/ZIP oracle tests. From a clean checkout run `python scripts/test_snow_browser.py --backend webgl2 --output /tmp/snow-gl2` (repeat for webgl1 and webgpu with empty separate output directories; `--headed` supports Xvfb). This builds the exact checked-out source and captures actual phase PNG, 60-frame archive, 50/100/200% camera invariance, one-shot endpoint, all-off, sample asset and both developer archives including the new pose module. The candidate report intentionally remains incomplete pending visual review, actual Vite builds/runtime execution and architecture gates; do not mark GPU PASS without real execution. The v1 release validator rejects completed checks for specification-only catalog entries, so this candidate report is separate from certification. No promotion or issue closure on numeric evidence alone.
+
 ## Visual and numerical contract
 
 Soft falling flakes with three independent layers: near flakes, far flakes and optional wind swirls (off by default). Natural, Stylized and Magical are separate editable palettes; default straight-alpha white to pale blue (#FFFFFF to #D6EAFB). Preserve transparent pixels and vary snowflake silhouettes rather than reusing rain streaks.
