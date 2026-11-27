@@ -6,7 +6,7 @@
 })(globalThis,function(H,U,Q){
  'use strict';
  const fail=m=>{throw Error('Ground Impact session: '+m);};
- function copySource(s){if(s===null)return null;if(!s||typeof s.name!=='string'||!s.skeleton||!s.atlas||!(s.images instanceof Map)||!s.images.size)fail('complete source required');return Object.freeze({name:s.name,skeleton:s.skeleton,atlas:s.atlas,images:new Map(s.images)});}
+ function copySource(s){if(s===null)return null;if(!s||typeof s.name!=='string'||!s.skeleton||!s.atlas||!(s.images instanceof Map)||!s.images.size)fail('complete source required');return Object.freeze({name:s.name,atlasName:s.atlasName,skeleton:s.skeleton,atlas:s.atlas,images:new Map(s.images)});}
  function createSession({PIXI,Spine,world,host,behindHost,models,loader,runtime,initial=H.defaults()}){
   if(!loader||typeof loader.create!=='function'||!runtime||typeof runtime.createRenderer!=='function')fail('missing dependencies');
   let dead=false,busy=false,broken=false,asset=null,source=null,fx=null,seconds=0,cleanupError=null,opt=Q.options({animation:'',skin:'',speed:1,visible:true},null);

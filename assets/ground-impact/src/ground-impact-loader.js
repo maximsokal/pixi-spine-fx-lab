@@ -15,7 +15,7 @@
   const cap=Object.freeze(Object.fromEntries(keys.map(k=>[k,limits[k]])));
   async function create(input){
    if(!input||typeof input.name!=='string'||!(/\.(json|skel)$/i.test(input.name))||!(input.images instanceof Map)||!input.images.size)fail('complete skeleton, atlas and textures required');
-   const source={name:input.name,skeleton:input.skeleton,atlas:input.atlas,images:new Map(input.images)};
+   const source={name:input.name,atlasName:input.atlasName,skeleton:input.skeleton,atlas:input.atlas,images:new Map(input.images)};
    file(source.skeleton,cap.skeletonBytes,'skeleton');file(source.atlas,cap.atlasBytes,'atlas');
    let encoded=0;const entries=new Map();
    for(const [key,b] of source.images){const name=canonical(key);if(entries.has(name))fail('duplicate texture '+name);file(b,cap.encodedBytes,'encoded texture');encoded+=b.size;if(encoded>cap.encodedBytes)fail('encoded texture budget');entries.set(name,b);}
