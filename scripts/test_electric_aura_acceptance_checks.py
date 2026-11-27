@@ -5,6 +5,7 @@ import io
 import json
 import unittest
 import warnings
+from unittest.mock import patch
 import zipfile
 from PIL import Image
 from test_electric_aura_browser import archive, sequence, developer, demo_response, EFFECT, MODULES, VENDORS
@@ -63,8 +64,22 @@ class AcceptanceChecks(unittest.TestCase):
         for key,value in [('public/assets/page_000.png',b'wrong'),('public/assets/skeleton.atlas','wrong'),('public/assets/skeleton.json','{}'),('public/aura-pose.js',''),('package.json','{"devDependencies":{"vite":"8"}}')]:
             entries=dev();entries[key]=value
             with self.subTest(key=key),self.assertRaises(ValueError): developer(pack(entries),'webgpu',CROP,2,SAMPLE)
+    def test_raw_zip_names_before_platform_normalization(self):
+        # writestr itself sanitizes path separators/NUL, so mutate both name
+        # records in a valid archive without changing their encoded lengths.
+        raw=pack({'axb':'x'})
+        self.assertEqual(raw.count(b'axb'),2)
+        for name in (b'a\\b', b'a\x00b'):
+            forged=raw.replace(b'axb',name)
+            for separator in ('/', '\\'):
+                with self.subTest(name=name,separator=separator), patch.object(zipfile.os,'sep',separator):
+                    with self.assertRaisesRegex(ValueError,'unsafe ZIP path'):
+                        archive(forged)
+        with archive(pack({'a/b':'x'})) as z:
+            self.assertEqual(z.read('a/b'),b'x')
+
     def test_unsafe_and_duplicate_zip_paths(self):
-        for key in ['../x','/x','C:/x','a\\x','a//x']:
+        for key in ['../x','/x','C:/x','a//x']:
             with self.subTest(key=key),self.assertRaises(ValueError): archive(pack({key:'x'}))
         buf=io.BytesIO()
         with warnings.catch_warnings():

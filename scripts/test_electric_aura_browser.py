@@ -26,10 +26,13 @@ def check(condition, message):
 def archive(data):
     z = zipfile.ZipFile(io.BytesIO(data))
     try:
-        names = z.namelist()
+        # ZipInfo.filename is normalized on Windows and truncates at NUL.
+        # Validate central-directory names before accepting normalized aliases.
+        infos = z.infolist()
+        names = [i.orig_filename for i in infos]
         check(len(names) == len(set(names)), 'duplicate ZIP entry')
-        check(all(n and '\\' not in n and ':' not in n and
-                  all(p not in ('', '.', '..') for p in n.split('/')) for n in names), 'unsafe ZIP path')
+        check(all(n == i.filename and n and '\\' not in n and '\x00' not in n and ':' not in n and
+                  all(p not in ('', '.', '..') for p in n.split('/')) for n, i in zip(names, infos)), 'unsafe ZIP path')
         check(sum(i.file_size for i in z.infolist()) <= 256 * 1024**2, 'ZIP budget')
         check(z.testzip() is None, 'ZIP CRC')
         return z
