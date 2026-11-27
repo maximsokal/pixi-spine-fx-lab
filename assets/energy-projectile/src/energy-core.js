@@ -14,6 +14,8 @@
  function freeze(o){if(o&&typeof o==='object'&&!Object.isFrozen(o)){Object.values(o).forEach(freeze);Object.freeze(o);}return o;}
  function dense(o){if(Array.isArray(o)){for(let i=0;i<o.length;i++){if(!Object.hasOwn(o,i))fail('sparse array');dense(o[i]);}}else if(o&&typeof o==='object')Object.values(o).forEach(dense);}
  function rng(seed,i,salt){let x=seed^Math.imul(i+1,0x9e3779b1)^Math.imul(salt+1,0x85ebca6b);x=Math.imul(x^(x>>>16),0x7feb352d);x=Math.imul(x^(x>>>15),0x846ca68b);return ((x^(x>>>16))>>>0)/4294967296;}
+ // Seeded periodic attenuation; the reference seed retains the original opacity.
+ function coreSeedAlpha(seed,u){return seed===4109?1:1-.05*(1+Math.cos(TAU*u+TAU*rng(seed,0,73)));}
  const curveSpecs={
   pulse:['corePulse','effectTime','normalized-duration','normalized',[.2,2],[[0,.85],[.5,1.15],[1,.85]]],
   width:['widthMultiplier','pathPosition','normalized-path','normalized',[0,2],[[0,1],[.5,.6],[1,0]]],
@@ -104,7 +106,7 @@
   function sample(seconds,poses){
    number(seconds,'time',0,3600);const result={emitters:[],core:[],ribbon:[],orbit:[]};let vertices=0;
    for(const e of c.emitters){const info={id:e.id,layers:{}};result.emitters.push(info);for(const k of LAYERS){const l=e.layers[k],b=basis(e.anchor,l,poses,e.id,k),raw=seconds-l.delayFrames/FPS,t=phase(raw),d=distance(t),p=point(d),head=b?world(p,b):null;info.layers[k]={origin:b?{x:b.x,y:b.y}:null,head,distance:d};if(!e.enabled||!active(l)||!b||!loop&&(raw<0||raw>=duration||seconds>=duration))continue;const a=Math.min(envelope(t),loop?1:clamp((duration-seconds)/(c.fadeFrames/FPS),0,1))*l.opacity;if(a<=0)continue;const list=result[k],add=v=>list.push({...v,emitterId:e.id,blend:l.blend,order:l.order});
-    if(k==='core'){const r=c.coreRadius*C.evaluate(c.curves.pulse,t/duration)*b.scale;add({kind:'disc',...head,radius:r,rgba:rgba(k,0,a)});if(c.glow>0)add({kind:'glow',...head,radius:r*(1+c.glow),rgba:rgba(k,.5,a*Math.min(1,c.glow)*.4)});}
+    if(k==='core'){const r=c.coreRadius*C.evaluate(c.curves.pulse,t/duration)*b.scale,alpha=a*coreSeedAlpha(l.seed,t/duration);add({kind:'disc',...head,radius:r,rgba:rgba(k,0,alpha)});if(c.glow>0)add({kind:'glow',...head,radius:r*(1+c.glow),rgba:rgba(k,.5,alpha*Math.min(1,c.glow)*.4)});}
     if(k==='ribbon'&&speed>0&&c.tailLength>0){const plan=plans[e.id],r=ribbon(d,t,b,l,plan.distances,a);if(r){vertices+=r.positions.length/2;add(r);}live(plan.trail,t,c.trailLifeFrames,(event,age)=>{const q=world(point(event.distance),b),u=age/(c.trailLifeFrames/FPS);add({kind:'disc',...q,radius:c.particleSize*b.scale*(1-u*.5),rgba:rgba(k,u,a*C.evaluate(c.curves.alpha,u))});});}
     if(k==='orbit'){const ds=plans[e.id].orbitDistances;live(plans[e.id].orbit,t,c.orbitLifeFrames,(event,age)=>{const u=age/(c.orbitLifeFrames/FPS),theta=ds[event.index%ds.length]/(c.coreRadius*1.5)+TAU*rng(l.seed,0,19)+age*TAU,rr=c.coreRadius*1.5*b.scale;const pulse=.65+.35*Math.cos(TAU*c.orbitPulseHz*age);add({kind:'disc',x:head.x+Math.cos(theta+b.rotation*RAD)*rr,y:head.y+Math.sin(theta+b.rotation*RAD)*rr,radius:c.particleSize*b.scale,rgba:rgba(k,u,a*pulse)});});}
    }}

@@ -47,3 +47,21 @@ test('pose lookup ignores inherited properties but accepts explicit special IDs'
   A.deepEqual(p.sample(.3,explicit),p.sample(.3,{[id]:pose}));
  }
 });
+
+test('core seed changes only its own alpha, with canonical loop and one-shot boundaries',()=>{
+ const d=H.defaults(),b=JSON.parse(JSON.stringify(d));b.emitters[0].layers.core.seed++;
+ const p=H.compile(d),q=H.compile(b);let changed=0;
+ for(let i=0;i<=60;i++){const t=i/60,x=p.sample(t),y=q.sample(t);
+  A.deepEqual(x.ribbon,y.ribbon);A.deepEqual(x.orbit,y.orbit);A.deepEqual(x.emitters,y.emitters);A.equal(x.core.length,y.core.length);
+  for(let j=0;j<x.core.length;j++){const a=x.core[j],v=y.core[j];A.deepEqual({...a,rgba:a.rgba.slice(0,3)},{...v,rgba:v.rgba.slice(0,3)});A.ok(v.rgba[3]>=.9*a.rgba[3]-1e-12&&v.rgba[3]<=a.rgba[3]+1e-12);if(a.rgba[3]!==v.rgba[3])changed++;}
+  q.sample(0);A.deepEqual(q.sample(t),y);
+ }A.ok(changed>0,'nondefault core seed must affect alpha');A.equal(q.sample(0).core.length,0);A.equal(q.sample(39/60).core.length,0);
+ const both=H.defaults();both.emitters.push(H.newEmitter('second',7311));both.emitters[1].layers.ribbon.enabled=false;
+ const other=JSON.parse(JSON.stringify(both));other.emitters[1].layers.core.seed++;
+ const x=H.compile(both).sample(.2),y=H.compile(other).sample(.2);
+ A.deepEqual(x.core.filter(v=>v.emitterId==='emitter-1'),y.core.filter(v=>v.emitterId==='emitter-1'));A.deepEqual(x.ribbon,y.ribbon);A.deepEqual(x.orbit,y.orbit);A.notDeepEqual(x.core,y.core);
+ const loop=H.defaults();loop.mode='flightLoop';loop.trajectory={schemaVersion:1,closed:true,segments:[{p0:[0,0],p1:[80,0],p2:[0,80],p3:[0,0]}]};loop.travelSpeed=0;loop.glow=0;loop.emitters[0].layers.core.seed=-2147483648;
+ const c=H.compile(loop),t=c.meta.duration;
+ A.deepEqual(c.sample(0),c.sample(t));A.deepEqual(c.sample(.1),c.sample(.1));A.ok(c.sample(0).core[0].rgba[3]>=.9);
+ const noGlow=JSON.parse(JSON.stringify(loop));noGlow.emitters[0].layers.core.seed=4109;A.notDeepEqual(c.sample(.1).core,H.compile(noGlow).sample(.1).core);
+});

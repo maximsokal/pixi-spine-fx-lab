@@ -6,6 +6,8 @@ Build `python scripts/build_energy_editor.py --output /tmp/EnergyProjectile_Lab.
 
 Run `node --test scripts/test_energy_*.cjs`, `python scripts/test_energy_builder.py`, `python scripts/test_energy_acceptance_checks.py`. Real acceptance: `python scripts/test_energy_browser.py /tmp/EnergyProjectile_Lab.html --backend webgl2 --output /tmp/energy-gl2` (repeat webgl1/webgpu with separate empty directories). GPU, Vite builds and architecture require separate evidence; do not mark verified on CPU-only tests.
 
+The core layer seed changes only its own periodic alpha envelope (attenuation 0–10%, one cycle per authored duration), including when glow is disabled. Reference seed 4109 preserves the original sample exactly. Other layers, paths, phase timing and geometry are unchanged. Run `node scripts/audit_energy_projectile_parameters.cjs` for all 83 scalar witnesses; output is a numerical fragment, not a canonical release report. Smoothing is tested on a reachable sharp turn, ribbon seed with active jitter, and mode/path closure as a paired invariant with isolated invalid changes rejected. Six native Pixi blend/order witnesses use real CPU objects. GPU/PNG/Vite acceptance remains separate.
+
 ## Machine-checkable Blueprint
 
 ```json
