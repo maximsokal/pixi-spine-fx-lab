@@ -4,6 +4,8 @@
 
 Build the independent editor from the full repository with `python scripts/build_snow_editor.py --output Snowfall_Lab.html`. Numerical core, native particle runtime, editor, isolated PNG bake and developer ZIP source paths are present under `assets/snowfall/src/`. The assembly and CPU contracts have been tested; actual browser startup, WebGL1/2/WebGPU raster, pixel-alpha parity, PNG ZIP and both Vite builds still require real-runtime verification. The fixed 512×512 field intentionally clips flakes entering/leaving its bounds. Run `node --test scripts/test_snow_core.cjs scripts/test_snow_schedule.cjs scripts/test_snow_runtime.cjs scripts/test_snow_editor.cjs` and `python scripts/test_snow_builder.py` before browser acceptance.
 
+Run `node --test scripts/test_snow_zip.cjs` for the independent ZIP-store regression suite. The writer rejects raw unsafe names, case-insensitive file collisions, file/directory prefix conflicts, invalid UTF-8 names and classic ZIP filename-length overflow. The 256 MiB bound includes headers, names and central directory; cancellation during asset reads rejects rather than returning a partial archive. These checks do not certify raster pixels or cross-platform extraction of arbitrary-length names.
+
 ## Visual and numerical contract
 
 Soft falling flakes with three independent layers: near flakes, far flakes and optional wind swirls (off by default). Natural, Stylized and Magical are separate editable palettes; default straight-alpha white to pale blue (#FFFFFF to #D6EAFB). Preserve transparent pixels and vary snowflake silhouettes rather than reusing rain streaks.
