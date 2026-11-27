@@ -60,7 +60,7 @@
   return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:null;
  }
  function mount(){
-  const {PIXI,spine,FxSnowRuntime,FxTimeline,FxCurveEditor,FxColorUi}=root,$=id=>document.getElementById(id);
+  const {PIXI,spine,FxSnowRuntime,FxSnowPose,FxCurveEditor,FxColorUi}=root,$=id=>document.getElementById(id);
   let scene=null,asset=null,busy=false,editors=[],lockedControls=[];
   const status=(msg,error=false)=>{$('status').textContent=msg;$('status').classList.toggle('error',error);};
   function setBusy(v){
@@ -69,7 +69,7 @@
    else{for(const e of lockedControls)e.disabled=false;lockedControls=[];}
   }
   function backend(app,requested){const gl=app.renderer.gl;return {requested,actual:gl?(typeof WebGL2RenderingContext!=='undefined'&&gl instanceof WebGL2RenderingContext?'webgl2':'webgl1'):app.renderer.type===PIXI.RendererType.WEBGPU?'webgpu':'unknown',pixi:PIXI.VERSION};}
-  function pose(s,t){if(s.model){FxTimeline.seekSpine(s.model,t);s.model.visible=$('showSpine').checked;}s.fx.seek(t);s.app.render();}
+  function pose(s,t){if(s.model){FxSnowPose.seek(s.model,session.settings,t,{skin:$('skin').value,animation:$('animation').value});s.model.visible=$('showSpine').checked;}s.fx.seek(t);s.app.render();}
   const session=createSession(Core.defaults(),{
    configure(c){scene?.fx.configure(c);},
    seek(t){if(scene)pose(scene,t);}
@@ -189,8 +189,7 @@
      preferWebGLVersion:which==='webgl1'?1:2,antialias:which!=='webgl1',autoStart:false,sharedTicker:false});
     initialized=true;host=new PIXI.Container();app.stage.addChild(host);
     if(source){sp=await readSpine(source);host.addChild(sp.model);
-     if(skin&&sp.data.skins.some(s=>s.name===skin)){sp.model.skeleton.setSkinByName(skin);sp.model.skeleton.setSlotsToSetupPose();}
-     if(animation&&sp.data.animations.some(a=>a.name===animation))sp.model.state.setAnimation(0,animation,true);sp.model.update(0);}
+     FxSnowPose.seek(sp.model,settings,0,{skin:sp.data.skins.some(s=>s.name===skin)?skin:'',animation:sp.data.animations.some(a=>a.name===animation)?animation:''});}
     fx=FxSnowRuntime.createSnow({PIXI,app,host,model:sp?.model??null,settings});
     return {app,host,fx,model:sp?.model??null,data:sp?.data,actual:backend(app,which),
      dispose(){fx.destroy();if(sp){sp.model.destroy();sp.atlas.dispose();}app.destroy(true);}};
@@ -218,10 +217,8 @@
   $('play').onclick=()=>attempt(()=>session.playing?session.pause():session.play());
   $('reverse').onclick=()=>attempt(()=>session.reverse());$('reset').onclick=()=>attempt(()=>session.reset());
   $('frame').oninput=()=>attempt(()=>{session.pause();session.seek(Number($('frame').value)/60);});
-  $('showSpine').onchange=()=>attempt(()=>{});$('animation').onchange=()=>attempt(()=>{
-   if(scene?.model){scene.model.state.clearTracks();if($('animation').value)scene.model.state.setAnimation(0,$('animation').value,true);}
-  });
-  $('skin').onchange=()=>attempt(()=>{if(scene?.model&&$('skin').value){scene.model.skeleton.setSkinByName($('skin').value);scene.model.skeleton.setSlotsToSetupPose();}});
+  $('showSpine').onchange=()=>attempt(()=>{});$('animation').onchange=()=>attempt(()=>{});
+  $('skin').onchange=()=>attempt(()=>{});
   $('sample').onclick=()=>{if(busy)return;try{const spec=JSON.parse($('sampleData').textContent);switchScene({
    skeletonName:spec.skeletonName,skeleton:new Blob([JSON.stringify(spec.skeleton)]),atlasName:spec.atlasName,atlas:new Blob([spec.atlas]),
    images:new Map(Object.entries(spec.images).map(([n,v])=>[n,new Blob([Uint8Array.from(atob(v),ch=>ch.charCodeAt(0))])]))});}catch(e){status(e.message,true);}};

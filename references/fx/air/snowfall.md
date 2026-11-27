@@ -6,6 +6,8 @@ Build the independent editor from the full repository with `python scripts/build
 
 Run `node --test scripts/test_snow_zip.cjs` for the independent ZIP-store regression suite. The writer rejects raw unsafe names, case-insensitive file collisions, file/directory prefix conflicts, invalid UTF-8 names and classic ZIP filename-length overflow. The 256 MiB bound includes headers, names and central directory; cancellation during asset reads rejects rather than returning a partial archive. These checks do not certify raster pixels or cross-platform extraction of arbitrary-length names.
 
+Preview, isolated PNG bake and both developer examples use the same `FxSnowPose` module. The Spine clock follows the canonical Snowfall period (or clamps at the one-shot end), even when exporting more than one period. Nonphysics animation supports absolute fractional time; physics constraints replay fixed 1/60-second authored steps, resetting on backwards seek or skin/animation changes. Physics-only setup poses also advance on authored frames. This is deterministic CPU pose behavior, not proof of GPU parity.
+
 ## Visual and numerical contract
 
 Soft falling flakes with three independent layers: near flakes, far flakes and optional wind swirls (off by default). Natural, Stylized and Magical are separate editable palettes; default straight-alpha white to pale blue (#FFFFFF to #D6EAFB). Preserve transparent pixels and vary snowflake silhouettes rather than reusing rain streaks.

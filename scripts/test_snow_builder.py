@@ -24,7 +24,7 @@ class SnowBuilderTests(unittest.TestCase):
                      'src/curve-core.js', 'src/spacing-core.js', 'src/color-core.js', 'src/timeline-core.js',
                      'src/curve-editor.js', 'src/color-ui.js', 'licenses/spine.txt', 'licenses/pixi.txt']:
             self.write(self.template / name, '// ' + name)
-        for name in ['snow-core.js', 'snow-runtime.js', 'zip-core.js', 'snow-editor.js', 'snow-export.js']:
+        for name in ['snow-core.js', 'snow-runtime.js', 'snow-pose.js', 'zip-core.js', 'snow-editor.js', 'snow-export.js']:
             self.write(self.snow / name, '// ' + name + '\nconst sample = "</script>";')
         self.markers = ['<!-- VENDOR -->', '<!-- CORES -->', '<!-- APP -->', '<!-- EXPORT -->', '__SAMPLE_DATA__']
         self.write(self.snow / 'ui.html', '\n'.join(self.markers))
@@ -39,7 +39,7 @@ class SnowBuilderTests(unittest.TestCase):
         for marker in self.markers:
             self.assertNotIn(marker, result)
         order = ['vendor/pixi-', 'vendor/spine-', 'fxCurveCore', 'fxSpacingCore', 'fxColorCore',
-                 'fxSnowCore', 'fxSnowRuntime', 'fxSnowZip', 'snow-editor.js', 'snow-export.js']
+                 'fxSnowCore', 'fxSnowRuntime', 'fxSnowPose', 'fxSnowZip', 'snow-editor.js', 'snow-export.js']
         self.assertEqual(sorted(result.index(s) for s in order), [result.index(s) for s in order])
         self.assertIn('<\\/script>', result)
         self.assertIn('ZmFrZSBieXRlcw==', result)

@@ -30,7 +30,7 @@
    "import * as PIXI from 'pixi.js';",
    "import * as SpineRuntime from '@esotericsoftware/spine-pixi-v8';",
    "import { FxSnow, createSnow } from './Snow.mjs';",
-   "import { FxTimeline } from './FxTimeline.mjs';",
+   "import { FxSnowPose } from './FxSnowPose.mjs';",
    "async function main(){",
    " const p=await (await fetch('/preset.json')).json();",
    " const app=new PIXI.Application();await app.init({width:512,height:512,resolution:1,backgroundAlpha:0,preference:'"+target+"',preferWebGLVersion:2});",
@@ -40,9 +40,10 @@
    " if(p.asset){PIXI.Assets.add({alias:'snow-skel',src:p.asset.skeleton});PIXI.Assets.add({alias:'snow-atlas',src:p.asset.atlas});await PIXI.Assets.load(['snow-skel','snow-atlas']);",
    " model=SpineRuntime.Spine.from({skeleton:'snow-skel',atlas:'snow-atlas',autoUpdate:false});host.addChild(model);model.update(0);",
    " const b=model.getLocalBounds(),scale=Math.min(260/b.width,330/b.height,2);model.scale.set(scale);model.position.set(256-(b.x+b.width/2)*scale,260-(b.y+b.height/2)*scale);",
-   " if(p.asset.skin){model.skeleton.setSkinByName(p.asset.skin);model.skeleton.setSlotsToSetupPose();}if(p.asset.animation)model.state.setAnimation(0,p.asset.animation,true);}",
+   " }",
    " const settings=FxSnow.normalize(p.settings),fx=createSnow({PIXI,app,host,model,settings});let t=0;",
-   " app.ticker.add(ticker=>{t+=ticker.elapsedMS/1000;t=settings.mode==='loop'?t%(settings.durationFrames/60):Math.min((settings.durationFrames-1)/60,t);if(model)FxTimeline.seekSpine(model,t);fx.seek(t);});",
+   " if(model)FxSnowPose.seek(model,settings,0,p.asset);fx.seek(0);",
+   " app.ticker.add(ticker=>{t+=ticker.elapsedMS/1000;t=settings.mode==='loop'?t%(settings.durationFrames/60):Math.min((settings.durationFrames-1)/60,t);if(model)FxSnowPose.seek(model,settings,t,p.asset);fx.seek(t);});",
    " window.addEventListener('pagehide',()=>{fx.destroy();app.destroy(true);},{once:true});",
    "}main().catch(e=>{console.error(e);document.body.textContent=e.message;});"
   ].join('\n');
@@ -52,6 +53,7 @@
    {name:'FxColors.mjs',data:"import './FxCurves.mjs';\n"+source('fxColorCore')+'\nexport const FxColors=globalThis.FxColors;\n'},
    {name:'FxSpacing.mjs',data:"import './FxCurves.mjs';\n"+source('fxSpacingCore')+'\nexport const FxSpacing=globalThis.FxSpacing;\n'},
    {name:'FxTimeline.mjs',data:source('fxTimelineCore')+'\nexport const FxTimeline=globalThis.FxTimeline;\n'},
+   {name:'FxSnowPose.mjs',data:source('fxSnowPose')+'\nexport const FxSnowPose=globalThis.FxSnowPose;\n'},
    {name:'FxSnow.mjs',data:"import './FxSpacing.mjs';\nimport './FxColors.mjs';\n"+source('fxSnowCore')+'\nexport const FxSnow=globalThis.FxSnow;\n'},
    {name:'Snow.mjs',data:"import './FxSnow.mjs';\n"+source('fxSnowRuntime')+'\nexport const FxSnow=globalThis.FxSnow;\nexport const createSnow=globalThis.FxSnowRuntime.createSnow;\n'},
    {name:'example.js',data:demo},
@@ -95,7 +97,7 @@
     if(scene.actual.actual!==preview.actual)throw Error('Bake renderer mismatch');
     scene.host.renderable=false;
     const m=manifest(settings,scene.actual,frames??settings.exportFrames),entries=[];let bytes=0;
-    for(const f of m.frames){check();if(scene.model)root.FxTimeline.seekSpine(scene.model,f.timeSeconds);
+    for(const f of m.frames){check();if(scene.model)root.FxSnowPose.seek(scene.model,settings,f.timeSeconds,asset);
      scene.fx.seek(f.timeSeconds);if(scene.fx.diagnostics.length)throw Error('Unresolved Snowfall anchor');
      scene.app.render();const data=await extract(scene);check();bytes+=data.length;
      if(bytes>250*1024*1024)throw Error('PNG sequence exceeds ZIP budget');

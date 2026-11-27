@@ -46,6 +46,7 @@ def build(root):
     for name, sid in [
         ("snow-core.js", "fxSnowCore"),
         ("snow-runtime.js", "fxSnowRuntime"),
+        ("snow-pose.js", "fxSnowPose"),
         ("zip-core.js", "fxSnowZip")
     ]:
         src = escape_script(text(snow / name))
