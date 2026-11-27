@@ -5,7 +5,7 @@ function run(read,A,test){
  const doc={createElement:()=>({style:{},getContext:()=>null}),createElementNS:()=>({style:{}})},win={};
  const P=new Function('navigator','document','window','self',read(vendor+'pixi-8.22.0.min.js')+'\nreturn PIXI;')({userAgent:'Chromium',platform:'Linux'},doc,win,win);win.PIXI=P;
  const Sp=new Function('PIXI','window','self','require',read(vendor+'spine-pixi-v8-4.2.120.min.js')+'\nreturn spine;')(P,win,win,n=>{if(n==='pixi.js')return P;throw Error(n);});
- const mods={};for(const path of [...['curve','spacing','color'].map(k=>shared+k+'-core.js'),fx+'leaves-core.js',fx+'leaves-runtime.js']){
+ const mods={};for(const path of [...['curve','spacing','color'].map(k=>shared+k+'-core.js'),fx+'leaves-core.js',fx+'leaves-runtime.js',fx+'leaves-export.js']){
   const m={exports:{}};new Function('module','require',read(path))(m,n=>{const k=n.split('/').at(-1);if(!Object.hasOwn(mods,k))throw Error(n);return mods[k];});mods[path.split('/').at(-1)]=m.exports;
  }
  const L=mods['leaves-core.js'],R=mods['leaves-runtime.js'],near=(a,b,e=1e-6)=>A.ok(Math.abs(a-b)<=e,a+' != '+b);
@@ -74,6 +74,22 @@ function run(read,A,test){
    const frame=s.f.seek(.73);A.equal(frame.emitters.length,1);A.equal(frame.emitters[0].id,'emitter2');checkFrame(s,frame);
    A.equal(s.f.diagnostics[0].code,'missing-anchor');slot.setAttachment(old);A.equal(s.f.seek(.73).emitters.length,2);
    s.f.setModel(null);A.equal(s.f.sample.emitters.length,1);s.f.setModel(s.model);A.equal(s.f.sample.emitters.length,2);
+  }finally{s.done();}
+ });
+ test('missing inactive attachment does not block isolated PNG readback; active missing attachment still fails',async()=>{
+  const c=L.defaults();Object.assign(c.emitters[0].anchor,{type:'attachment',space:'world',name:'tip',slot:'body',x:0,y:0});
+  const s=scene(c);try{
+   s.model.skeleton.findSlot('body').setAttachment(null);s.f.seek(.73);A.equal(s.f.diagnostics.length,1);
+   for(const l of Object.values(c.emitters[0].layers))l.enabled=false;s.f.configure(c);
+   A.equal(s.f.diagnostics.length,0);A.equal(s.f.totalActive,0);checkFrame(s,s.f.sample);
+   const X=mods['leaves-export.js'],gl={MAX_TEXTURE_SIZE:1,getParameter:()=>4096};
+   let renders=0,disposed=0;const pixels=new Uint8Array(512*512*4);
+   const editor={async makeScene(){return {actual:{actual:'webgl2'},app:{stage:s.stage,renderer:{gl,render(){renders++;},extract:{pixels:()=>({width:512,height:512,pixels})}}},host:s.host,model:s.model,fx:s.f,dispose(){disposed++;}};}};
+   const env={PIXI:{RenderTexture:{create:()=>({destroy(){}})}},FxTimeline:{seekSpine(){}}};
+   const b=await X.makeBakeScene({editor,settings:c,backend:'webgl2',pose:{followFx:true},env});
+   try{const frame=await b.readFrame(.73);A.equal(frame.alpha,'premultiplied');A.equal(renders,1);A.ok(frame.pixels.every(v=>v===0));
+    c.emitters[0].layers.foreground.enabled=true;s.f.configure(c);await A.rejects(()=>b.readFrame(.73),/unresolved Spine anchor/);A.equal(renders,1);
+   }finally{b.destroy();}A.equal(disposed,1);
   }finally{s.done();}
  });
  test('invalid settings and quality overflow leave prior frame intact',()=>{

@@ -218,6 +218,11 @@
   let particles=0;
   for(const e of c.emitters){
    if(!e.enabled||!e.visible)continue;
+   // An inactive emitter does not require a valid pose to produce no pixels.
+   // Keep its empty layer record, but never fail a bake for a hidden anchor.
+   if(LAYERS.every(k=>!e.layers[k].enabled||!e.layers[k].visible||e.layers[k].alpha===0)){
+    emitters.push({id:e.id,layers:Object.fromEntries(LAYERS.map(k=>[k,[]]))});continue;
+   }
    const a=Object.hasOwn(anchors,e.id)?anchors[e.id]:e.anchor.type==='world'?e.anchor:null;
    if(!a){diagnostics.push({code:'missing-anchor',emitter:e.id});continue;}
    const anchor={x:num(a.x,'resolved anchor x',-1e7,1e7),y:num(a.y,'resolved anchor y',-1e7,1e7),

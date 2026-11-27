@@ -97,3 +97,17 @@ test('schedule return mutation cannot poison cached simulation',()=>{
  const c=make(),first=plan(c),copy=plan(c);copy.events[0].time=99;copy.lanes[0].x=999;
  A.deepEqual(plan(c),first);
 });
+
+test('inactive layers need no anchor, but re-enabled layers still report a missing pose',()=>{
+ const c=make(),e=c.emitters[0];Object.assign(e.anchor,{type:'bone',name:'missing'});
+ e.layers.foreground.enabled=false;e.layers.background.visible=false;e.layers.gusts.enabled=true;e.layers.gusts.alpha=0;
+ for(const t of [0,.73,119/60,2]){
+  const s=L.sample(c,t);A.deepEqual(s.diagnostics,[]);A.equal(s.counters.particles,0);
+  A.deepEqual(s.emitters,[{id,layers:{foreground:[],background:[],gusts:[]}}]);
+ }
+ c.emitters.push(L.newEmitter(1));const s=L.sample(c,.73);A.equal(s.diagnostics.length,0);
+ A.deepEqual(s.emitters[1],L.sample({...c,emitters:[c.emitters[1]]},.73).emitters[0]);
+ e.layers.foreground.enabled=true;const bad=L.sample(c,.73);
+ A.deepEqual(bad.diagnostics,[{code:'missing-anchor',emitter:id}]);A.deepEqual(bad.emitters,[s.emitters[1]]);
+ A.equal(L.sample(c,.73,{[id]:{x:100,y:100,rotation:0}}).diagnostics.length,0);
+});
