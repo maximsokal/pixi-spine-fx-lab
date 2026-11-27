@@ -38,11 +38,18 @@ def archive(data):
         raise
 
 
-def sequence(data, backend, crop, count):
+def check_handoff(manifest, expected):
+    for key in ('schemaVersion', 'authoredFrames', 'settings', 'targetOrder', 'contactFrames'):
+        check(key in manifest and key in expected and manifest[key] == expected[key],
+              'handoff mismatch: ' + key)
+
+
+def sequence(data, backend, crop, count, expected):
     with archive(data) as z:
         names = [f'frames/frame_{i:05}.png' for i in range(count)]
         check(set(z.namelist()) == set(names + ['sequence.json', 'README.txt']), 'sequence entries')
         m = json.loads(z.read('sequence.json'))
+        check_handoff(m, expected)
         check((m['effectId'], m['backend'], m['crop'], m['count'], m['fps'], m['alpha']) ==
               (EFFECT, backend, crop, count, 60, 'straight-rgba8'), 'sequence manifest')
         check((m['width'], m['height']) == (crop['width'], crop['height']), 'manifest dimensions')
@@ -56,9 +63,10 @@ def sequence(data, backend, crop, count):
         return m, frames
 
 
-def developer(data, target, crop, count, sample):
+def developer(data, target, crop, count, sample, expected):
     with archive(data) as z:
         m = json.loads(z.read('public/preset.json'))
+        check_handoff(m, expected)
         check((m['effectId'], m['rendererPreference'], m['crop'], m['frameCount']) == (EFFECT, target, crop, count), 'developer manifest')
         check(m['compatibility'] == {'pixi':'8.22.0','spine':'4.2.120'}, 'runtime pins')
         check(json.loads(z.read('package.json'))['devDependencies'] == {'vite':'7.1.12'}, 'Vite pin')
@@ -234,17 +242,26 @@ def run(html, backend, output):
                 report['checks'].append('preset, pixel changes, independent marker, ordered routing and contact schedule')
                 page.locator('details').evaluate_all('(els)=>els.forEach(e=>e.open=true)')
                 for k,v in {**crop,'frames':40}.items(): page.locator('#export-'+k).fill(str(v))
+                def expected_handoff():
+                    # Read the authored preset before export, never from the archive being checked.
+                    return page.evaluate("""c=>{
+                        const p=FxChainLightning.compile(c);
+                        return {schemaVersion:1,authoredFrames:p.meta.frames,settings:p.settings,
+                                targetOrder:p.settings.targets.map(t=>t.id),
+                                contactFrames:p.meta.plans.map(q=>({id:q.id,frame:q.contactFrame}))};
+                    }""",read())
+                expected = expected_handoff()
                 def download(button,name):
                     with page.expect_download(timeout=180000) as event: page.locator('#'+button).click()
                     dest=output/name;event.value.save_as(dest)
                     page.wait_for_function("!document.getElementById('exportFields').disabled")
                     check(page.locator('#status').get_attribute('data-error')=='false', 'export failed')
                     return dest.read_bytes()
-                m, first=sequence(download('exportPng','sequence.zip'),backend,crop,40)
+                m, first=sequence(download('exportPng','sequence.zip'),backend,crop,40,expected)
                 check(not visible(first[0]) and visible(first[17]) and not visible(first[-1]), 'sequence phases')
                 page.locator('#zoom').evaluate("e=>{e.value='150';e.dispatchEvent(new Event('input'));}")
                 page.locator('#background').select_option('light')
-                n, second=sequence(download('exportPng','sequence-camera.zip'),backend,crop,40)
+                n, second=sequence(download('exportPng','sequence-camera.zip'),backend,crop,40,expected)
                 check(m==n and all(a.tobytes()==b.tobytes() for a,b in zip(first,second)), 'camera parity')
                 report['checks'].append('40-frame UI export, camera invariance')
                 page.locator('#sample').click()
@@ -269,9 +286,10 @@ def run(html, backend, output):
                         if 'anchored_first' in locals(): check(now==anchored_first, 'anchored reverse seek mismatch')
                         else: anchored_first=now
                 report['checks'].append('real sample animation and anchored backward-seek parity')
+                expected = expected_handoff()
                 for target, button in [('webgl','exportWebgl'),('webgpu','exportWebgpu')]:
                     data = download(button,'developer-'+target+'.zip')
-                    developer(data,target,crop,40,sample)
+                    developer(data,target,crop,40,sample,expected)
                     report.setdefault('developerBackends', {})[target] = run_developer(browser,data,target,backend,output)
                 report['checks'].append('sample import, both developer archive identities and local ESM execution')
                 check(not report['network'] and not report['pageErrors'], 'offline/page error')
