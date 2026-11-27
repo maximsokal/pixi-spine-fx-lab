@@ -5,12 +5,12 @@
  const doc=env.document,$=id=>doc.getElementById(id),H=env.FxChainLightning,U=env.FxChainAuthoring,S=env.FxChainSession,R=env.FxChainRuntime,A=env.FxChainAnchors,Sp=env.FxShockwaveSpine,P=env.PIXI,clone=v=>JSON.parse(JSON.stringify(v));
  const ranges={durationFrames:[6,3600,1],fadeFrames:[1,120,1],arcWidth:[1,24],jumpDelay:[0,40],arcGap:[2,90],branchSpread:[0,160],jitter:[0,1],smoothness:[0,1],arcLifeFrames:[1,120,1],branchLifeFrames:[1,120,1],glowLifeFrames:[1,120,1],branchCount:[0,4,1],branchLength:[2,80],branchWidthRatio:[.1,1],sparkGap:[15,100],sparkSize:[.25,15],sparkSpeed:[0,500],glowRadius:[2,100],glowStrength:[0,2],restrikeRate:[0,120],intervalFrames:[.25,600],minIntervalFrames:[0,120],timeJitter:[0,.45],minGap:[2,90],maxGap:[2,90],spatialJitter:[0,.45]};
  const offsets={x:[-10000,10000],y:[-10000,10000],delayFrames:[0,120,1],seed:[-2147483648,2147483647,1]};
- let scene=null,busy=false,closed=false,playing=false,last=null,raf=0,drag=null;
+ let scene=null,busy=false,closed=false,playing=false,last=null,raf=0,drag=null,exportJob=null;
  const session=()=>scene.session,cfg=()=>session().settings,id=()=>$('target').value,layer=()=>$('layer').value,locked=()=>busy||closed||!scene;
  const status=(msg,error=false)=>{$('status').textContent=msg;$('status').dataset.error=String(error);};
  function play(v){playing=v;last=null;$('play').textContent=v?'Pause':'Play';}
  function attempt(fn){try{return fn();}catch(e){play(false);status(e.message,true);return false;}}
- function lock(v){drag=null;busy=v;play(false);for(const k of ['controls','assets','transport'])$(k).disabled=locked();$('backend').disabled=v||closed;handles();}
+ function lock(v){drag=null;busy=v;play(false);for(const k of ['controls','assets','transport','exportFields'])$(k).disabled=locked();$('backend').disabled=v||closed;handles();}
  function selectOptions(el,values,preferred){el.replaceChildren(...values.map(x=>new env.Option(x.label??x.value??x,x.value??x)));el.value=values.some(x=>(x.value??x)===preferred)?preferred:String(values[0]?.value??values[0]??'');}
  const target=c=>c.targets.find(t=>t.id===id()),row=c=>target(c).layers[layer()],anchor=c=>$('anchorScope').value==='source'?c.source:target(c).anchor;
  const context=()=>({world:scene.app.stage,model:session().asset?.model??null,Spine:env.spine});
@@ -65,8 +65,27 @@
  handle.onpointermove=e=>{if(locked()||!drag||drag.id!==e.pointerId||drag.target!==id()||drag.layer!==layer()||drag.scope!==$('dragScope').value)return;attempt(()=>{const q=U.pointer(e.clientX,e.clientY,$('surface').getBoundingClientRect());move(q.x+drag.dx,q.y+drag.dy);});};
  handle.onpointerup=handle.onpointercancel=handle.onlostpointercapture=()=>{drag=null;if(!locked())controls();};
  handle.onkeydown=e=>{const d={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(!d||locked())return;e.preventDefault();play(false);attempt(()=>{const p=position();if(p){move(p.x+d[0]*(e.shiftKey?10:1),p.y+d[1]*(e.shiftKey?10:1));controls();}});};
+ function download(bytes,name){const url=env.URL.createObjectURL(new env.Blob([bytes],{type:'application/zip'})),a=doc.createElement('a');a.href=url;a.download=name;try{doc.body.append(a);a.click();}finally{a.remove();env.setTimeout(()=>env.URL.revokeObjectURL(url),1000);}}
+ async function runExport(target){
+  if(locked()||exportJob)return false;
+  const X=env.FxShieldExport,D=env.FxChainDeveloper,s=session(),wasPlaying=playing,controller=new env.AbortController();exportJob=controller;
+  try{
+   const spec=env.FxShieldExportUi.readSpec(Object.fromEntries(['x','y','width','height','frames'].map(k=>[k,$('export-'+k).value])),s.meta.frames),assetInfo=s.asset?{name:s.source.name,version:s.asset.version,options:s.options}:null;
+   const params={...spec,settings:s.settings,compile:H.compile,signal:controller.signal,assetInfo};
+   lock(true);$('cancelExport').disabled=false;$('exportProgress').max=spec.frameCount;$('exportProgress').value=0;$('exportCount').textContent='0 / '+spec.frameCount;
+   let result;
+   if(target==='png'){
+    status('Baking PNG sequence');result=await env.FxChainExport.bakeSequence({...params,codec:X,backend:scene.actual,createScene:env.FxChainBake.sceneFactory({source:s.source,poseOptions:s.options,env}),progress:(n,total)=>{if(!closed){$('exportProgress').value=n;$('exportCount').textContent=n+' / '+total;}},yieldFrame:()=>new Promise(resolve=>env.setTimeout(resolve,0))});
+   }else{
+    status('Packaging '+target+' developer ZIP');const texts=names=>Object.fromEntries(names.map(k=>[k,$(k)?.textContent]));result=await D.developer({...params,target,previewSeconds:s.seconds,source:s.source,options:s.options,sources:texts(D.FILES),vendors:texts(D.VENDORS),licenses:$('runtimeLicenses')?.textContent,cropSpec:X.cropSpec,makeZip:X.makeZip});
+   }
+   if(closed||controller.signal.aborted)return false;download(result.zip,'chain-lightning-'+(target==='png'?'png':'developer-'+target)+'.zip');$('exportProgress').value=spec.frameCount;$('exportCount').textContent='Archive ready';status('Export complete');return true;
+  }catch(e){if(!closed&&!controller.signal.aborted)status(e.message,true);return false;}
+  finally{exportJob=null;if(!closed){$('cancelExport').disabled=true;if(controller.signal.aborted){$('exportProgress').value=0;$('exportCount').textContent='Cancelled';status('Export cancelled');}lock(false);play(wasPlaying);}}
+ }
+ $('exportPng').onclick=()=>runExport('png');$('exportWebgl').onclick=()=>runExport('webgl');$('exportWebgpu').onclick=()=>runExport('webgpu');$('cancelExport').onclick=()=>{if(exportJob){exportJob.abort();status('Cancelling export');}};
  function tick(now){if(closed)return;if(playing&&!locked()){if(last!==null)attempt(()=>{const s=session(),dt=Math.max(0,(now-last)/1000),reverse=$('reverse').checked,t=reverse?Math.max(0,s.seconds-dt):U.advance(s.seconds,dt,s.meta);paint(t);if(reverse?t<=0:t>=(s.meta.frames-1)/60)play(false);});if(playing)last=now;}raf=env.requestAnimationFrame(tick);}
- function destroy(){if(closed)return;closed=true;play(false);env.cancelAnimationFrame(raf);dispose(scene);scene=null;}
+ function destroy(){if(closed)return;closed=true;exportJob?.abort();play(false);env.cancelAnimationFrame(raf);dispose(scene);scene=null;}
  env.addEventListener('pagehide',destroy,{once:true});raf=env.requestAnimationFrame(tick);const ready=rebuild('webgl2');return Object.freeze({ready,destroy,get session(){return scene?.session??null;}});
  }
  if(typeof module==='object'&&module.exports)module.exports={mount};else mount();

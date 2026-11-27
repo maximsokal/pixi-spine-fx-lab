@@ -14,7 +14,14 @@
 <details open><summary>Anchors</summary><label>Edit <select id="anchorScope"><option value="source">Source</option><option value="target">Selected target</option></select></label><div id="anchorFields"></div></details>
 <details><summary>Curve editor</summary><label>Curve <select id="curveKey"><option>jump</option><option>width</option><option>glow</option><option>alpha</option><option>rate</option><option>interval</option><option>spacing</option></select></label><div id="curve"></div></details><div id="palette"></div>
 <details><summary>JSON preset</summary><textarea id="preset" aria-label="JSON preset" spellcheck="false"></textarea><div class="tools"><button id="apply">Apply JSON</button><button id="defaults">Reset settings</button></div></details>
-</fieldset><p><small>Authoring preview only. PNG and developer packages are pending L04.</small></p></aside></main>
+</fieldset><details open><summary>Exports</summary><fieldset id="exportFields" disabled>
+<label>Crop X <input id="export-x" type="number" min="-16384" max="16384" step="1" value="0"></label>
+<label>Crop Y <input id="export-y" type="number" min="-16384" max="16384" step="1" value="0"></label>
+<label>Crop width <input id="export-width" type="number" min="1" max="4096" step="1" value="512"></label>
+<label>Crop height <input id="export-height" type="number" min="1" max="4096" step="1" value="512"></label>
+<label>Frames (blank = authored duration) <input id="export-frames" type="number" min="1" max="3600" step="1"></label>
+<button id="exportPng" type="button">Export PNG ZIP</button><div class="tools"><button id="exportWebgl" type="button">Developer ZIP — WebGL</button><button id="exportWebgpu" type="button">Developer ZIP — WebGPU</button></div></fieldset>
+<button id="cancelExport" type="button" disabled>Cancel export</button><progress id="exportProgress" value="0" max="40"></progress><output id="exportCount">0 / 40</output><small>60 FPS, straight RGBA8, logical crop independent of zoom. PNG uses the actual preview backend. Developer ZIP includes local runtimes, assets and runnable demo.</small></details></aside></main>
 <!-- VENDOR -->
 <!-- CORES -->
 <script id="sampleData" type="application/json">__SAMPLE_DATA__</script>
