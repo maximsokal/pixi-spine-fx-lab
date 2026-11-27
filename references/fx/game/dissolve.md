@@ -7,6 +7,8 @@ Build and test outside the checkout:
     python scripts/build_dissolve_editor.py --output ../Dissolve.html
     node --test scripts/test_dissolve_*.cjs
     python scripts/test_dissolve_builder.py
+    python scripts/test_dissolve_oracle_gate.py
+    python -O scripts/test_dissolve_oracle_gate.py
     python scripts/test_blueprints.py
     python scripts/test_dissolve_browser.py ../Dissolve.html --backend webgl2 --output ../dissolve-evidence-webgl2
 

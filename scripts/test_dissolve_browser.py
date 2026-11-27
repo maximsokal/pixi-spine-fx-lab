@@ -5,7 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from dissolve_pixel_oracle import frames, decode_png, compare_endpoints, developer
+from dissolve_pixel_oracle import frames, decode_png, compare_endpoints, developer, require
 
 FULL = {'x': 0, 'y': 0, 'width': 512, 'height': 512}
 END = 39 / 60
@@ -13,9 +13,9 @@ END = 39 / 60
 
 def run(html, backend, output):
     from playwright.sync_api import sync_playwright
-    assert html.is_file()
+    require(html.is_file(), 'standalone HTML missing')
     output.mkdir(parents=True, exist_ok=True)
-    assert not any(output.iterdir()), 'Evidence directory must be empty'
+    require(not any(output.iterdir()), 'Evidence directory must be empty')
     report = {'kind': 'diagnostic-only', 'backend': backend, 'status': 'FAIL', 'checks': [], 'network': [], 'pageErrors': []}
     try:
         with sync_playwright() as p:
@@ -28,7 +28,7 @@ def run(html, backend, output):
                 page.wait_for_function("!document.getElementById('backend').disabled")
                 page.locator('#backend').select_option(backend)
                 page.wait_for_function("b=>document.body.dataset.ready==='true' && document.getElementById('actual').textContent===b.toUpperCase() && !document.getElementById('backend').disabled", arg=backend, timeout=180000)
-                assert page.evaluate('PIXI.VERSION') == '8.22.0'
+                require(page.evaluate('PIXI.VERSION') == '8.22.0', 'actual Pixi runtime pin')
                 report['checks'].append('actual editor backend and runtime pin')
                 base = page.evaluate('FxDissolve.defaults()')
                 clone = lambda v: json.loads(json.dumps(v))
@@ -48,8 +48,8 @@ def run(html, backend, output):
                     layer['enabled'] = False
                 original = capture('source', off, [0])[0]
                 start, mid, end, repeated = capture('disappear', base, [0, .325, END, .325])
-                assert mid.tobytes() == repeated.tobytes() and mid.tobytes() != start.tobytes()
-                assert mid.getchannel('A').getbbox() and original.getpixel((256, 256))[3] == 0
+                require(mid.tobytes() == repeated.tobytes() and mid.tobytes() != start.tobytes(), 'reverse seek or progress mismatch')
+                require(mid.getchannel('A').getbbox() and original.getpixel((256, 256))[3] == 0, 'midpoint visibility or source alpha hole')
                 gray = clone(base)
                 gray['endpoint'] = 'grayscale'
                 gray_end = capture('gray-end', gray, [END])[0]
@@ -60,23 +60,23 @@ def run(html, backend, output):
                 edge['emitters'][0]['layers']['edge']['enabled'] = True
                 for name, cfg in [('mask', mask), ('edge', edge)]:
                     im = capture(name, cfg, [.325])[0]
-                    assert im.tobytes() != original.tobytes()
-                    assert all(a <= b for a, b in zip(im.getchannel('A').getdata(), original.getchannel('A').getdata()))
+                    require(im.tobytes() != original.tobytes(), 'individual layer has no effect')
+                    require(all(a <= b for a, b in zip(im.getchannel('A').getdata(), original.getchannel('A').getdata())), 'layer added coverage outside source')
                 partial = clone(mask)
                 partial['emitters'][0]['layers']['mask']['alpha'] = .5
                 half = capture('partial-end', partial, [END])[0]
-                assert all(abs(a - b / 2) <= 1 for a, b in zip(half.getchannel('A').getdata(), original.getchannel('A').getdata()))
-                assert not any(capture('none', base, [.325], kind='none')[0].tobytes())
+                require(all(abs(a - b / 2) <= 1 for a, b in zip(half.getchannel('A').getdata(), original.getchannel('A').getdata())), 'partial endpoint alpha mismatch')
+                require(not any(capture('none', base, [.325], kind='none')[0].tobytes()), 'empty source must stay transparent')
                 cross = {'x': -3, 'y': 110, 'width': 520, 'height': 300}
                 tile = capture('cross-tile', base, [.325], crop=cross)[0]
-                assert tile.tobytes() == mid.crop((-3, 110, 517, 410)).tobytes()
+                require(tile.tobytes() == mid.crop((-3, 110, 517, 410)).tobytes(), 'signed tile crop mismatch')
                 report['checks'].append('source-bound alpha, partial endpoint, empty source, cross-tile and reverse parity')
                 page.locator('details').evaluate_all('(els)=>els.forEach(e=>e.open=true)')
                 page.locator('#preset').fill(json.dumps(base))
                 page.locator('#apply').click()
                 def idle():
                     page.wait_for_function("!document.getElementById('backend').disabled", timeout=180000)
-                    assert page.locator('#status').get_attribute('data-error') == 'false', page.locator('#status').inner_text()
+                    require(page.locator('#status').get_attribute('data-error') == 'false', page.locator('#status').inner_text())
                 idle()
                 crop = {'x': 96, 'y': 96, 'width': 320, 'height': 320}
                 for key, value in {'cropX': 0, 'cropY': 0, 'cropWidth': 320, 'cropHeight': 320, 'exportFrames': 40}.items():
@@ -90,17 +90,17 @@ def run(html, backend, output):
                     return dest.read_bytes()
                 before = page.locator('#frameLabel').inner_text()
                 first = frames(download('exportPng', 'sequence.zip'), backend, crop, 40)
-                assert first[0].tobytes() == original.crop((96, 96, 416, 416)).tobytes()
-                assert not any(first[-1].tobytes())
+                require(first[0].tobytes() == original.crop((96, 96, 416, 416)).tobytes(), 'sequence start differs from source')
+                require(not any(first[-1].tobytes()), 'sequence endpoint must be transparent')
                 page.locator('#zoom').evaluate("e=>{e.value='150';e.dispatchEvent(new Event('input'));}")
                 page.locator('#background').select_option('light')
                 second = frames(download('exportPng', 'sequence-camera.zip'), backend, crop, 40)
-                assert all(a.tobytes() == b.tobytes() for a, b in zip(first, second))
-                assert before == page.locator('#frameLabel').inner_text()
+                require(all(a.tobytes() == b.tobytes() for a, b in zip(first, second)), 'camera changed exported frames')
+                require(before == page.locator('#frameLabel').inner_text(), 'export changed preview frame')
                 report['checks'].append('40 decoded frames, camera independence and preview preservation')
                 page.locator('#sample').click()
                 idle()
-                assert page.locator('#sourceKind').input_value() == 'spine'
+                require(page.locator('#sourceKind').input_value() == 'spine', 'sample did not load Spine')
                 page.locator('#frame').evaluate("e=>{e.value='15';e.dispatchEvent(new Event('input'));}")
                 idle()
                 for bg in ('dark', 'light', 'checker'):
@@ -109,7 +109,7 @@ def run(html, backend, output):
                 for target, button in [('webgl', 'exportWebgl'), ('webgpu', 'exportWebgpu')]:
                     developer(download(button, 'developer-' + target + '.zip'), target, crop, 40)
                 report['checks'].append('actual sample editor and developer archives; Vite execution not tested')
-                assert not report['network'] and not report['pageErrors']
+                require(not report['network'] and not report['pageErrors'], 'network requests or page errors')
                 report['status'] = 'PASS'
             finally:
                 browser.close()
