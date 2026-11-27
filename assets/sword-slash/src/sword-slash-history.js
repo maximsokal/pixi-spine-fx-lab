@@ -83,11 +83,12 @@
   const l=c.layers[k],life=c.lifetimeFrames/FPS;if(!h||!l.enabled||!l.opacity||t<0||h.total<=EPS)return [];
   const width={start:c.startWidth,middle:c.middleWidth,end:c.endWidth,startTaper:0,endTaper:0,minVisiblePx:0,curve:c.curves.width},result=[];
   function color(age,gain){const rgba=K.sample(c.palettes[k],clamp(age,0,1));rgba[3]*=age>=1?0:clamp(l.opacity*gain*C.evaluate(c.curves.alpha,clamp(age,0,1)),0,1);return rgba;}
-  let slices=h.runs.map(r=>({r,lo:Math.max(r[0].time,t-life),hi:Math.min(r.at(-1).time,t)})).filter(v=>v.hi-v.lo>EPS);
+  let slices=h.runs.map((r,i)=>({r,raw:h.raw[i],lo:Math.max(r[0].time,t-life),hi:Math.min(r.at(-1).time,t)})).filter(v=>v.hi-v.lo>EPS);
   if(k==='edge')slices=slices.slice(-1);
   let count=0;
-  if(k==='main'||k==='edge'&&c.edgeGlow>0||k==='residual'&&c.glowEnabled)for(const {r,lo,hi} of slices){
-   const a=byTime(r,lo),b=byTime(r,hi),start=k==='edge'&&b.d-a.d>6?byDistance(r,b.d-6):a;
+  if(k==='main'||k==='edge'&&c.edgeGlow>0||k==='residual'&&c.glowEnabled)for(const {r,raw,lo,hi} of slices){
+   // Clip time and distance on the original recorded motion, not the emission-decimated geometry.
+   const a=byTime(raw,lo),b=byTime(raw,hi),start=k==='edge'&&b.d-a.d>6?byDistance(raw,b.d-6):a;
    const points=[start,...r.filter(v=>v.time>start.time+EPS&&v.time<hi-EPS&&v.d>start.d+EPS&&v.d<b.d-EPS),b].filter((v,i,all)=>!i||dist(v,all[i-1])>EPS);
    if(points.length<2)continue;count+=points.length;if(count>MAX)fail('visible history cap');
    const positions=[],uvs=[],indices=[],sections=[],colors=[];

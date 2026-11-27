@@ -11,8 +11,8 @@ function run(read,A,test){
  const H=mods['sword-slash-core.js'],T=mods['sword-slash-history.js'],An=mods['sword-slash-anchors.js'],R=mods['sword-slash-runtime.js'];
  const near=(a,b,e=1e-6)=>A.ok(Math.abs(a-b)<=e,a+' != '+b),layer=(f,k)=>f.owned.children.find(l=>l.label===k);
  const loader={anchorPoses:()=>({})}; // result unused; actual pose replay uses pinned Spine.
- function rig({gap=false,jump=false,physics=false,returning=false}={}){
-  const data={skeleton:{spine:'4.2.43'},bones:[{name:'root'},{name:'weapon',parent:'root',length:20}],slots:[{name:'impact',bone:'weapon',attachment:'tip'}],skins:[{name:'default',attachments:{impact:{tip:{type:'point',x:12,y:0}}}}],animations:{idle:{bones:{root:{translate:returning?[{x:0,y:0},{time:10/60,x:60,y:0},{time:23/60,x:0,y:0},{time:1,x:0,y:0}]:[{x:0,y:0},{time:10/60,x:60,y:0},...(jump?[{time:11/60,x:400,y:0}]:[]),{time:23/60,x:jump?460:120,y:-30},{time:1,x:jump?460:120,y:-30}]}},...(gap?{slots:{impact:{attachment:[{name:'tip'},{time:8/60,name:null},{time:13/60,name:'tip'}]}}}:{})}}};
+ function rig({gap=false,jump=false,physics=false,returning=false,dwell=false}={}){
+  const data={skeleton:{spine:'4.2.43'},bones:[{name:'root'},{name:'weapon',parent:'root',length:20}],slots:[{name:'impact',bone:'weapon',attachment:'tip'}],skins:[{name:'default',attachments:{impact:{tip:{type:'point',x:12,y:0}}}}],animations:{idle:{bones:{root:{translate:dwell?[{x:0,y:0},{time:5/60,x:60,y:0},{time:16/60,x:60,y:0},{time:23/60,x:120,y:0},{time:1,x:120,y:0}]:returning?[{x:0,y:0},{time:10/60,x:60,y:0},{time:23/60,x:0,y:0},{time:1,x:0,y:0}]:[{x:0,y:0},{time:10/60,x:60,y:0},...(jump?[{time:11/60,x:400,y:0}]:[]),{time:23/60,x:jump?460:120,y:-30},{time:1,x:jump?460:120,y:-30}]}},...(gap?{slots:{impact:{attachment:[{name:'tip'},{time:8/60,name:null},{time:13/60,name:'tip'}]}}}:{})}}};
   if(physics)data.physics=[{name:'spring',bone:'weapon',x:1,rotate:1,step:60,strength:100,damping:.5}];
   return new Sp.Spine({skeletonData:new Sp.SkeletonJson({newPointAttachment:(skin,name)=>new Sp.PointAttachment(name)}).readSkeletonData(data),autoUpdate:false});
  }
@@ -59,6 +59,20 @@ function run(read,A,test){
    const full=p.sample(23/60).main[0];A.ok(full);A.ok(full.sections.some(q=>q.x>59.99));near(full.sections.at(-1).x,0,1e-4);
    A.deepEqual(p.sample(10/60).main[0],first);A.equal(p.sample(64/60).main.length,0);
    const f=create(s,d);try{A.ok(f.seek(23/60).main.length);A.ok(layer(f,'main').children.some(v=>v.visible));}finally{f.destroy();}
+  }finally{s.camera.destroy({children:true});}
+ });
+ test('recorded stationary hold and changing velocity clip against actual frame history',()=>{
+  const s=scene({dwell:true}),d=preset(true);d.effect.frequencySource='rate';d.effect.rate=0;d.effect.lifetimeFrames=40;
+  try{
+   const p=s.compile(d),h=p.meta.recorded.main;A.equal(h.events.length,1);near(h.total,120,1e-4);
+   for(const f of [1,4,5,8,10,16,17,20,23]){
+    const q=p.sample(f/60).main[0],expected=h.raw[0][f].x;A.ok(q,'missing main at '+f);near(q.sections.at(-1).x,expected,1e-4);
+   }
+   const short=JSON.parse(JSON.stringify(d));short.effect.lifetimeFrames=2;
+   const j=s.compile(short);A.equal(j.sample(10/60).main.length,0);
+   const x=j.sample(20/60).main[0];A.ok(x);near(x.sections[0].x,h.raw[0][18].x,1e-4);near(x.sections.at(-1).x,h.raw[0][20].x,1e-4);
+   const edge=p.sample(10/60).edge[0];A.ok(edge);near(edge.sections.at(-1).x,60,1e-4);near(edge.sections[0].x,54,1e-4);
+   const first=p.sample(8/60);p.sample(23/60);A.deepEqual(p.sample(8/60),first);
   }finally{s.camera.destroy({children:true});}
  });
  test('native bone/point current anchor transforms, missing layers and ownership',()=>{
