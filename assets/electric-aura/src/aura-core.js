@@ -9,6 +9,12 @@
  if(!C||!S||!P||!K)throw Error('Electric Aura dependencies');
  const FPS=60,TAU=2*Math.PI,RAD=Math.PI/180,EPS=1e-8,MAX_EVENTS=4096,MAX_VERTICES=8192,LAYERS=Object.freeze(['halo','arcs','sparks']),BUDGETS=Object.freeze({low:256,balanced:1024,high:2048});
  const fail=m=>{throw RangeError('Electric Aura: '+m);},clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),mod=(v,n)=>((v%n)+n)%n;
+ function loopSeconds(seconds,frames,delayFrames=0){
+  const nearest=Math.round(seconds*FPS);
+  if(Math.abs(seconds-nearest/FPS)<=1e-9)return mod(nearest-delayFrames,frames)/FPS;
+  const duration=frames/FPS,rest=(seconds-delayFrames/FPS)%duration;
+  return rest<0?rest+duration:rest||0;
+ }
  function exact(o,keys,k){if(!o||typeof o!=='object'||Array.isArray(o)||Object.keys(o).length!==keys.length||keys.some(x=>!Object.hasOwn(o,x)))fail(k);}
  function dense(v){if(Array.isArray(v)){for(let i=0;i<v.length;i++){if(!Object.hasOwn(v,i))fail('sparse array');dense(v[i]);}}else if(v&&typeof v==='object')Object.values(v).forEach(dense);}
  function num(v,k,a,b,i=false){if(!Number.isFinite(v)||v<a||v>b||i&&!Number.isInteger(v))fail(k);return v;}
@@ -80,7 +86,7 @@
   function pose(e,l,k,poses){const a=l.anchor.type==='inherit'?e.anchor:l.anchor,id=l.anchor.type==='inherit'?e.id:e.id+':'+k,b=a.type==='world'?{x:a.x,y:a.y,rotation:a.rotation,scale:1}:poses?.[id];if(!b||![b.x,b.y,b.rotation,b.scale].every(Number.isFinite)||b.scale<=0||b.scale>100)return null;const r=b.rotation*RAD;return {x:b.x+b.scale*(l.x*Math.cos(r)-l.y*Math.sin(r)),y:b.y+b.scale*(l.x*Math.sin(r)+l.y*Math.cos(r)),rotation:b.rotation+l.rotation,scale:b.scale};}
   function sample(seconds,poses){num(seconds,'sample time',0,3600);const out={emitters:[],halo:[],arcs:[],sparks:[]};let vertices=0;
    for(let i=0;i<c.emitters.length;i++){const e=c.emitters[i],summary={id:e.id,layers:{}};out.emitters.push(summary);for(const k of LAYERS){const l=e.layers[k],p=meta.plans[i].layers[k],b=pose(e,l,k,poses);summary.layers[k]={origin:b?{x:b.x,y:b.y}:null};if(!e.enabled||!active(l)||!b)continue;
-    const raw=seconds-l.delayFrames/FPS,t=loop?mod(raw,duration):raw,end=(c.durationFrames-1)/FPS;if(!loop&&(t<0||t>=end||seconds>=end))continue;const u=t/duration,env=loop?1:Math.min(clamp(t*FPS/2,0,1),clamp((end-seconds)*FPS/c.fadeFrames,0,1)),theta=b.rotation*RAD,co=Math.cos(theta),si=Math.sin(theta),xy=(x,y)=>[b.x+b.scale*(x*co-y*si),b.y+b.scale*(x*si+y*co)];
+    const raw=seconds-l.delayFrames/FPS,t=loop?loopSeconds(seconds,c.durationFrames,l.delayFrames):raw,end=(c.durationFrames-1)/FPS;if(!loop&&(t<0||t>=end||seconds>=end))continue;const u=t/duration,env=loop?1:Math.min(clamp(t*FPS/2,0,1),clamp((end-seconds)*FPS/c.fadeFrames,0,1)),theta=b.rotation*RAD,co=Math.cos(theta),si=Math.sin(theta),xy=(x,y)=>[b.x+b.scale*(x*co-y*si),b.y+b.scale*(x*si+y*co)];
     const emitMesh=(m,color,id)=>{if(!m||color[3]<=0)return;const positions=[];for(let j=0;j<m.positions.length;j+=2)positions.push(...xy(m.positions[j],m.positions[j+1]));vertices+=positions.length/2;out[k].push({kind:'ribbon',id,emitterId:e.id,blend:l.blend,order:l.order,positions,uvs:m.uvs,indices:m.indices,rgba:color});};
     if(k==='halo'){const color=K.sample(c.palettes.halo,u),factor=C.evaluate(c.curves.glow,u)*c.glowStrength*env*l.opacity;emitMesh(p.glow,[...color.slice(0,3),clamp(color[3]*factor*.25,0,1)],'glow');emitMesh(p.halo,[...color.slice(0,3),clamp(color[3]*factor,0,1)],'halo');continue;}
     for(const ev of p.events){const age=loop?mod(t-ev.time,duration):t-ev.time;if(age<0||age>=p.life)continue;const f=age/p.life,color=K.sample(c.palettes[k],f);color[3]*=C.evaluate(c.curves.alpha,f)*env*l.opacity;if(color[3]<=0)continue;
@@ -92,5 +98,5 @@
   }
   return Object.freeze({settings:c,meta,sample});
  }
- return {VERSION:1,FPS,LAYERS,BUDGETS,MAX_EVENTS,MAX_VERTICES,defaults,newEmitter,normalize,compile};
+ return {VERSION:1,FPS,LAYERS,BUDGETS,MAX_EVENTS,MAX_VERTICES,defaults,newEmitter,normalize,compile,loopSeconds};
 });

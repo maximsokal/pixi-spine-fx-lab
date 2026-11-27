@@ -7,7 +7,7 @@
  const FPS=60,finite=Number.isFinite,fail=m=>{throw Error('Electric Aura authoring: '+m);},clone=v=>JSON.parse(JSON.stringify(v)),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
  function seek(t,meta){if(!finite(t)||!Number.isInteger(meta.frames)||meta.frames<1||meta.frames>3600)fail('time/frames');const loop=meta.loop===true;return clamp(t,0,loop?meta.duration-1e-9:(meta.frames-1)/FPS);}
  function frame(t,m){return Math.min(m.frames-1,Math.floor(seek(t,m)*FPS+1e-8));}
- function advance(t,dt,m,loop){if(!finite(dt)||dt<0)fail('elapsed');return loop?((t+dt)%m.duration+m.duration)%m.duration:seek(t+dt,m);}
+ function advance(t,dt,m,loop){if(!finite(dt)||dt<0)fail('elapsed');return loop?H.loopSeconds(t+dt,m.frames):seek(t+dt,m);}
  function pointer(x,y,r){if(!r||![x,y,r.left,r.top,r.width,r.height].every(finite)||r.width<=0||r.height<=0)fail('viewport');return {x:(x-r.left)*512/r.width,y:(y-r.top)*512/r.height};}
  function transform(b,x,y){const a=b.rotation*Math.PI/180;return {x:b.x+b.scale*(x*Math.cos(a)-y*Math.sin(a)),y:b.y+b.scale*(x*Math.sin(a)+y*Math.cos(a))};}
  function inverse(b,x,y){if(!b||!finite(b.scale)||b.scale<=0)fail('anchor');const a=b.rotation*Math.PI/180,dx=(x-b.x)/b.scale,dy=(y-b.y)/b.scale;return {x:dx*Math.cos(a)+dy*Math.sin(a),y:-dx*Math.sin(a)+dy*Math.cos(a)};}
