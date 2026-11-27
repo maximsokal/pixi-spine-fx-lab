@@ -42,6 +42,12 @@ The common emitter contract is reusable across specialized standalone FX Labs. I
 - The PNG bake instantiates a **separate** emitter runtime with the same settings and isolated Spine model, seeks at exact `frameIndex / 60`, and renders all front/behind/slot layers, including off-model particles inside the selected crop. `sequence.json.emitters` contains enabled status, per-frame primitive count, visible layer IDs and resolved positions; UI guides/handles do not appear in PNG.
 - Both developer packages include `FxEmitters.mjs` and `FxEmitterRuntime.mjs`; their `example.js` initializes and updates a real multi-FX instance, not only a schema stub. The disposable example tears down multiFX before destroying the caller's skeleton.
 
+## UI acceptance boundary
+
+The optional emitter panel sends a normalized candidate to its synchronous `onChange` acceptance callback before publishing the local document or proposed selection. The template host configures the runtime before assigning `cfg.multiEmitters`. On rejected or locked edits the panel redraws the accepted controls and reports the error. The optional `onCommit` callback updates handles after acceptance; a subsequent UI-refresh error must not be represented as an uncommitted edit. This covers panel edits only, not the global defaults action or full native renderer rollback after partially applied setup/seek. Do not use it as an agent transaction API until those remaining boundaries are reviewed and verified. The protected prebuilt Burn HTML and vendor/sample pins remain unchanged.
+
+Focused regression: `node --test scripts/test_emitter_ui_transaction.cjs` (actual UI/core and host mount callback, minimal injected DOM and renderer, not a real-browser/GPU test).
+
 ## RED→GREEN acceptance
 
 ```sh

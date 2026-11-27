@@ -8,7 +8,7 @@ const node=(tag,attrs={},text='')=>{
   if(text)n.textContent=text;
   return n;
 };
-function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
+function mount(parent,{value,onChange,isLocked,onSelect,onCommit,diagnostics}) {
   let doc=E.normalize(value),selected=doc.emitters[0]?.id||null,selectedLayer=null;
   let counter=0,internalError='';
   const panel=node('details',{id:'fxEmitterPanel'});
@@ -32,11 +32,23 @@ function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
   const documentIds=copy=>new Set(copy.emitters.flatMap(e=>[e.id,...e.layers.map(l=>l.id)]));
   const activeEmitter=()=>doc.emitters.find(e=>e.id===selected);
   const activeLayer=()=>activeEmitter()?.layers.find(l=>l.id===selectedLayer);
-  function commit(changed,reason='Updated'){
-    if(isLocked?.()){status.textContent='Finish baking/loading before changing emitters.';return false;}
-    try{const next=E.normalize(changed);doc=next;onChange(next);
-      internalError='';render();status.textContent=reason;return true;
-    }catch(e){internalError=e.message;status.textContent=e.message;return false;}
+  // onChange is the synchronous acceptance boundary. Publish local settings
+  // and selection only after it returns; guide/UI failures are post-commit.
+  function reject(message){
+    internalError=message;
+    render();status.textContent=message;return false;
+  }
+  function commit(changed,reason='Updated',selection=null){
+    if(isLocked?.())return reject('Finish baking/loading before changing emitters.');
+    let next;
+    try{next=E.normalize(changed);onChange(next);}
+    catch(e){return reject(String(e?.message||e));}
+    doc=next;
+    if(selection){selected=selection.emitterId;selectedLayer=selection.layerId;}
+    internalError='';
+    try{render();onCommit?.();status.textContent=reason;}
+    catch(e){internalError='Settings accepted; UI refresh failed: '+String(e?.message||e);status.textContent=internalError;}
+    return true;
   }
   function changeEmitter(field,value){
     const copy=clone(),target=copy.emitters.find(e=>e.id===selected);
@@ -95,8 +107,8 @@ function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
       const preferred=instance.id+'_'+layer.type;
       layer.id=ids.has(preferred)?unique('layer',ids):preferred;ids.add(layer.id);
     }
-    selected=instance.id;selectedLayer=instance.layers[0].id;
-    copy.emitters.push(instance);commit(copy,'Emitter added');
+    copy.emitters.push(instance);
+    commit(copy,'Emitter added',{emitterId:instance.id,layerId:instance.layers[0].id});
   }
   function duplicateEmitter(){
     if(isLocked?.())return void(status.textContent='Finish baking/loading before changing emitters.');
@@ -114,18 +126,14 @@ function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
     duplicated.x+=source.x<=16384-32?32:-32;
     duplicated.seed=(source.seed+1)|0;
     duplicated.layers.forEach(l=>l.id=fresh('layer'));
-    const oldSelected=selected,oldLayer=selectedLayer;
-    selected=duplicated.id;selectedLayer=duplicated.layers[0]?.id||null;
     copy.emitters.push(duplicated);
-    if(!commit(copy,'Emitter duplicated with independent seed')){
-      selected=oldSelected;selectedLayer=oldLayer;
-    }
+    commit(copy,'Emitter duplicated with independent seed',{emitterId:duplicated.id,layerId:duplicated.layers[0]?.id||null});
   }
   function deleteEmitter(){
     if(isLocked?.())return void(status.textContent='Finish baking/loading before changing emitters.');
     const copy=clone();copy.emitters=copy.emitters.filter(e=>e.id!==selected);
-    selected=copy.emitters[0]?.id||null;selectedLayer=copy.emitters[0]?.layers[0]?.id||null;
-    commit(copy,'Emitter deleted and owned layers disposed');
+    commit(copy,'Emitter deleted and owned layers disposed',
+      {emitterId:copy.emitters[0]?.id||null,layerId:copy.emitters[0]?.layers[0]?.id||null});
   }
   function addLayer(type){
     if(isLocked?.())return void(status.textContent='Finish baking/loading before changing emitters.');
@@ -135,14 +143,14 @@ function mount(parent,{value,onChange,isLocked,onSelect,diagnostics}) {
       return void(status.textContent='Maximum 64 layers.');
     const layer=E.newLayer(type,em.id,em.layers.length);
     layer.id=unique('layer',documentIds(copy));
-    selectedLayer=layer.id;em.layers.push(layer);commit(copy,'Layer added');
+    em.layers.push(layer);commit(copy,'Layer added',{emitterId:selected,layerId:layer.id});
   }
   function deleteLayer(){
     if(isLocked?.())return void(status.textContent='Finish baking/loading before changing emitters.');
     const copy=clone(),em=copy.emitters.find(e=>e.id===selected);
     if(!em)return;
     em.layers=em.layers.filter(l=>l.id!==selectedLayer);
-    selectedLayer=em.layers[0]?.id||null;commit(copy,'Layer removed');
+    commit(copy,'Layer removed',{emitterId:selected,layerId:em.layers[0]?.id||null});
   }
   function render() {
     controls.replaceChildren();

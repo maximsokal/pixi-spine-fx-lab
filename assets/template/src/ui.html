@@ -194,10 +194,10 @@ $('cameraPlane').append(emitterGuide);
     isLocked:()=>bakeBusy||loading||rendererBusy,
     diagnostics:()=>multiFx?.diagnostics||[],
     onChange(value){
-      cfg.multiEmitters=value;
       if(multiFx)multiFx.configure(value);
-      updateEmitterHandles();
+      cfg.multiEmitters=value;
     },
+    onCommit:()=>updateEmitterHandles(),
     onSelect:()=>updateEmitterHandles()
   });
   $('fxEmitterPanel').addEventListener('toggle',updateEmitterHandles);
