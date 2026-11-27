@@ -8,7 +8,7 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
   const stage=app.stage;
   if(host.parent!==stage||host.x||host.y||host.rotation||host.scale.x!==1||host.scale.y!==1)
     throw Error('Emitter FX requires an identity-transform host directly under stage');
-  let doc=E.normalize(settings),rect={...bounds},clock=0,dead=false,diagnostics=[];
+  let doc=E.normalize(settings),rect={...bounds},clock=0,dead=false,broken=false,diagnostics=[];
   function requireFilters(value){
     if(typeof PIXI.BlurFilter!=='function'&&value.emitters.some(e=>e.layers.some(l=>l.type==='postprocess')))
       throw Error('PixiJS BlurFilter unavailable for postprocess layer');
@@ -23,7 +23,10 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
   function destroyLayer(layer){
     if(!layer)return;
     if(layer.filter){layer.container.filters=[];layer.filter.destroy();layer.filter=null;}
-    layer.container.destroy({children:true});
+    // A partially constructed layer may own Graphics not yet parented.
+    if(layer.graphics&&!layer.graphics.destroyed&&layer.graphics.parent!==layer.container)
+      layer.graphics.destroy({children:true});
+    if(!layer.container.destroyed)layer.container.destroy({children:true});
   }
   function dropSlot(slot){
     const s=slotGroups.get(slot);if(!s)return;
@@ -32,7 +35,7 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     for(const child of [...s.wrapper.children])groups.front.addChild(child);
     if(typeof model.removeSlotObject==='function'&&model.getSlotObject?.(slot)===s.wrapper)
       model.removeSlotObject(slot,s.wrapper);
-    s.wrapper.destroy({children:true});
+    if(!s.wrapper.destroyed)s.wrapper.destroy({children:true});
     slotGroups.delete(slot);
   }
   function slotParent(slot,e){
@@ -52,14 +55,13 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     const wrapper=new PIXI.Container();
     wrapper.label='FX slot '+slot;
     wrapper.sortableChildren=true;
+    // Track before insertion, including a registered-but-failed Spine update.
+    slotGroups.set(slot,{wrapper});
     try{model.addSlotObject(slot,wrapper,{followAttachmentTimeline:false})}
     catch(error){
-      // Spine registers the wrapper before updating its initial slot pose.
-      // An update failure must not leave a destroyed object in its registry.
-      if(model.getSlotObject(slot)===wrapper)model.removeSlotObject(slot,wrapper);
-      wrapper.destroy();diagnose('slot-error',e,String(error.message||error));return null;
-    }
-    slotGroups.set(slot,{wrapper});return wrapper;
+      dropSlot(slot);
+      diagnose('slot-error',e,String(error.message||error));return null;
+    }return wrapper;
   }
   function anchorWorld(e){
     const anchor=e.anchor,transform=model.worldTransform;
@@ -201,6 +203,7 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
   }
   function seek(time){
     if(dead)return;
+    if(broken)return {time:clock,visibleLayers:[],cost:0,diagnostics:diagnostics.slice(),broken:true};
     clock=time;
     const snapshot=E.sample(doc,Math.max(0,time));
     diagnostics=[];
@@ -236,17 +239,20 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     return {time,visibleLayers:layers.map(l=>l.id),cost:last.cost,diagnostics:diagnostics.slice()};
   }
   function scenePositionForEmitter(id){
+    if(broken)return null;
     const e=doc.emitters.find(v=>v.id===id),state=owned.get(id);
     if(!e||!state||!state.container.visible)return null;
     if(e.placement==='slot')return stage.toLocal(state.container.getGlobalPosition());
     return anchorWorld(e);
   }
   function scenePositionForLayer(eid,lid){
+    if(broken)return null;
     const state=owned.get(eid),record=state?.layers.get(lid);
     if(!state?.container.visible||!record)return null;
     return stage.toLocal(record.container.getGlobalPosition());
   }
   function emitterOffsetFromScene(id,x,y){
+    if(broken)throw Error('Emitter runtime requires recreation');
     const e=doc.emitters.find(v=>v.id===id),state=owned.get(id);
     if(!e||!state)throw Error('Emitter not found');
     if(e.placement==='slot'){
@@ -265,38 +271,73 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     return {x:(vx*by-vy*bx)/det,y:(ax*vy-ay*vx)/det};
   }
   function layerOffsetFromScene(eid,lid,x,y){
+    if(broken)throw Error('Emitter runtime requires recreation');
     const state=owned.get(eid),layer=state?.layers.get(lid);
     if(!layer)throw Error('Layer not found');
     return state.container.toLocal(stage.toGlobal({x,y}));
   }
+  function clearOwned(){
+    for(const [id,e] of owned){
+      for(const [lid,record] of e.layers){destroyLayer(record);e.layers.delete(lid);}
+      if(!e.container.destroyed)e.container.destroy();
+      owned.delete(id);
+    }
+    for(const slot of [...slotGroups.keys()])dropSlot(slot);
+  }
+  function disposePrepared(filters){
+    const errors=[];
+    for(const [id,filter] of filters){
+      try{filter.destroy();filters.delete(id);}catch(error){errors.push(error);}
+    }
+    if(errors.length)throw new AggregateError(errors,'Emitter staged filter cleanup failed');
+  }
+  function invalidate(error){
+    broken=true;last=null;
+    diagnostics=[{code:'rollback-failed',emitterId:null,message:'Emitter runtime requires recreation: '+String(error?.message||error)}];
+    groups.behind.visible=groups.front.visible=false;
+    for(const e of owned.values())if(!e.container.destroyed)e.container.visible=false;
+    for(const {wrapper} of slotGroups.values())if(!wrapper.destroyed)wrapper.visible=false;
+  }
   function configure(value){
     if(dead)throw Error('Emitter runtime destroyed');
+    if(broken)throw Error('Emitter runtime requires recreation');
     const next=E.normalize(value);
     requireFilters(next);
-    const preparedFilters=new Map();
+    const previous=doc,acceptedClock=clock,preparedFilters=new Map();
+    // Preflight retains old objects and exact snapshot on ordinary allocation failure.
     try{
-      // Allocate before changing the live document or disposing its resources.
       for(const e of next.emitters)for(const layer of e.layers){
         if(layer.type==='postprocess'&&!owned.get(e.id)?.layers.get(layer.id)?.filter)
           preparedFilters.set(layer.id,new PIXI.BlurFilter({strength:2.5,quality:2}));
       }
-      doc=next;setup(preparedFilters);seek(clock);
-    }finally{
-      // Only filters not transferred to a layer are still owned by this staging map.
-      for(const filter of preparedFilters.values())filter.destroy();
+    }catch(error){
+      try{disposePrepared(preparedFilters);}
+      catch(cleanup){throw new AggregateError([error,cleanup],'Emitter preflight and cleanup failed');}
+      throw error;
+    }
+    try{
+      doc=next;setup(preparedFilters);seek(acceptedClock);disposePrepared(preparedFilters);
+    }catch(error){
+      doc=previous;clock=acceptedClock;
+      try{
+        disposePrepared(preparedFilters);
+        // Failure-only rebuild: partial records may lack Graphics or have
+        // already destroyed filters. Reconstruct only FX-owned resources.
+        clearOwned();setup();seek(acceptedClock);
+      }catch(rollback){
+        invalidate(rollback);
+        throw new AggregateError([error,rollback],'Emitter configure and rollback failed; recreate runtime');
+      }
+      throw error;
     }
   }
-  function setBounds(value){rect={...value};seek(clock);}
+  function setBounds(value){if(broken)return;rect={...value};seek(clock);}
   function destroy(){
     if(dead)return;
+    clearOwned();
+    if(!groups.behind.destroyed)groups.behind.destroy({children:true});
+    if(!groups.front.destroyed)groups.front.destroy({children:true});
     dead=true;
-    for(const e of owned.values()){
-      for(const record of e.layers.values())destroyLayer(record);
-      e.layers.clear();e.container.destroy();
-    }
-    owned.clear();
-    for(const slot of [...slotGroups.keys()])dropSlot(slot);
-    groups.behind.destroy({children:true});groups.front.destroy({children:true});
   }
   try{
     stage.addChildAt(groups.behind,stage.getChildIndex(host));
@@ -308,7 +349,7 @@ function createEmitterLayers({PIXI,app,host,model,settings,bounds,worldOffset={x
     throw error;
   }
   return {seek,configure,setBounds,destroy,
-    get document(){return doc},get clock(){return clock},
+    get document(){return doc},get clock(){return clock},get broken(){return broken},
     get diagnostics(){return diagnostics.slice()},
     get snapshot(){return last},
     get nodes(){return owned},
