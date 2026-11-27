@@ -46,7 +46,17 @@
   // Keep endpoints of each run independent of emission density. Interior
   // samples are actual time/distance triggers; no interpolation across gaps.
   const sampled=valid.map(r=>{
-   const a=r[0],b=r.at(-1),list=[a,...events.filter(v=>v.time>a.time+EPS&&v.time<b.time-EPS&&v.d>a.d+EPS&&v.d<b.d-EPS),b];
+   const a=r[0],b=r.at(-1),turns=[];
+   // A low emission rate must not erase a reversal of the recorded weapon.
+   // Keep geometric turn vertices separate from the authored event schedule.
+   let incoming=null,arrival=null;
+   for(let i=1;i<r.length;i++){
+    const next=direction(r[i-1],r[i]);if(!next)continue;
+    if(incoming&&incoming.x*next.x+incoming.y*next.y<=0)turns.push(arrival);
+    incoming=next;arrival=r[i];
+   }
+   const interior=[...turns,...events.filter(v=>v.time>a.time+EPS&&v.time<b.time-EPS&&v.d>a.d+EPS&&v.d<b.d-EPS)].sort((x,y)=>x.time-y.time);
+   const list=[a,...interior,b];
    return list.filter((v,i)=>!i||v.d-list[i-1].d>EPS);
   }).filter(r=>r.length>=2);
   if(sampled.reduce((n,r)=>n+r.length,0)>MAX)fail('history section cap');

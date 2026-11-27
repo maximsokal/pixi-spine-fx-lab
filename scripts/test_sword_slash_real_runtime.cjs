@@ -11,8 +11,8 @@ function run(read,A,test){
  const H=mods['sword-slash-core.js'],T=mods['sword-slash-history.js'],An=mods['sword-slash-anchors.js'],R=mods['sword-slash-runtime.js'];
  const near=(a,b,e=1e-6)=>A.ok(Math.abs(a-b)<=e,a+' != '+b),layer=(f,k)=>f.owned.children.find(l=>l.label===k);
  const loader={anchorPoses:()=>({})}; // result unused; actual pose replay uses pinned Spine.
- function rig({gap=false,jump=false,physics=false}={}){
-  const data={skeleton:{spine:'4.2.43'},bones:[{name:'root'},{name:'weapon',parent:'root',length:20}],slots:[{name:'impact',bone:'weapon',attachment:'tip'}],skins:[{name:'default',attachments:{impact:{tip:{type:'point',x:12,y:0}}}}],animations:{idle:{bones:{root:{translate:[{x:0,y:0},{time:10/60,x:60,y:0},...(jump?[{time:11/60,x:400,y:0}]:[]),{time:23/60,x:jump?460:120,y:-30},{time:1,x:jump?460:120,y:-30}]}},...(gap?{slots:{impact:{attachment:[{name:'tip'},{time:8/60,name:null},{time:13/60,name:'tip'}]}}}:{})}}};
+ function rig({gap=false,jump=false,physics=false,returning=false}={}){
+  const data={skeleton:{spine:'4.2.43'},bones:[{name:'root'},{name:'weapon',parent:'root',length:20}],slots:[{name:'impact',bone:'weapon',attachment:'tip'}],skins:[{name:'default',attachments:{impact:{tip:{type:'point',x:12,y:0}}}}],animations:{idle:{bones:{root:{translate:returning?[{x:0,y:0},{time:10/60,x:60,y:0},{time:23/60,x:0,y:0},{time:1,x:0,y:0}]:[{x:0,y:0},{time:10/60,x:60,y:0},...(jump?[{time:11/60,x:400,y:0}]:[]),{time:23/60,x:jump?460:120,y:-30},{time:1,x:jump?460:120,y:-30}]}},...(gap?{slots:{impact:{attachment:[{name:'tip'},{time:8/60,name:null},{time:13/60,name:'tip'}]}}}:{})}}};
   if(physics)data.physics=[{name:'spring',bone:'weapon',x:1,rotate:1,step:60,strength:100,damping:.5}];
   return new Sp.Spine({skeletonData:new Sp.SkeletonJson({newPointAttachment:(skin,name)=>new Sp.PointAttachment(name)}).readSkeletonData(data),autoUpdate:false});
  }
@@ -47,6 +47,18 @@ function run(read,A,test){
    const e=h.events;for(let i=1;i<e.length;i++)near(e[i].d-e[i-1].d,10,1e-5);
    d.effect.gap=20;const b=s.compile(d);A.ok(b.meta.recorded.main.events.length<h.events.length);
    d.effect.triggerMode='time';const t=s.compile(d);d.effect.gap=5;A.deepEqual(s.compile(d).meta.recorded.main.events,t.meta.recorded.main.events);
+  }finally{s.camera.destroy({children:true});}
+ });
+ test('recorded reversal survives zero emission rate without adding emission events',()=>{
+  const s=scene({returning:true}),d=preset(true);d.effect.frequencySource='rate';d.effect.rate=0;d.effect.lifetimeFrames=40;
+  try{
+   const p=s.compile(d),h=p.meta.recorded.main;A.equal(h.runs.length,1);A.equal(h.events.length,1);
+   near(h.total,120,1e-4);near(h.runs[0][0].x,0);near(h.runs[0].at(-1).x,0,1e-4);
+   const turn=h.runs[0].find(q=>q.x>59.99);A.ok(turn,'missing recorded turn');
+   const first=p.sample(10/60).main[0];A.ok(first);near(first.sections.at(-1).x,60,1e-4);
+   const full=p.sample(23/60).main[0];A.ok(full);A.ok(full.sections.some(q=>q.x>59.99));near(full.sections.at(-1).x,0,1e-4);
+   A.deepEqual(p.sample(10/60).main[0],first);A.equal(p.sample(64/60).main.length,0);
+   const f=create(s,d);try{A.ok(f.seek(23/60).main.length);A.ok(layer(f,'main').children.some(v=>v.visible));}finally{f.destroy();}
   }finally{s.camera.destroy({children:true});}
  });
  test('native bone/point current anchor transforms, missing layers and ownership',()=>{
