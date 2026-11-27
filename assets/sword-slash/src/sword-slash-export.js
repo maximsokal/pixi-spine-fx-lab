@@ -8,6 +8,13 @@
  const integer=(v,k,min,max)=>{if(!Number.isSafeInteger(v)||v<min||v>max)fail('invalid '+k);return v;};
  const enc=v=>new TextEncoder().encode(v);
  function snapshot(v){const c=JSON.parse(JSON.stringify(v));function freeze(o){if(o&&typeof o==='object'){Object.values(o).forEach(freeze);Object.freeze(o);}return o;}return freeze(c);}
+ // JSON snapshots are canonical data, but object key insertion order is not semantic.
+ function sameJson(a,b){
+  if(a===b)return true;
+  if(!a||!b||typeof a!=='object'||typeof b!=='object'||Array.isArray(a)!==Array.isArray(b))return false;
+  if(Array.isArray(a))return a.length===b.length&&a.every((v,i)=>sameJson(v,b[i]));
+  const keys=Object.keys(a);return keys.length===Object.keys(b).length&&keys.every(k=>Object.hasOwn(b,k)&&sameJson(a[k],b[k]));
+ }
  async function bakeSequence({codec,settings,backend,crop,frameCount,assetInfo=null,createScene,signal,progress=()=>{},yieldFrame=()=>Promise.resolve(),deflate}){
   if(!codec||!['cropSpec','encodePng','makeZip'].every(k=>typeof codec[k]==='function')||typeof createScene!=='function'||!['webgl1','webgl2','webgpu'].includes(backend))fail('dependencies/backend');
   const check=()=>{if(signal?.aborted)fail('cancelled');};check();
@@ -19,7 +26,7 @@
    scene=await createScene({settings:frozen,backend,crop:c,signal});check();
    if(!scene||scene.backend!==backend||typeof scene.readFrame!=='function'||typeof scene.destroy!=='function')fail('isolated scene mismatch');
    const normalized=snapshot(scene.settings);
-   if(normalized?.schemaVersion!==1||normalized.effect?.exportFrames!==duration)fail('scene settings mismatch');
+   if(!sameJson(normalized,frozen))fail('scene settings mismatch');
    const manifest={schemaVersion:1,effectId:'fx.game.sword-slash',backend,settings:normalized,asset,crop:c,width:c.width,height:c.height,fps:60,count,frameFormula:'frameIndex/60',alpha:'straight-rgba8',frames:[]};
    const max=integer(scene.maxTextureSize,'texture limit',1,65536);if(c.width>max||c.height>max)fail('texture limit');
    for(let i=0;i<count;i++){

@@ -46,6 +46,7 @@
        check();if(!(pixels instanceof Uint8Array||pixels instanceof Uint8ClampedArray)||pixels.length!==TILE*TILE*4)fail('tile pixels');
        const x0=Math.max(tx,c.x),x1=Math.min(tx+TILE,right),y0=Math.max(ty,c.y),y1=Math.min(ty+TILE,bottom);
        for(let y=y0;y<y1;y++){const start=((y-ty)*TILE+x0-tx)*4;out.set(pixels.subarray(start,start+(x1-x0)*4),((y-c.y)*c.width+x0-c.x)*4);}
+       if(signal&&(tx+TILE<right||ty+TILE<bottom)){await new Promise(resolve=>setTimeout(resolve,0));check();}
       }
       return {pixels:reader?X.straightRgba(out,c.width,c.height,'premultiplied'):out,width:c.width,height:c.height,alpha:reader?'straight':'premultiplied'};
      }finally{world.position.set(0,0);reading=false;}
