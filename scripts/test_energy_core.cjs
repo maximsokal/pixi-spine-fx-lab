@@ -20,3 +20,30 @@ function suite(test,A,H){
  test('120 seeded valid one-shot presets: deterministic bounded samples and exact final frame',()=>{let n=12345;const r=()=>((n=Math.imul(n,1664525)+1013904223|0)>>>0)/4294967296;for(let i=0;i<120;i++){const d=H.defaults();d.coreRadius=3+97*r();d.travelSpeed=1200*r();d.trailWidth=10+40*r();d.tailLength=20+120*r();d.trailGap=3+20*r();d.particleRate=30*r();d.trailRate=30*r();d.timeJitter=.3*r();d.spatialJitter=.3*r();d.emitters[0].layers.ribbon.seed=i;d.emissionMode=['time','distance','both'][i%3];d.distribution=['even','random','stratified','clustered'][i%4];const p=H.compile(d),t=.1+.4*r(),a=p.sample(t);p.sample(0);A.deepEqual(p.sample(t),a);A.deepEqual(counts(p.sample(39/60)),[0,0,0]);A.ok(H.LAYERS.reduce((n,k)=>n+a[k].length,0)<=p.meta.primitiveBound);for(const x of a.ribbon)if(x.kind==='ribbon')A.ok(x.positions.every(Number.isFinite)&&x.indices.every(v=>v<x.positions.length/2));}});
 }
 suite(test,A,H);
+
+test('all allowed emitter IDs are own immutable plan keys and survive JSON serialization',()=>{
+ const d=H.defaults();d.emitters=['__proto__','constructor','toString','hasOwnProperty'].map((id,i)=>H.newEmitter(id,4109+i));
+ d.quality='high';const p=H.compile(d),plans=p.meta.plans,baseline=p.sample(.3);
+ A.equal(Object.getPrototypeOf(plans),Object.prototype);
+ A.deepEqual(Object.keys(plans),d.emitters.map(e=>e.id));
+ const json=JSON.parse(JSON.stringify(p.meta));
+ for(const e of d.emitters){
+  A.ok(Object.hasOwn(plans,e.id));A.ok(Object.hasOwn(json.plans,e.id));
+  const row=plans[e.id];A.ok(Object.isFrozen(row));A.ok(Object.isFrozen(row.orbit));A.ok(Object.isFrozen(row.trail));
+  A.throws(()=>{row.orbit.length=0;},TypeError);A.deepEqual(json.plans[e.id],row);
+  A.ok(baseline.orbit.some(x=>x.emitterId===e.id));
+ }
+ A.deepEqual(p.sample(.3),baseline);
+});
+test('pose lookup ignores inherited properties but accepts explicit special IDs',()=>{
+ const pose={x:100,y:100,rotation:0,scale:1};
+ for(const id of ['__proto__','constructor','toString','emitter-1']){
+  const d=H.defaults(),e=d.emitters[0];e.id=id;Object.assign(e.anchor,{type:'bone',name:'weapon'});
+  const p=H.compile(d);
+  A.equal(p.sample(.3,{}).core.length,0);
+  A.equal(p.sample(.3,Object.create({[id]:pose})).core.length,0);
+  A.ok(p.sample(.3,{[id]:pose}).core.length>0);
+  const explicit=Object.create(null);explicit[id]=pose;
+  A.deepEqual(p.sample(.3,explicit),p.sample(.3,{[id]:pose}));
+ }
+});

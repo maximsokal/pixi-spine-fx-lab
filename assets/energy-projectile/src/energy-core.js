@@ -77,11 +77,11 @@
    const bound=(events,life)=>events.length*(loop?Math.ceil(life/FPS/duration)+1:1);
    eventCount+=trail.length+orbit.length;primitiveBound+=(enabled&&active(e.layers.core)?1+(c.glow>0?1:0):0)+(enabled&&active(r)&&c.tailLength>0&&speed>0?1:0)+bound(trail,c.trailLifeFrames)+bound(orbit,c.orbitLifeFrames);
    if(enabled&&active(r)&&speed>0&&c.tailLength>0&&c.trailWidth>0)vertexBound+=2*(Math.ceil(c.tailLength/.5)+2+Math.min(ds.length*(loop?2:1),Math.ceil(c.tailLength/c.minGap)+3)+Math.min(table.nodes.length*(loop?2:1),MAX_VERTICES));
-   const circumference=TAU*c.coreRadius*1.5,orbitDistances=[];let cursor=0;for(let i=0;cursor<circumference-EPS;i++){orbitDistances.push(cursor);let gap=c.orbitGap;if(c.distribution==='random')gap*=.5+rng(o.seed,i,51);if(c.distribution==='stratified')gap*=.8+.4*rng(o.seed,i,51);if(c.distribution==='clustered')gap*=i%5<3?.55:1.675;gap*=1+(2*rng(o.seed,i,52)-1)*c.spatialJitter;cursor+=clamp(gap,c.minGap,c.maxGap);}plans[e.id]={distances:ds,trail,orbit,orbitDistances};
+   const circumference=TAU*c.coreRadius*1.5,orbitDistances=[];let cursor=0;for(let i=0;cursor<circumference-EPS;i++){orbitDistances.push(cursor);let gap=c.orbitGap;if(c.distribution==='random')gap*=.5+rng(o.seed,i,51);if(c.distribution==='stratified')gap*=.8+.4*rng(o.seed,i,51);if(c.distribution==='clustered')gap*=i%5<3?.55:1.675;gap*=1+(2*rng(o.seed,i,52)-1)*c.spatialJitter;cursor+=clamp(gap,c.minGap,c.maxGap);}Object.defineProperty(plans,e.id,{value:{distances:ds,trail,orbit,orbitDistances},enumerable:true});
   }
   if(eventCount>MAX_EVENTS||primitiveBound>BUDGETS[c.quality]||vertexBound>MAX_VERTICES)fail('whole effect budget');
   function basis(a,l,poses,eid,k){
-   const find=(anchor,id)=>{if(anchor.type==='world')return {x:anchor.x,y:anchor.y,rotation:anchor.rotation,scale:1};const v=poses?.[id];if(v==null)return null;if(![v.x,v.y,v.rotation,v.scale].every(finite)||v.scale<=0||v.scale>100||Math.abs(v.x)>1e6||Math.abs(v.y)>1e6||Math.abs(v.rotation)>360000)fail('pose');return v;};
+   const find=(anchor,id)=>{if(anchor.type==='world')return {x:anchor.x,y:anchor.y,rotation:anchor.rotation,scale:1};const v=poses&&Object.hasOwn(poses,id)?poses[id]:null;if(v==null)return null;if(![v.x,v.y,v.rotation,v.scale].every(finite)||v.scale<=0||v.scale>100||Math.abs(v.x)>1e6||Math.abs(v.y)>1e6||Math.abs(v.rotation)>360000)fail('pose');return v;};
    const rotate=(x,y,r)=>[x*Math.cos(r*RAD)-y*Math.sin(r*RAD),x*Math.sin(r*RAD)+y*Math.cos(r*RAD)];
    let b=find(l.anchor.type==='inherit'?a:l.anchor,l.anchor.type==='inherit'?eid:eid+':'+k);if(!b)return null;
    if(l.anchor.type==='inherit'){const [x,y]=rotate(l.anchor.x*b.scale,l.anchor.y*b.scale,b.rotation);b={...b,x:b.x+x,y:b.y+y,rotation:b.rotation+l.anchor.rotation};}
