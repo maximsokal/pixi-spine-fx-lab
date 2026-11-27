@@ -219,4 +219,42 @@ for(let d=0;d<=at.length;d+=5){
  assert.deepEqual(result.events.map(e=>e.distance),[10,20,30,40,50]);
 }
 
+
+// Mirror heading follows travel direction, preserving existing cusp orientation.
+{
+ const path={schemaVersion:1,closed:false,segments:[{p0:[0,0],p1:[1/3,0],p2:[2/3,0],p3:[1,0]}]};
+ const table=S.buildArcTable(path);
+ for(const reverse of [false,true]){
+  for(const distance of [.25,1.25,2.25,-.25,-1.25,0,1,2]){
+   const phase=((distance%2)+2)%2,expected=Math.min(phase,2-phase);
+   const direction=(phase>1?-1:1)*(reverse?-1:1);
+   const pose=S.pointAtDistance(table,distance,'mirror',reverse);
+   close(pose.x,reverse?1-expected:expected,1e-8);
+   close(pose.y,0,1e-8);close(pose.tangent.x,direction,1e-8);
+   close(Math.cos(pose.angle),direction,1e-8);
+   if(phase!==0&&phase!==1){
+    const derivative=(S.pointAtDistance(table,distance+1e-6,'mirror',reverse).x-
+      S.pointAtDistance(table,distance-1e-6,'mirror',reverse).x)/2e-6;
+    close(pose.tangent.x,derivative,1e-5);
+   }
+  }
+  for(const policy of ['clamp','wrap'])for(const distance of [-.25,.25,1.25])
+   close(S.pointAtDistance(table,distance,policy,reverse).tangent.x,reverse?-1:1);
+ }
+ const placement=S.createSpatialPlacement({path,baseSpacingPx:1,minSpacing:1,maxSpacing:1});
+ const run=(distance,maxEvents,motion=[{time:0,x:0,y:0},{time:1,x:distance,y:0}])=>
+  S.combineSchedule({schedule:{events:[]},placement,motion,mode:'distance',teleportThresholdPx:10000,maxEvents});
+ for(const limit of [4095,4096])for(const distance of [4095,4096,4097]){
+  const result=run(distance,limit);
+  assert.equal(result.events.length,Math.min(limit,distance));
+  assert.equal(result.capped,distance>limit,'exact fit vs overflow '+limit+'/'+distance);
+  assert.ok(result.events.every((event,i)=>event.index===i&&Math.abs(event.x-(i+1))<1e-8));
+ }
+ const split=run(4097,4096,[{time:0,x:0,y:0},{time:1,x:4096,y:0},{time:2,x:4097,y:0}]);
+ assert.equal(split.events.length,4096);
+ assert.equal(split.capped,true,'detect overflow on following motion segment');
+ assert.equal(run(4096,4096,[{time:0,x:0,y:0},{time:1,x:4096,y:0},{time:2,x:4096,y:0}]).capped,false,'exact fit then stationary');
+ assert.equal(run(4096,4096,[{time:0,x:0,y:0},{time:1,x:4096,y:0},{time:2,x:4097,y:0,teleport:true}]).capped,false,'exact fit then teleport');
+}
+
 console.log('PASS FX-CORE-02 temporal scheduling, 30/60/120 FPS, burst/custom/jitter/caps, arc-length, modes, stationary/teleport/reverse/zero');

@@ -204,9 +204,9 @@
     if(!['clamp','wrap','mirror'].includes(pathFollow))fail('pathFollow must be clamp, wrap or mirror');
     const length=table.length,first=table.nodes[0];
     if(!(length>0))return {x:first.x,y:first.y,distance:0,tangent:{x:1,y:0},angle:0,segment:0,t:0};
-    let d=distance;
+    let d=distance,reflected=false;
     if(pathFollow==='wrap')d=((d%length)+length)%length;
-    else if(pathFollow==='mirror'){let q=((d%(2*length))+(2*length))%(2*length);d=q>length?2*length-q:q;}
+    else if(pathFollow==='mirror'){let q=((d%(2*length))+(2*length))%(2*length);reflected=q>length;d=reflected?2*length-q:q;}
     else d=clamp(d,0,length);
     if(reverse)d=length-d;
     let lo=0,hi=table.nodes.length-1;
@@ -234,7 +234,8 @@
       }
     }
     const point=evaluateCubic(segment,t),tangent=derivative(segment,t);
-    if(reverse){tangent.x=-tangent.x;tangent.y=-tangent.y;}
+    // The reflected leg travels backward; explicit reverse flips it again.
+    if(Boolean(reverse)!==reflected){tangent.x=-tangent.x;tangent.y=-tangent.y;}
     return {x:point.x,y:point.y,distance:d,tangent,angle:Math.atan2(tangent.y,tangent.x),segment:b.segment,t};
   }
   function normalizeSpatial(input){
@@ -327,7 +328,8 @@
         const before=cumulative;
         cumulative+=distance;
         if(mode==='distance'){
-          while(next<MAX_EVENTS && threshold(next)<=cumulative+1e-9){
+          // append enforces the bounded budget and reports an actual dropped event.
+          while(threshold(next)<=cumulative+1e-9){
             const fraction=clamp((threshold(next)-before)/Math.max(distance,1e-12),0,1);
             const point={...chooseAnchor(next),
               x:prev.x+(now.x-prev.x)*fraction,y:prev.y+(now.y-prev.y)*fraction,
