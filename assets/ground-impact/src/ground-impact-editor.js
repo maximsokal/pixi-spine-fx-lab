@@ -1,4 +1,4 @@
-// EARTH-01 G03c: standalone preview and artist controls, no export claims.
+// EARTH-01 G03c/G04d: standalone preview, artist controls and export.
 (function(root,make){'use strict';const api=Object.freeze(make());if(typeof module==='object'&&module.exports)module.exports=api;else root.FxGroundImpactEditor=api;})(globalThis,function(){
  'use strict';
  const clone=v=>JSON.parse(JSON.stringify(v)),MiB=1024*1024;
@@ -16,11 +16,11 @@
  }
  function mount(env,{createScene=(b,c)=>nativeScene(env,b,c)}={}){
   const doc=env.document,$=id=>doc.getElementById(id),H=env.FxGroundImpact,U=env.FxGroundImpactAuthoring;
-  let scene=null,busy=false,dead=false,playing=false,last=null,raf=0,zoom=1,drag=null,panel=null,presetDirty=false,serializedSettings=null;
+  let scene=null,busy=false,dead=false,playing=false,last=null,raf=0,zoom=1,drag=null,panel=null,exportPanel=null,resumeAfterExport=false,presetDirty=false,serializedSettings=null;
   const s=()=>scene.session,cfg=()=>s().settings,locked=()=>busy||dead||!scene||s().broken===true;
   const status=(m,error=false)=>{$('status').textContent=String(m);$('status').dataset.error=String(error);};
   function play(v){playing=v;last=null;$('play').textContent=v?'Pause':'Play';}
-  function lock(v){busy=v;drag=null;play(false);$('controls').disabled=locked();$('backend').disabled=busy||dead;panel?.refresh();marker();}
+  function lock(v){busy=v;drag=null;play(false);$('controls').disabled=locked();$('backend').disabled=busy||dead;panel?.refresh();exportPanel?.refresh();marker();}
   function attempt(fn){if(locked())return;try{return fn();}catch(e){play(false);status(e.message,true);}}
   function options(el,values,value){el.replaceChildren(...values.map(x=>new env.Option(x||'Setup / default',x)));el.value=value;}
   const selected=()=>$('marker').value,layer=(c,id=selected())=>id==='contact'?c.contact:c.layers[id],context=()=>({world:scene.world,model:s().asset?.model??null,Spine:env.spine});
@@ -44,6 +44,7 @@
   const selection=env.FxGroundImpactSelection.createSelection(proxy);
   function sample(){const v=JSON.parse($('sampleData').textContent);return {name:v.skeletonName,atlasName:v.atlasName,skeleton:new env.Blob([JSON.stringify(v.skeleton)]),atlas:new env.Blob([v.atlas]),images:new Map(Object.entries(v.images).map(([k,b])=>[k,new env.Blob([Uint8Array.from(env.atob(b),c=>c.charCodeAt(0))])]))};}
   panel=env.FxGroundImpactAssetPanel.mount($('assets'),{selection,getAccepted:()=>scene?.session.source?.name??'',sample,isLocked:locked,onBusy:lock,onError:e=>status(e.message,true),onAccepted:()=>{scene.render();refresh();status('Source accepted');}});
+  if(env.FxGroundImpactExportPanel&&env.FxShieldExport){exportPanel=env.FxGroundImpactExportPanel.mount({env,host:$('exportHost'),surface:$('surface'),cancelHost:$('exportCancelHost'),getSession:s,getBackend:()=>scene.actual,isLocked:locked,begin(){resumeAfterExport=playing;lock(true);},end(){if(!dead){lock(false);if(resumeAfterExport&&!locked())play(true);}resumeAfterExport=false;},report:status,getDeveloperData:()=>JSON.parse($('developerData').textContent)});}else $('exportHost').textContent='Export modules unavailable';
   function dispose(v){if(v)try{v.destroy();}catch(e){status('Cleanup failed: '+e.message,true);}}
   async function rebuild(backend){if(busy||dead)return false;lock(true);let next;try{const old=scene;next=await createScene(backend,old?.session.settings??H.defaults());if(dead)return false;if(old){const a=old.session;if(a.source)await next.session.replaceSource(a.source);if(dead)return false;next.session.setOptions(a.options);next.session.seek(a.seconds);}next.render();$('surface').prepend(next.canvas);scene=next;next=null;old?.canvas.remove();dispose(old);$('actual').textContent=scene.actual+(scene.fallback?' (fallback from '+backend+')':'');$('backend').value=scene.actual;refresh();status('Preview ready');return true;}catch(e){if(!dead){if(scene)$('backend').value=scene.actual;status(e.message,true);}return false;}finally{dispose(next);if(!dead)lock(false);}}
   function setZoom(v,event){const surface=$('surface'),view=$('viewport'),r=surface.getBoundingClientRect(),p=event?{x:event.clientX,y:event.clientY}:null,local=p?U.pointer(p.x,p.y,r):null;zoom=Math.max(.25,Math.min(4,v));surface.style.width=surface.style.height=512*zoom+'px';$('zoomLabel').textContent=Math.round(zoom*100)+'%';if(local){const n=surface.getBoundingClientRect();view.scrollLeft+=n.left+local.x*zoom-p.x;view.scrollTop+=n.top+local.y*zoom-p.y;}}
@@ -53,7 +54,7 @@
   for(const k of ['animation','skin','speed','showSpine'])$(k).onchange=()=>attempt(()=>{try{if(!$('speed').value||!$('speed').validity.valid)throw Error('Invalid speed');s().setOptions({animation:$('animation').value,skin:$('skin').value,speed:Number($('speed').value),visible:$('showSpine').checked});scene.render();sync();}finally{poseFields();}});
   const h=$('handle');h.onpointerdown=e=>attempt(()=>{const p=point();if(!p||e.button!==0)return;play(false);const q=U.pointer(e.clientX,e.clientY,$('surface').getBoundingClientRect());h.setPointerCapture(e.pointerId);drag={pointer:e.pointerId,id:selected(),dx:p.x-q.x,dy:p.y-q.y};});h.onpointermove=e=>attempt(()=>{if(!drag||drag.pointer!==e.pointerId||drag.id!==selected())return;const q=U.pointer(e.clientX,e.clientY,$('surface').getBoundingClientRect());edit(n=>U.move(n,drag.id,q.x+drag.dx,q.y+drag.dy,context()),false);});h.onpointerup=h.onpointercancel=h.onlostpointercapture=()=>{drag=null;if(!locked())fields();};h.onkeydown=e=>{const d={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(d&&!locked()){e.preventDefault();attempt(()=>{const p=point();if(p){play(false);const m=e.shiftKey?10:1;edit(n=>U.move(n,selected(),p.x+d[0]*m,p.y+d[1]*m,context()));}});}};
   function tick(now){if(dead)return;if(playing&&!locked()){if(last!==null)attempt(()=>{const direction=$('reverse').checked?-1:1,t=U.advance(s().seconds,Math.max(0,(now-last)/1000),direction);paint(t);if(direction===1?t>=39/60:t<=0)play(false);});if(playing)last=now;}raf=env.requestAnimationFrame(tick);}
-  function destroy(){if(dead)return;dead=true;play(false);env.cancelAnimationFrame(raf);panel.destroy();dispose(scene);scene=null;}
+  function destroy(){if(dead)return;dead=true;play(false);env.cancelAnimationFrame(raf);exportPanel?.destroy();panel.destroy();dispose(scene);scene=null;}
   env.addEventListener('pagehide',destroy,{once:true});raf=env.requestAnimationFrame(tick);const ready=rebuild('webgl2');return Object.freeze({ready,destroy,get session(){return scene?.session??null;}});
  }
  return {mount,nativeScene};

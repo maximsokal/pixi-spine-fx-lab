@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble EARTH-01 standalone offline preview (no export promotion)."""
+"""Assemble EARTH-01 standalone offline editor with export candidates."""
 import argparse
 import json
 import re
@@ -22,9 +22,16 @@ def build(root):
     notices = '\n'.join(text(local(template, 'licenses/' + name)) for name in ('pixi.txt', 'spine.txt'))
     vendor = '<script type="text/plain" id="runtimeLicenses">' + safe(notices) + '</script>\n' + '\n'.join(tag(template, name) for name in vendors)
     cores = [tag(template, 'src/' + name) for name in ('curve-core.js', 'spacing-core.js', 'path-core.js', 'color-core.js', 'curve-editor.js', 'color-ui.js')]
-    cores.extend(tag(source, 'ground-impact-' + name + '.js') for name in ('core', 'anchors', 'runtime', 'authoring', 'pose', 'session', 'loader', 'selection', 'asset-panel'))
+    shield = root / 'assets/magic-shield/src'
+    cores.append(tag(shield, 'shield-export.js'))
+    cores.extend(tag(source, 'ground-impact-' + name + '.js') for name in ('core', 'anchors', 'runtime', 'authoring', 'pose', 'session', 'loader', 'selection', 'asset-panel', 'export', 'bake', 'developer', 'export-panel'))
+    # Separate JSON preserves original developer source text, not escaped inline script text.
+    dev_sources = {name: text(local(template, 'src/' + name)) for name in ('curve-core.js', 'spacing-core.js', 'path-core.js', 'color-core.js')}
+    dev_sources.update({'ground-impact-' + name + '.js': text(local(source, 'ground-impact-' + name + '.js')) for name in ('core', 'anchors', 'runtime', 'authoring', 'pose', 'session', 'loader', 'editor', 'export', 'bake')})
+    dev_sources['shield-export.js'] = text(local(shield, 'shield-export.js'))
+    developer = json.dumps({'sources': dev_sources, 'vendors': {Path(name).name: text(local(template, name)) for name in vendors}, 'licenses': notices}, separators=(',', ':')).replace('</', '<\\/')
     sample = json.dumps(sample_data(template, manifest), separators=(',', ':')).replace('</', '<\\/')
-    replacements = {'<!-- VENDOR -->': vendor, '<!-- CORES -->': '\n'.join(cores), '__SAMPLE_DATA__': sample, '<!-- APP -->': tag(source, 'ground-impact-editor.js') + '\n<script>FxGroundImpactEditor.mount(globalThis);</script>'}
+    replacements = {'<!-- VENDOR -->': vendor, '<!-- CORES -->': '\n'.join(cores), '__SAMPLE_DATA__': sample, '__DEVELOPER_DATA__': developer, '<!-- APP -->': tag(source, 'ground-impact-editor.js') + '\n<script>FxGroundImpactEditor.mount(globalThis);</script>'}
     for marker in replacements:
         if html.count(marker) != 1:
             raise ValueError('Expected exactly one assembly marker: ' + marker)
