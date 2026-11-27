@@ -22,3 +22,20 @@ test('one-shot schedule is finite and ends transparent',()=>{const c=scheduled()
 test('JSON round trip and fractional seek remain deterministic',()=>{const c=manual(),a=S.compile(c),b=S.compile(clone(c));const t=.8134567,before=a.sample(t);for(let i=59;i>=0;i--)a.sample(i/60);A.deepEqual(a.sample(t),before);A.deepEqual(b.sample(t),before);A.deepEqual(a.settings,b.settings);A.ok(Object.isFrozen(a.schedules[0].sparkAnchors));});
 test('budget failure occurs before sampling and disabled impact avoids schedule allocation',()=>{const c=scheduled();c.quality='low';c.hitRate=20;c.spacingPx=2;A.throws(()=>S.compile(c),/budget/);c.emitters[0].layers.impact.enabled=false;const p=S.compile(c);A.equal(p.schedules[0].impacts.length,0);A.equal(p.schedules[0].sparkAnchors.length,0);});
 test('scheduled mode rejects ambiguous manual hits',()=>{const c=scheduled();c.emitters[0].impacts=[{id:'a',frame:1}];A.throws(()=>S.compile(c),/manual/);});
+
+test('default clamp cannot hide a glow discontinuity at the loop boundary',()=>{
+ const c=S.defaults();c.glowCurve.clamp='default';c.glowCurve.defaultValue=0;
+ A.throws(()=>S.compile(c),/glow curve seam/);
+ c.glowCurve.defaultValue=.6;const p=S.compile(c);
+ A.deepEqual(p.sample(0),p.sample(1));
+ const center=sample(p,0).shell[0].rgba[3];
+ for(const t of [1e-5,1-1e-5])near(sample(p,t).shell[0].rgba[3],center,2e-6);
+ c.glowCurve.clamp='hold';c.glowCurve.defaultValue=0;A.deepEqual(S.compile(c).sample(0),p.sample(0));
+ c.glowCurve.clamp='default';c.mode='oneShot';A.doesNotThrow(()=>S.compile(c));
+});
+test('loop endpoint validation preserves constant zero glow and checks authored stepped limits',()=>{
+ const c=S.defaults();c.glowCurve.clamp='default';c.glowCurve.defaultValue=0;
+ c.glowCurve.keys.forEach(k=>k.y=0);const p=S.compile(c);A.deepEqual(p.sample(0),p.sample(1));A.equal(sample(p,0).shell.length,0);
+ c.glowCurve.keys[1].y=.5;c.glowCurve.keys[1].mode='stepped';A.throws(()=>S.compile(c),/glow curve seam/);
+ c.glowCurve.keys[1].mode='linear';A.doesNotThrow(()=>S.compile(c));
+});

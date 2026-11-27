@@ -55,7 +55,7 @@
   c.spacingCurve=input.spacingCurve===null?null:normalized(input.spacingCurve,defaultSpacingCurve());
   const glow=c.glowCurve.keys,first=glow[0],last=glow.at(-1),prev=glow.at(-2);
   // The final exact key can equal the first while a stepped segment still jumps.
-  if(c.mode==='loop'&&[last.y,prev.mode==='stepped'?prev.y:last.y].some(y=>Math.abs(y-first.y)>1e-9))fail('glow curve seam');
+  if(c.mode==='loop'&&[last.y,prev.mode==='stepped'?prev.y:last.y,C.evaluate(c.glowCurve,0),C.evaluate(c.glowCurve,1)].some(y=>Math.abs(y-first.y)>1e-9))fail('glow curve seam');
   c.palette=COL.normalize(input.palette);
   if(c.palette.parameterKey!=='shieldColor'||c.palette.domain!=='particleAge')fail('palette binding');
   c.emitters=emitters.map((e,i)=>{const {sparkAnchors,...rest}=e;return {...rest,hitMode:input.emitters[i].hitMode,sparksEnabled:input.emitters[i].sparksEnabled};});
