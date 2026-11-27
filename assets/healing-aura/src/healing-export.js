@@ -23,11 +23,12 @@
  async function bakeSequence({settings,compile,backend,crop,frameCount,assetInfo=null,createScene,signal,progress=()=>{},deflate=browserDeflate,yieldFrame=()=>Promise.resolve(),pngLimit=PNG_CAP,zipLimit=ZIP_CAP}){
   if(typeof compile!=='function'||typeof createScene!=='function'||!['webgl1','webgl2','webgpu'].includes(backend))fail('invalid compiler, scene or backend');const check=()=>{if(signal?.aborted)fail('cancelled');};check();const plan=compile(settings),frozen=snapshot(plan.settings),c=cropSpec(crop),count=integer(frameCount??frozen.durationFrames,'frame count',1,3600);integer(pngLimit,'PNG limit',1,PNG_CAP);integer(zipLimit,'ZIP limit',22,ZIP_CAP);
   const manifest={schemaVersion:1,effectId:'fx.game.healing-aura',backend,settings:frozen,asset:snapshot(assetInfo),crop:c,width:c.width,height:c.height,fps:60,count,frameFormula:'frameIndex/60',alpha:'straight-rgba8',frames:[]};
-  let scene,error,total=0;const entries=[];
+  let scene,error,result,total=0;const entries=[];
   try{scene=await createScene({settings:frozen,backend,crop:c,frameCount:count});check();if(!scene||scene.backend!==backend||typeof scene.readFrame!=='function'||typeof scene.destroy!=='function')fail('isolated scene backend mismatch');const max=integer(scene.maxTextureSize,'texture limit',1,65536);if(c.width>max||c.height>max)fail('crop exceeds texture limit');
    for(let i=0;i<count;i++){check();const seconds=i/60,frame=await scene.readFrame(seconds);check();if(frame?.width!==c.width||frame?.height!==c.height)fail('readback dimensions changed');if(frame.alpha!==(backend==='webgpu'?'straight':'premultiplied'))fail('readback alpha contract mismatch');const data=await encodePng(frame,deflate);check();total+=data.length;if(total>pngLimit)fail('PNG budget');const file='frames/frame_'+String(i).padStart(5,'0')+'.png';entries.push({name:file,data});manifest.frames.push({file,frame:i,timeSeconds:seconds});progress(i+1,count);await yieldFrame();check();}
-   entries.push({name:'sequence.json',data:enc(JSON.stringify(manifest,null,2))},{name:'README.txt',data:enc('Healing Aura PNG sequence. 60 FPS, straight RGBA8, untrimmed. Read sequence.json for crop and settings. End time exclusive. No editor overlays.')});const zip=makeZip(entries,check,zipLimit);check();return {zip,manifest};
+   entries.push({name:'sequence.json',data:enc(JSON.stringify(manifest,null,2))},{name:'README.txt',data:enc('Healing Aura PNG sequence. 60 FPS, straight RGBA8, untrimmed. Read sequence.json for crop and settings. End time exclusive. No editor overlays.')});const zip=makeZip(entries,check,zipLimit);check();result={zip,manifest};
   }catch(e){error=e;throw e;}finally{if(scene&&typeof scene.destroy==='function')try{await scene.destroy();}catch(e){if(error)throw new AggregateError([error,e],'Export and scene cleanup failed');throw e;}}
+  check();return result;
  }
  return {VERSION:1,PNG_CAP,ZIP_CAP,cropSpec,straightRgba,encodePng,makeZip,bakeSequence};
 });
