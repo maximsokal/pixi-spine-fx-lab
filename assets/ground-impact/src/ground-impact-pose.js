@@ -11,8 +11,14 @@
   return Object.freeze({animation:v.animation,skin:v.skin,speed:v.speed,visible:v.visible});
  }
  function seek(asset,seconds,input){
-  const t=U.seek(seconds),o=options(input,asset);if(!asset)return t;
-  const m=asset.model,s=m.skeleton,physics=!!s.physicsConstraints?.length,frame=U.frame(t),old=cache.get(m);let at=old?.frame??0;
+  return apply(asset,U.seek(seconds),input);
+ }
+ function seekAbsolute(asset,seconds,input){
+  if(!Number.isFinite(seconds)||seconds<0||seconds>3599/U.FPS)fail('invalid absolute time');return apply(asset,seconds,input);
+ }
+ function apply(asset,t,input){
+  const o=options(input,asset);if(!asset)return t;
+  const m=asset.model,s=m.skeleton,physics=!!s.physicsConstraints?.length,frame=frameAt(t),old=cache.get(m);let at=old?.frame??0;
   try{
    if(!old||old.animation!==o.animation||old.skin!==o.skin||old.speed!==o.speed||t<old.seconds){
     cache.delete(m);m.state.clearTracks();s.setSkin(null);if(o.skin)s.setSkinByName(o.skin);s.setToSetupPose();s.time=0;
@@ -25,6 +31,7 @@
    m.visible=o.visible;m.updateLocalTransform();cache.set(m,{...o,frame,seconds:t});return t;
   }catch(e){cache.delete(m);throw e;}
  }
+ function frameAt(t){let f=Math.floor(t*U.FPS);if(f/U.FPS>t)f--;else if((f+1)/U.FPS<=t)f++;return f;}
  function invalidate(asset){if(asset)cache.delete(asset.model);}
- return {options,seek,invalidate};
+ return {options,seek,seekAbsolute,invalidate};
 });

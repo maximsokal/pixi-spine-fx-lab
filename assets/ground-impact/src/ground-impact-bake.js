@@ -1,0 +1,46 @@
+// EARTH-01 G04b: independent world-aligned tiled bake, no preview ownership.
+(function(root,make){'use strict';const api=Object.freeze(make());if(typeof module==='object'&&module.exports)module.exports=api;else root.FxGroundImpactBake=api;})(globalThis,function(){
+ 'use strict';const TILE=512,MiB=1048576,fail=m=>{throw Error('Ground Impact bake: '+m);};
+ function unpackGpu(raw,width,height,stride,format){
+  if(!['rgba8unorm','bgra8unorm'].includes(format)||!(raw instanceof Uint8Array)||![width,height,stride].every(Number.isSafeInteger)||width<1||height<1||stride<width*4||raw.length<stride*height)fail('invalid GPU readback');
+  const out=new Uint8Array(width*height*4),b=format==='bgra8unorm';for(let y=0;y<height;y++)for(let x=0;x<width;x++){const i=y*stride+x*4,j=(y*width+x)*4;out[j]=raw[i+(b?2:0)];out[j+1]=raw[i+1];out[j+2]=raw[i+(b?0:2)];out[j+3]=raw[i+3];}return out;
+ }
+ function readerFor(r,target,env){const d=r.gpu.device,stride=TILE*4,buffer=d.createBuffer({size:stride*TILE,usage:env.GPUBufferUsage.COPY_DST|env.GPUBufferUsage.MAP_READ});let dead=false;
+  return {async read(){if(dead)fail('reader destroyed');let mapped=false;try{const texture=r.texture.getGpuSource(target.source),e=d.createCommandEncoder();e.copyTextureToBuffer({texture},{buffer,bytesPerRow:stride,rowsPerImage:TILE},{width:TILE,height:TILE});d.queue.submit([e.finish()]);await buffer.mapAsync(env.GPUMapMode.READ);mapped=true;return unpackGpu(new Uint8Array(buffer.getMappedRange()),TILE,TILE,stride,texture.format);}finally{if(mapped)buffer.unmap();}},destroy(){if(!dead){dead=true;buffer.destroy();}}};
+ }
+ function sceneFactory({source=null,poseOptions={},env=globalThis}={}){
+  const saved=source?{name:source.name,atlasName:source.atlasName,skeleton:source.skeleton,atlas:source.atlas,images:new Map(source.images)}:null;
+  const options=Object.freeze({animation:'',skin:'',speed:1,visible:true,...poseOptions});
+  return async function createScene({settings,backend,crop,signal}){
+   const {PIXI,FxGroundImpactRuntime:R,FxGroundImpactPose:Q,FxGroundImpactLoader:L,FxShieldExport:X}=env;
+   const check=()=>{if(signal?.aborted)fail('cancelled');};check();
+   if(!PIXI||!R||!Q||!L||!X||!['webgl1','webgl2','webgpu'].includes(backend))fail('dependencies/backend');
+   const c=X.cropSpec(crop);let app,world,asset,fx,target,reader,dead=false,reading=false;
+   function destroy(){if(dead)return;if(reading)fail('read in progress');dead=true;const errors=[];const drop=f=>{try{f();}catch(e){errors.push(e);}};drop(()=>reader?.destroy());drop(()=>fx?.destroy());drop(()=>asset?.destroy());drop(()=>target?.destroy(true));drop(()=>world?.destroy({children:true}));if(app?.renderer)drop(()=>app.destroy(true,{children:true}));if(errors.length)throw new AggregateError(errors,'Ground Impact bake cleanup failed');}
+   try{
+    const init=await R.initApplication({PIXI,backend,width:1,height:1,allowFallback:false,GL2:env.WebGL2RenderingContext});app=init.app;check();const r=app.renderer,actual=init.actual;if(actual!==backend)fail('backend mismatch');
+    const maxTextureSize=actual==='webgpu'?r.gpu.device.limits.maxTextureDimension2D:r.gl.getParameter(r.gl.MAX_TEXTURE_SIZE);
+    if(!Number.isSafeInteger(maxTextureSize)||Math.max(TILE,c.width,c.height)>maxTextureSize)fail('texture limit');
+    world=new PIXI.Container();const behindHost=new PIXI.Container(),models=new PIXI.Container(),host=new PIXI.Container();world.addChild(behindHost,models,host);
+    if(saved){const loader=L.createLoader({PIXI,Spine:env.spine,limits:{skeletonBytes:16*MiB,atlasBytes:4*MiB,encodedBytes:128*MiB,decodedBytes:128*MiB,maxDimension:maxTextureSize}});asset=await loader.create(saved);check();models.addChild(asset.model);}
+    Q.options(options,asset);Q.seekAbsolute(asset,0,options);
+    fx=R.createRenderer({PIXI,world,host,behindHost,model:asset?.model??null,Spine:env.spine,settings});target=PIXI.RenderTexture.create({width:TILE,height:TILE,resolution:1,antialias:false});if(actual==='webgpu')reader=readerFor(r,target,env);
+    async function readFrame(seconds){check();if(dead||reading||!Number.isFinite(seconds)||seconds<0||seconds>3599/60)fail('invalid read');reading=true;
+     try{world.position.set(0,0);Q.seekAbsolute(asset,seconds,options);fx.seek(seconds);
+      const out=new Uint8Array(c.width*c.height*4),right=c.x+c.width,bottom=c.y+c.height;
+      for(let ty=Math.floor(c.y/TILE)*TILE;ty<bottom;ty+=TILE)for(let tx=Math.floor(c.x/TILE)*TILE;tx<right;tx+=TILE){
+       check();world.position.set(-tx,-ty);r.render({container:world,target,clear:true,clearColor:[0,0,0,0]});let pixels;if(reader)pixels=await reader.read();else{const p=r.extract.pixels(target);if(p.width!==TILE||p.height!==TILE)fail('tile size');pixels=p.pixels;}
+       check();if(!(pixels instanceof Uint8Array||pixels instanceof Uint8ClampedArray)||pixels.length!==TILE*TILE*4)fail('tile pixels');
+       const x0=Math.max(tx,c.x),x1=Math.min(tx+TILE,right),y0=Math.max(ty,c.y),y1=Math.min(ty+TILE,bottom);
+       for(let y=y0;y<y1;y++){const start=((y-ty)*TILE+x0-tx)*4;out.set(pixels.subarray(start,start+(x1-x0)*4),((y-c.y)*c.width+x0-c.x)*4);}
+       if(tx+TILE<right||ty+TILE<bottom){await new Promise(resolve=>env.setTimeout(resolve,0));check();}
+      }
+      return {pixels:reader?X.straightRgba(out,c.width,c.height,'premultiplied'):out,width:c.width,height:c.height,alpha:reader?'straight':'premultiplied'};
+     }finally{world.position.set(0,0);reading=false;}
+    }
+    return Object.freeze({backend:actual,maxTextureSize,settings:fx.settings,readFrame,destroy});
+   }catch(e){try{destroy();}catch(cleanup){throw new AggregateError([e,cleanup],'Ground Impact bake initialization and cleanup failed');}throw e;}
+  };
+ }
+ return {VERSION:1,sceneFactory,unpackGpu};
+});
