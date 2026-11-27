@@ -147,6 +147,28 @@ def secure_evidence(e, evidence_dir):
     require(hashlib.sha256(data).hexdigest()==e["sha256"].lower(),
             "evidence SHA256 mismatch: "+f)
 
+def validate_fixture_seed(fixture, rng):
+    seed = fixture["seed"]
+    require(type(seed) is int and -2147483648 <= seed <= 2147483647,
+            "seed must be int32")
+    if rng["policy"] != "seeded-per-instance":
+        return
+    path = rng.get("seedParameter")
+    require(isinstance(path, str) and path and all(path.split(".")),
+            "invalid Blueprint seedParameter")
+    value = fixture["settings"]
+    for part in path.split("."):
+        if isinstance(value, dict) and part in value:
+            value = value[part]
+        elif isinstance(value, list) and re.fullmatch(r"0|[1-9][0-9]*", part):
+            require(len(part) <= len(str(len(value))) and int(part) < len(value),
+                    "missing seed parameter: " + path)
+            value = value[int(part)]
+        else:
+            raise ValidationError("missing seed parameter: " + path)
+    require(type(value) is int and value == seed, "seed differs from settings: " + path)
+
+
 def validate_report(report, root, evidence_dir):
     require(isinstance(report,dict), "report must be JSON object")
     required={"schemaVersion","effectId","effectVersion","sourceCommit","status",
@@ -222,13 +244,9 @@ def validate_report(report, root, evidence_dir):
     require(isinstance(fx,dict) and
             {"seed","settings","width","height","fps","asset","frameTimesSeconds"} <= set(fx),
             "fixture fields required")
-    require(type(fx["seed"]) is int and -2147483648<=fx["seed"]<=2147483647,
-            "seed must be int32")
     require(isinstance(fx["settings"],dict) and fx["settings"],
             "exact parameter JSON required")
-    if doc["rng"]["policy"]=="seeded-per-instance":
-        require(type(fx["settings"].get("seed")) is int and fx["settings"]["seed"]==fx["seed"],
-                "seed differs from settings")
+    validate_fixture_seed(fx, doc["rng"])
     require(type(fx["width"]) is int and 1<=fx["width"]<=4096 and
             type(fx["height"]) is int and 1<=fx["height"]<=4096,
             "output dimensions invalid")

@@ -21,7 +21,7 @@ The report is versioned JSON v1 ([machine-readable schema](../validation/evidenc
 | `schemaVersion` | Exactly 1. Unknown versions rejected. |
 | `effectId`, `effectVersion`, `sourceCommit` | Exact catalog match and full 40-hex Git SHA under test. |
 | `environment` | Browser version, device/OS, requested backend, **actual** WebGL1/2/WebGPU renderer, GL version where applicable, GPU identification or explicit unavailable label, offline flag and zero HTTP requests. |
-| `fixture` | Seed, complete settings JSON, asset, encoded output width/height, 60 authoring FPS and start/mid/end sample times in seconds. |
+| `fixture` | Seed, complete settings JSON, asset, encoded output width/height, 60 authoring FPS and start/mid/end sample times in seconds. For `seeded-per-instance`, `fixture.seed` is an int32 matching the Blueprint's declared `rng.seedParameter` inside `fixture.settings` (e.g. `emitters.0.layers.arcs.seed`), not necessarily a top-level `seed`. Resolve object keys and canonical zero-based array indices; flat dotted aliases, missing paths and noninteger values are rejected. |
 | `checks` | Stable IDs with kind (`visual`, `numeric`, `backend`, `asset`, `export` or `lifecycle`), expected, actual, explicit tolerance, status and PNG evidence paths + SHA-256. `NOT RUN` has a reason and no fabricated measurement. |
 | `status` | Calculated from all checks: any FAIL → FAIL; otherwise any NOT RUN → NOT RUN; only all PASS → PASS. |
 | `warnings` | Caveats, hardware limits and rejected/unsupported features. |
