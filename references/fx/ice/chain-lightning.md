@@ -8,6 +8,11 @@ Run `node scripts/test_chain_lightning_blueprint.cjs`, `node --test scripts/test
 
 ## Machine-checkable Blueprint
 
+
+### L05 scalar evidence audit
+
+Run `node scripts/audit_chain_lightning_parameters.cjs` against the pinned checkout. The independent CPU audit exercises exactly all 72 declared scalar keys, with actual resolved Spine anchors and sampled primitives at 19 fixed times; the quality witness measures the compiled primitive/vertex bounds and verifies low rejects while high retains balanced motion. The command returns nonzero on any failed witness. Current baseline: 70/72 PASS; `source.rotation` and `targets.0.layers.glow.seed` do not change sampled geometry or RGBA. The incoming arc path is intentionally shared with branches, so an arc seed can affect both layers of the same target. These checks are numerical candidate evidence only, not proof of GPU rasterization, editor roundtrip, visual phase PNGs, Vite, or release readiness. Do not mark either failed parameter PASS or promote the catalog before resolving the control semantics and independently verifying the resulting implementation.
+
 ```json
 {
   "blueprintSchemaVersion": 1,
