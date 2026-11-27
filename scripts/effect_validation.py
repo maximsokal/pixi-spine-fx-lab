@@ -20,6 +20,7 @@ BACKENDS = {"webgl1", "webgl2", "webgpu"}
 KINDS = {"visual", "numeric", "backend", "asset", "export", "lifecycle"}
 SHA = re.compile(r"^[a-fA-F0-9]{64}$")
 COMMIT = re.compile(r"^[a-fA-F0-9]{40}$")
+PNG_EVIDENCE_LIMIT = 32 * 1024 * 1024
 
 class ValidationError(ValueError):
     pass
@@ -59,14 +60,14 @@ def _check_png_structure(data, label):
     This stdlib gate only certifies the referenced evidence file is a real PNG.
     """
     require(data.startswith(b"\x89PNG\r\n\x1a\n"), "not a PNG file: " + label)
-    require(len(data) <= 32 * 1024 * 1024, "PNG evidence exceeds 32 MiB: " + label)
+    require(len(data) <= PNG_EVIDENCE_LIMIT, "PNG evidence exceeds 32 MiB: " + label)
     offset=8
     width=height=channels=None
     found_idat=found_end=found_plte=found_trns=idat_closed=False
     idat=[]
     while offset + 12 <= len(data):
         size=struct.unpack_from(">I", data, offset)[0]
-        require(size<=32*1024*1024 and offset+size+12<=len(data),
+        require(size<=PNG_EVIDENCE_LIMIT and offset+size+12<=len(data),
                 "truncated or oversized PNG chunk: " + label)
         kind=data[offset+4:offset+8]
         require(re.fullmatch(rb"[A-Za-z]{2}[A-Z][A-Za-z]", kind) is not None,
@@ -142,7 +143,9 @@ def secure_evidence(e, evidence_dir):
     target=(root/Path(*relative.parts)).resolve()
     require(target.is_relative_to(root) and target.is_file(),
             "missing/unsafe evidence file: "+f)
-    data=target.read_bytes()
+    with target.open("rb") as stream:
+        data=stream.read(PNG_EVIDENCE_LIMIT+1)
+    require(len(data)<=PNG_EVIDENCE_LIMIT, "PNG evidence exceeds 32 MiB: "+f)
     _check_png_structure(data, f)
     require(hashlib.sha256(data).hexdigest()==e["sha256"].lower(),
             "evidence SHA256 mismatch: "+f)
@@ -339,6 +342,14 @@ def validate_report(report, root, evidence_dir, *, candidate=False):
                       candidateStatus=computed,validationMode="candidate",releaseEligible=False)
     return result
 
+def _unique_json_object(pairs):
+    result = {}
+    for key, value in pairs:
+        require(key not in result, "duplicate JSON key: "+repr(key))
+        result[key] = value
+    return result
+
+
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument("report",type=Path)
@@ -351,7 +362,7 @@ def main():
                       help="Validate pre-promotion evidence only; always exit 2 if structurally valid")
     args=ap.parse_args()
     try:
-        data=json.loads(args.report.read_text(encoding="utf-8"))
+        data=json.loads(args.report.read_text(encoding="utf-8"), object_pairs_hook=_unique_json_object)
         result=validate_report(data,args.repo,args.evidence_dir or args.report.parent,
                                candidate=args.candidate)
         print(json.dumps(result))

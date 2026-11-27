@@ -30,7 +30,7 @@ def fixture():
 
 class JsonBoundaryTests(unittest.TestCase):
     def setUp(self):
-        catalog = {EFFECT: {'blueprint': {'effectVersion': '0.1.0', 'rng': {'policy': 'seeded-per-instance'}},
+        catalog = {EFFECT: {'blueprint': {'effectVersion': '0.1.0', 'rng': {'policy': 'seeded-per-instance', 'seedParameter': 'seed'}},
                             'phases': ['start'], 'parameters': ['size'], 'status': 'reference-implementation'}}
         for name, value in [('catalog_requirements', catalog), ('secure_evidence', None)]:
             mock = patch.object(V, name, return_value=value, create=True)
