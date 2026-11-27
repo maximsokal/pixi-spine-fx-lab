@@ -9,6 +9,25 @@ function suite(H,S,C,test,A){
  test('seeded emitter isolation, world and independent layer anchors',()=>{const c=H.defaults();c.emitters.push(H.newEmitter('second',9021));const p=H.compile(c),a=p.sample(.24);const b=copy(c);b.emitters[1].layers.arcs.seed=42;const changed=H.compile(b).sample(.24);for(const k of H.LAYERS)A.deepEqual(a[k].filter(x=>x.emitterId==='emitter-1'),changed[k].filter(x=>x.emitterId==='emitter-1'));A.deepEqual(a.sparks,changed.sparks);const moved=copy(c);moved.emitters[0].layers.halo.x=25;const q=H.compile(moved).sample(.24);near(q.halo[0].positions[0]-a.halo[0].positions[0],25);A.deepEqual(q.arcs,a.arcs);A.deepEqual(q.sparks,a.sparks);const bone=H.defaults();Object.assign(bone.emitters[0].anchor,{type:'bone',space:'local',name:'hip',x:0,y:0});const r=H.compile(bone);A.equal(r.sample(.2).halo.length,0);const s=r.sample(.2,{'emitter-1':{x:50,y:70,rotation:90,scale:2}});A.deepEqual(s.emitters[0].layers.halo.origin,{x:50,y:70});A.ok(s.halo.length>0);bone.emitters[0].layers.sparks.anchor={type:'world',space:'world',name:'',slot:'',x:100,y:120,rotation:0};const v=H.compile(bone).sample(.2);A.equal(v.halo.length,0);A.ok(v.sparks.length>0);});
  test('one-shot endpoints, delay, palette and width edits',()=>{const c=H.defaults();c.mode='oneShot';const p=H.compile(c);for(const t of [0,59/60,1,10]){const s=p.sample(t);A.equal(s.halo.length+s.arcs.length+s.sparks.length,0);}const a=p.sample(.4);A.ok(a.halo.length>0&&a.arcs.length>0);const b=copy(c);b.emitters[0].layers.arcs.delayFrames=30;A.equal(H.compile(b).sample(.4).arcs.length,0);const col=copy(c);for(const s of col.palettes.arcs.stops)s.rgba[0]=1;const q=H.compile(col).sample(.4);A.ok(q.arcs.length&&q.arcs.every(x=>x.rgba[0]===1));A.deepEqual(q.halo,a.halo);A.deepEqual(q.sparks,a.sparks);const w=copy(c);for(const k of w.curves.width.keys)k.y*=.5;const r=H.compile(w).sample(.4);A.ok(JSON.stringify(r.arcs)!==JSON.stringify(a.arcs));});
  test('strict schema, seam, invalid inputs and whole-effect bounds',()=>{for(const mut of [c=>c.schemaVersion=2,c=>c.arcCount=1.5,c=>c.auraRadius=NaN,c=>c.minGap=81,c=>c.curves.glow.keys.at(-1).y=.4,c=>c.palettes.halo.stops.at(-1).rgba[0]=1,c=>c.emitters.push(copy(c.emitters[0])),c=>delete c.emitters[0].layers.arcs,c=>c.durationFrames=6]){const c=H.defaults();mut(c);A.throws(()=>H.compile(c));}const limit=H.defaults();limit.arcCount=60;limit.pulseRate=15;limit.durationFrames=3600;A.throws(()=>H.compile(limit),/budget/);for(let seed=0;seed<24;seed++){const c=H.defaults();c.quality='low';c.emitters[0].layers.arcs.seed=seed;c.emitters[0].layers.sparks.seed=seed+100;c.branchChance=(seed%5)/4;c.arcLength=2+seed*3;c.timeJitter=(seed%4)*.15;c.distribution=['even','random','stratified','clustered'][seed%4];const p=H.compile(c);for(let i=0;i<60;i++){const s=p.sample(i/60),n=s.halo.length+s.arcs.length+s.sparks.length,v=[...s.halo,...s.arcs].reduce((n,x)=>n+x.positions.length/2,0);A.ok(n<=p.meta.primitiveBound&&v<=p.meta.vertexBound);}}});
+ test('halo seed changes only halo intensity, preserves geometry and loop seam',()=>{
+  const c=H.defaults(),p=H.compile(c),n=copy(c);n.emitters[0].layers.halo.seed=4110;const q=H.compile(n),r=H.compile(copy(n));
+  let changed=0;const geometry=s=>s.halo.map(({rgba,...v})=>v);
+  for(let i=0;i<60;i++){
+   const t=i/60,a=p.sample(t),b=q.sample(t);
+   A.deepEqual(b,r.sample(t));A.deepEqual(b,q.sample(t+1));
+   A.deepEqual(b.arcs,a.arcs);A.deepEqual(b.sparks,a.sparks);A.deepEqual(geometry(b),geometry(a));
+   for(let j=0;j<b.halo.length;j++){const x=a.halo[j].rgba,y=b.halo[j].rgba;A.deepEqual(y.slice(0,3),x.slice(0,3));A.ok(y[3]>=.8*x[3]-1e-12&&y[3]<=x[3]+1e-12);if(y[3]!==x[3])changed++;}
+  }
+  A.ok(changed>0,'halo seed must affect output');
+  const a=q.sample(1-1e-7).halo,b=q.sample(0).halo;for(let i=0;i<a.length;i++)near(a[i].rgba[3],b[i].rgba[3],1e-6);
+  A.deepEqual(q.sample(.2),q.sample(.2));A.deepEqual(p.meta,q.meta);
+ });
+ test('halo seed respects independent emitter, zero strength and one-shot envelope',()=>{
+  const c=H.defaults();c.emitters.push(H.newEmitter('second',25));const n=copy(c);n.emitters[0].layers.halo.seed=-2147483648;const p=H.compile(c),q=H.compile(n);let changed=false;
+  for(const t of [0,.1,.2,.3,.4,.5,.6,.9]){const a=p.sample(t),b=q.sample(t);A.deepEqual(a.halo.filter(v=>v.emitterId==='second'),b.halo.filter(v=>v.emitterId==='second'));A.deepEqual(a.arcs,b.arcs);A.deepEqual(a.sparks,b.sparks);if(JSON.stringify(a.halo)!==JSON.stringify(b.halo))changed=true;}
+  A.ok(changed);n.mode='oneShot';const v=H.compile(n);for(const t of [0,59/60,1,2])A.equal(v.sample(t).halo.length,0);A.ok(v.sample(.3).halo.length>0);n.glowStrength=0;A.equal(H.compile(n).sample(.3).halo.length,0);n.glowStrength=.7;n.emitters[0].layers.halo.opacity=0;A.ok(H.compile(n).sample(.3).halo.every(v=>v.emitterId==='second'));
+ });
+
 }
 
 function boundarySuite(H,test,A){

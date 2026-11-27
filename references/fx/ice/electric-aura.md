@@ -8,6 +8,8 @@ Run `node --test scripts/test_electric_aura_*.cjs`, `python scripts/test_electri
 
 Run the separate scalar-parameter audit with `node scripts/audit_electric_aura_parameters.cjs > /tmp/aura-parameters.json`. It exercises every catalog scalar with a concrete output witness, native CPU anchor/view objects, conditional anchor controls and budget checks. Exit 2 means one or more parameter witnesses failed; `--allow-incomplete` is for diagnostic collection only. This is a numeric fragment, not a complete release report or actual GPU evidence. Do not promote the Blueprint using this fragment alone.
 
+Halo seed: the shipped seed 4109 retains the original intensity exactly. Other int32 seeds apply a deterministic smooth one-cycle intensity attenuation (0–20% maximum reduction) on top of the authored glow curve and alpha. No effect on geometry, arc/spark RNG, timing, or the one-shot fade envelope. Zero glow/opacity remains invisible. The seed does not add a second clock.
+
 ## Machine-checkable Blueprint
 
 ```json

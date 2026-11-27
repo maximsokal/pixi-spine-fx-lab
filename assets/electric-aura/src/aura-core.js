@@ -22,6 +22,13 @@
  function bool(v,k){if(typeof v!=='boolean')fail(k);return v;}
  function freeze(o){if(o&&typeof o==='object'&&!Object.isFrozen(o)){Object.values(o).forEach(freeze);Object.freeze(o);}return o;}
  function rand(seed,i,salt){let n=seed^Math.imul(i+1,0x9e3779b1)^Math.imul(salt+1,0x85ebca6b);n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);return ((n^(n>>>16))>>>0)/4294967296;}
+ // Preserve the shipped default halo exactly. Other seeds attenuate the
+ // authored intensity by a bounded periodic factor; no geometry/time changes.
+ function haloVariation(seed,u){
+  if(seed===4109)return 1;
+  const amplitude=.05+.15*rand(seed,0,23),phase=TAU*rand(seed,0,24);
+  return 1-amplitude*(.5+.5*Math.cos(TAU*u+phase));
+ }
  const specs={
   frequency:['arcFrequency','effectTime','normalized-duration','multiplier',[0,4],[[0,.55],[.4,1],[1,.55]]],
   glow:['glowPulse','effectTime','normalized-duration','multiplier',[0,2],[[0,.8],[.5,1],[1,.8]]],
@@ -90,7 +97,7 @@
    for(let i=0;i<c.emitters.length;i++){const e=c.emitters[i],summary={id:e.id,layers:{}};out.emitters.push(summary);for(const k of LAYERS){const l=e.layers[k],p=meta.plans[i].layers[k],b=pose(e,l,k,poses);summary.layers[k]={origin:b?{x:b.x,y:b.y}:null};if(!e.enabled||!active(l)||!b)continue;
     const raw=seconds-l.delayFrames/FPS,t=loop?loopSeconds(seconds,c.durationFrames,l.delayFrames):raw,end=(c.durationFrames-1)/FPS;if(!loop&&(t<0||t>=end||seconds>=end))continue;const u=t/duration,env=loop?1:Math.min(clamp(t*FPS/2,0,1),clamp((end-seconds)*FPS/c.fadeFrames,0,1)),theta=b.rotation*RAD,co=Math.cos(theta),si=Math.sin(theta),xy=(x,y)=>[b.x+b.scale*(x*co-y*si),b.y+b.scale*(x*si+y*co)];
     const emitMesh=(m,color,id)=>{if(!m||color[3]<=0)return;const positions=[];for(let j=0;j<m.positions.length;j+=2)positions.push(...xy(m.positions[j],m.positions[j+1]));vertices+=positions.length/2;out[k].push({kind:'ribbon',id,emitterId:e.id,blend:l.blend,order:l.order,positions,uvs:m.uvs,indices:m.indices,rgba:color});};
-    if(k==='halo'){const color=K.sample(c.palettes.halo,u),factor=C.evaluate(c.curves.glow,u)*c.glowStrength*env*l.opacity;emitMesh(p.glow,[...color.slice(0,3),clamp(color[3]*factor*.25,0,1)],'glow');emitMesh(p.halo,[...color.slice(0,3),clamp(color[3]*factor,0,1)],'halo');continue;}
+    if(k==='halo'){const color=K.sample(c.palettes.halo,u),factor=C.evaluate(c.curves.glow,u)*c.glowStrength*env*l.opacity*haloVariation(l.seed,u);emitMesh(p.glow,[...color.slice(0,3),clamp(color[3]*factor*.25,0,1)],'glow');emitMesh(p.halo,[...color.slice(0,3),clamp(color[3]*factor,0,1)],'halo');continue;}
     for(const ev of p.events){const age=liveAge(t,ev.time,p.life,duration,loop);if(age===null)continue;const f=clamp(age/p.life,0,1),color=K.sample(c.palettes[k],f);color[3]*=C.evaluate(c.curves.alpha,f)*env*l.opacity;if(color[3]<=0)continue;
      if(k==='arcs'){emitMesh(ev.main,color,ev.id+':main');emitMesh(ev.branch,color,ev.id+':branch');}
      else{const [x,y]=xy(ev.x+Math.cos(ev.angle)*age*c.sparkSpeed,ev.y+Math.sin(ev.angle)*age*c.sparkSpeed);out.sparks.push({kind:'disc',id:ev.id,emitterId:e.id,blend:l.blend,order:l.order,x,y,radius:c.sparkSize*b.scale*(1-.6*f),rgba:color});}
