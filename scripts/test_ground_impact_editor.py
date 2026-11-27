@@ -17,15 +17,31 @@ def run():
           const clone=v=>JSON.parse(JSON.stringify(v));
           const defaults=()=>({quality:'balanced',gravity:500,trailingDustEnabled:true,contact:{id:'contact',x:256,y:320,rotation:0,anchor:{type:'world',name:'',slot:''}},layers:Object.fromEntries(['ring','debris','dust'].map(id=>[id,{id,x:0,y:0,rotation:0,enabled:true,visible:true,opacity:1,delayFrames:0,seed:1,blend:'normal',order:'front',anchor:{type:'inherit',name:'',slot:''}}])),curves:{radius:{}},palettes:{ring:{},debris:{},dust:{}}});
           let fail=false,closed=0,created=0,rendered=0;
-          globalThis.FxGroundImpact={defaults,LAYERS:['ring','debris','dust']};
-          globalThis.FxGroundImpactAuthoring={frame:t=>Math.floor(t*60+1e-6),advance:(t,dt,d)=>Math.max(0,Math.min(39/60,t+dt*d)),positions:c=>({contact:c.contact,...c.layers}),pointer:(x,y,r)=>({x:(x-r.left)/r.width*512,y:(y-r.top)/r.height*512}),move:(c,id,x,y)=>{const n=clone(c);Object.assign(id==='contact'?n.contact:n.layers[id],{x,y});return n;}};
+          globalThis.FxGroundImpact={defaults,FPS:60,LAYERS:['ring','debris','dust'],normalize:clone,compile:c=>({settings:clone(c)})};
+          globalThis.FxGroundImpactAnchors={resolve:a=>a.type==='world'?{x:0,y:0,rotation:0,scale:1}:a.type==='local'?{x:100,y:200,rotation:90,scale:2}:null};
           globalThis.FxCurveEditor={mount(){}};globalThis.FxColorUi={mount(){}};
           globalThis.fixture={fail:v=>fail=v,counts:()=>({closed,created,rendered})};
           globalThis.makeScene=async (backend,settings)=>{created++;if(fail)throw Error('backend rejected');let source=null,seconds=0,opt={animation:'',skin:'',speed:1,visible:true};const canvas=document.createElement('canvas');let c=clone(settings);return {actual:backend,canvas,world:{},session:{get settings(){return c},get seconds(){return seconds},get source(){return source},get asset(){return null},get options(){return opt},get meta(){return {primitiveBound:4,limit:96,omitted:{}}},get sample(){return {primitives:2}},get missing(){return []},configure(n){if(n.gravity<0)throw Error('gravity rejected');c=clone(n);},seek(t){seconds=t;},setOptions(n){opt=n;},async replaceSource(n){source=n;}},render(){rendered++},destroy(){closed++;canvas.remove();}};};
         }''')
+        page.add_script_tag(path=SRC/'ground-impact-authoring.js')
         page.add_script_tag(path=SRC/'ground-impact-editor.js')
         page.evaluate('''async () => {globalThis.editor=FxGroundImpactEditor.mount(globalThis,{createScene:makeScene});await editor.ready;}''')
         assert page.locator('#actual').inner_text()=='webgl2'
+        # Real authoring transform, injected deterministic anchor resolver.
+        page.locator('#marker').select_option('ring')
+        anchor=page.locator('#anchorFields [data-field="type"]')
+        anchor.select_option('world')
+        assert page.evaluate('[editor.session.settings.layers.ring.x,editor.session.settings.layers.ring.y]')==[256,320], 'changing inherited anchor moved the ring'
+        anchor.select_option('local')
+        x,y=page.evaluate('[editor.session.settings.layers.ring.x,editor.session.settings.layers.ring.y]')
+        assert abs(x-60)<1e-9 and abs(y+78)<1e-9, 'rotated/scaled local anchor was not inverted'
+        anchor.select_option('bone')
+        x2,y2=page.evaluate('[editor.session.settings.layers.ring.x,editor.session.settings.layers.ring.y]')
+        assert (x2,y2)==(x,y), 'unresolved anchor silently changed offsets'
+        assert page.locator('#handle').is_hidden()
+        anchor.select_option('world')
+        assert page.evaluate('[editor.session.settings.layers.ring.x,editor.session.settings.layers.ring.y]')==[x,y], 'unresolved source invented a position'
+        page.locator('#marker').select_option('contact')
         page.locator('[data-field="gravity"]').fill('600');page.locator('[data-field="gravity"]').dispatch_event('change')
         assert page.evaluate('editor.session.settings.gravity')==600
         page.locator('#frame').fill('17');page.locator('#frame').dispatch_event('input')
