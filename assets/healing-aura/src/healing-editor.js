@@ -12,7 +12,9 @@
  function lock(v){busy=v;setPlaying(false);for(const id of ['backend','files','sample','load','remove','animation','skin','speed','showSpine','apply','defaults','add','duplicate','delete','emitter','layer','curveKey','frame','play','reverse','reset','cropX','cropY','cropWidth','cropHeight','exportFrames','exportPng','exportWebgl','exportWebgpu'])$(id).disabled=v;for(const el of document.querySelectorAll('#globalControls input,#globalControls select,#emitterControls input,#emitterControls select,#layerControls input,#layerControls select'))el.disabled=v;}
  function pose(asset,t,anim=animation,sk=skin){return U.poseMap(U.pose(asset,t,{animation:anim,skin:sk,speed,visible:spineVisible},Sp));}
  function updateHandle(){const e=emitter(),p=e&&U.resolve(e,layer()==='emitter'?null:e.layers[layer()],poses),h=$('handle');h.hidden=!p;if(p){h.style.left=p.x/512*100+'%';h.style.top=p.y/512*100+'%';}}
- function seek(t){if(!scene)return;const next=cfg.mode==='loop'?U.advance(t,0,cfg):Math.max(0,Math.min(U.lastFrame(cfg)/60,t));const p=pose(scene.asset,next),result=scene.fx.seek(next,p);scene.app.render();time=next;poses=p;const frame=Math.min(U.lastFrame(cfg),Math.floor(time*60+1e-8));$('frame').max=U.lastFrame(cfg);$('frame').value=frame;$('frameLabel').textContent=frame+' / '+U.lastFrame(cfg);$('stats').textContent=scene.fx.stats.visible+' visible / '+scene.fx.stats.allocated+' reserved · pulse '+pulseHz.toFixed(2)+' Hz (requested '+cfg.pulseRate+' Hz)';$('diagnostics').textContent=result.diagnostics.map(d=>d.emitterId+' / '+d.layer+': '+d.reason).join('; ');updateHandle();}
+ function publishPose(next,p,result){time=next;poses=p;const frame=Math.min(U.lastFrame(cfg),Math.floor(time*60+1e-8));$('frame').max=U.lastFrame(cfg);$('frame').value=frame;$('frameLabel').textContent=frame+' / '+U.lastFrame(cfg);$('stats').textContent=scene.fx.stats.visible+' visible / '+scene.fx.stats.allocated+' reserved · pulse '+pulseHz.toFixed(2)+' Hz (requested '+cfg.pulseRate+' Hz)';$('diagnostics').textContent=result.diagnostics.map(d=>d.emitterId+' / '+d.layer+': '+d.reason).join('; ');updateHandle();}
+ function seek(t){if(!scene)return;const next=cfg.mode==='loop'?U.advance(t,0,cfg):Math.max(0,Math.min(U.lastFrame(cfg)/60,t));const p=pose(scene.asset,next),result=scene.fx.seek(next,p);scene.app.render();publishPose(next,p,result);}
+
  function sync(){ $('preset').value=JSON.stringify(cfg,null,2);$('exportFrames').placeholder=String(cfg.durationFrames); }
  function change(next,refresh=true){if(busy||!scene)throw Error('Preview busy or unavailable');const old=cfg,oldTime=time,oldHz=pulseHz;const plan=S.compile(next),normalized=plan.settings;scene.fx.configure(normalized);try{cfg=normalized;pulseHz=plan.effectiveHz;seek(time);}catch(error){cfg=old;pulseHz=oldHz;scene.fx.configure(old);seek(oldTime);throw error;}if(!cfg.emitters.some(e=>e.id===selected))selected=cfg.emitters[0].id;sync();if(refresh)controls();updateHandle();status('Settings applied');}
  function edit(fn,refresh=true){const next=clone(cfg);fn(next);change(next,refresh);}
@@ -26,8 +28,39 @@
  function refresh(){controls();curves();palette?.refresh(cfg.palette);}
  function populate(){const a=$('animation'),s=$('skin');a.replaceChildren(new Option('Setup pose',''));s.replaceChildren(new Option('Default skin',''));if(scene?.asset){for(const v of scene.asset.animations)a.add(new Option(v,v));for(const v of scene.asset.skins)s.add(new Option(v,v));}$('assetLabel').textContent=scene?.asset?.source.name||'No Spine asset';a.value=animation;s.value=skin;}
  function destroy(s){if(!s)return;try{s.asset?.destroy();}finally{try{s.fx?.destroy();}finally{if(s.app.renderer)s.app.destroy(true,{children:true});}}}
- async function initialize(requested){if(busy)return;lock(true);const next={app:new PIXI.Application(),asset:null,fx:null};try{await next.app.init({width:512,height:512,resolution:1,backgroundAlpha:0,autoStart:false,preference:requested==='webgpu'?'webgpu':'webgl',preferWebGLVersion:requested==='webgl1'?1:2});const actual=next.app.renderer.gl?(next.app.renderer.gl instanceof WebGL2RenderingContext?'webgl2':'webgl1'):'webgpu';if(actual!==requested)throw Error('Requested '+requested+', got '+actual);next.behind=new PIXI.Container();next.models=new PIXI.Container();next.front=new PIXI.Container();next.app.stage.addChild(next.behind,next.models,next.front);if(assetSource){next.asset=await Sp.create(assetSource);next.models.addChild(next.asset.model);}next.fx=FxHealingRuntime.createHealing({PIXI,front:next.front,behind:next.behind,settings:cfg});next.fx.seek(time,pose(next.asset,time));next.app.render();const old=scene;next.actual=actual;$('surface').prepend(next.app.canvas);scene=next;if(old){old.app.canvas.remove();destroy(old);}$('actual').textContent=actual.toUpperCase();$('backend').value=actual;document.body.dataset.ready='true';populate();seek(time);status('Ready');}catch(error){if(scene!==next)destroy(next);$('backend').value=scene?.actual||requested;status(error.message,true);}finally{lock(false);refresh();}}
- async function load(source){if(busy||!scene)return;lock(true);let next=null;try{if(source)next=await Sp.create(source);const a=next?.defaultAnimation||'',s=next?.defaultSkin||'',p=pose(next,time,a,s),old=scene.asset,was=old?.model.visible;if(next)scene.models.addChild(next.model);if(old)old.model.visible=false;try{scene.fx.seek(time,p);scene.app.render();}catch(error){if(old)old.model.visible=was;scene.fx.seek(time,poses);throw error;}scene.asset=next;next=null;old?.destroy();assetSource=source;animation=a;skin=s;populate();seek(time);status(source?'Loaded '+source.name:'Spine removed');}catch(error){next?.destroy();status(error.message,true);}finally{lock(false);refresh();}}
+ async function initialize(requested){
+  if(busy)return;lock(true);const next={app:new PIXI.Application(),asset:null,fx:null};let committed=false;
+  try{
+   await next.app.init({width:512,height:512,resolution:1,backgroundAlpha:0,autoStart:false,preference:requested==='webgpu'?'webgpu':'webgl',preferWebGLVersion:requested==='webgl1'?1:2});
+   const actual=next.app.renderer.gl?(next.app.renderer.gl instanceof WebGL2RenderingContext?'webgl2':'webgl1'):'webgpu';if(actual!==requested)throw Error('Requested '+requested+', got '+actual);
+   next.behind=new PIXI.Container();next.models=new PIXI.Container();next.front=new PIXI.Container();next.app.stage.addChild(next.behind,next.models,next.front);
+   if(assetSource){next.asset=await Sp.create(assetSource);next.models.addChild(next.asset.model);}
+   next.fx=FxHealingRuntime.createHealing({PIXI,front:next.front,behind:next.behind,settings:cfg});
+   const p=pose(next.asset,time),result=next.fx.seek(time,p);next.app.render();
+   const old=scene;next.actual=actual;$('surface').prepend(next.app.canvas);scene=next;committed=true;
+   $('actual').textContent=actual.toUpperCase();$('backend').value=actual;document.body.dataset.ready='true';populate();publishPose(time,p,result);
+   if(old){old.app.canvas.remove();try{destroy(old);}catch(error){status('Backend changed; previous scene cleanup failed: '+error.message,true);return;}}
+   status('Ready');
+  }catch(error){if(!committed){next.app.canvas?.remove();try{destroy(next);}catch(cleanup){error=new AggregateError([error,cleanup],error.message+'; candidate cleanup failed: '+cleanup.message);}}$('backend').value=scene?.actual||requested;status(error.message,true);}
+  finally{lock(false);refresh();}
+ }
+ async function load(source){
+  if(busy||!scene)return;lock(true);let next=null,staged=false,committed=false;const old=scene.asset,was=old?.model.visible;
+  try{
+   if(source)next=await Sp.create(source);const a=next?.defaultAnimation||'',s=next?.defaultSkin||'',p=pose(next,time,a,s);
+   staged=true;if(next)scene.models.addChild(next.model);if(old)old.model.visible=false;
+   const result=scene.fx.seek(time,p);scene.app.render();
+   scene.asset=next;assetSource=source;animation=a;skin=s;committed=true;next=null;
+   populate();publishPose(time,p,result);
+   try{old?.destroy();}catch(error){status('Asset changed; previous asset cleanup failed: '+error.message,true);return;}
+   status(source?'Loaded '+source.name:'Spine removed');
+  }catch(error){
+   if(!committed){const failures=[];try{next?.destroy();}catch(cleanup){failures.push(cleanup);}if(staged){try{if(old)old.model.visible=was;scene.fx.seek(time,poses);scene.app.render();}catch(rollback){failures.push(rollback);}}
+    if(failures.length)error=new AggregateError([error,...failures],error.message+'; asset rollback/cleanup failed: '+failures.map(e=>e.message).join('; '));}
+   status(error.message,true);
+  }finally{lock(false);refresh();}
+ }
+
  $('backend').onchange=()=>initialize($('backend').value);$('background').onchange=()=>{$('surface').className=$('background').value;};$('zoom').oninput=()=>{$('surface').style.width=512*Number($('zoom').value)/100+'px';$('surface').style.maxWidth='none';};$('files').onchange=()=>{files=[...$('files').files];};$('load').onclick=()=>attempt(()=>load(U.collectSource(files)));$('sample').onclick=()=>attempt(()=>load(Sp.sample(JSON.parse($('sampleData').textContent))));$('remove').onclick=()=>load(null);$('surface').ondragover=e=>e.preventDefault();$('surface').ondrop=e=>{e.preventDefault();if(!busy)attempt(()=>load(U.collectSource([...e.dataTransfer.files])));};
  for(const id of ['animation','skin','speed','showSpine'])$(id).onchange=()=>attempt(()=>{if(!$('speed').validity.valid||!$('speed').value){$('speed').value=speed;throw Error('Invalid animation speed');}const old={animation,skin,speed,spineVisible};try{animation=$('animation').value;skin=$('skin').value;speed=Number($('speed').value);spineVisible=$('showSpine').checked;seek(time);}catch(error){({animation,skin,speed,spineVisible}=old);populate();$('speed').value=speed;$('showSpine').checked=spineVisible;seek(time);throw error;}});$('frame').oninput=()=>{setPlaying(false);attempt(()=>seek(Number($('frame').value)/60));};$('play').onclick=()=>attempt(()=>{if(!scene)return;direction=1;if(!playing&&cfg.mode==='oneShot'&&time>=U.lastFrame(cfg)/60)seek(0);setPlaying(!playing);});$('reverse').onclick=()=>attempt(()=>{if(!scene)return;direction=-1;if(cfg.mode==='oneShot'&&time===0)seek(U.lastFrame(cfg)/60);setPlaying(true);});$('reset').onclick=()=>{setPlaying(false);attempt(()=>seek(0));};
  $('emitter').onchange=()=>{selected=$('emitter').value;controls();};$('layer').onchange=controls;$('curveKey').onchange=curves;
