@@ -169,7 +169,7 @@ def validate_fixture_seed(fixture, rng):
     require(type(value) is int and value == seed, "seed differs from settings: " + path)
 
 
-def validate_report(report, root, evidence_dir):
+def validate_report(report, root, evidence_dir, *, candidate=False):
     require(isinstance(report,dict), "report must be JSON object")
     required={"schemaVersion","effectId","effectVersion","sourceCommit","status",
               "environment","fixture","checks","warnings"}
@@ -321,27 +321,41 @@ def validate_report(report, root, evidence_dir):
     computed="FAIL" if "FAIL" in statuses else "NOT RUN" if "NOT RUN" in statuses else "PASS"
     require(report["status"]==computed,
             "report status must be computed from every check, not asserted")
-    if refs[report["effectId"]]["status"]!="reference-implementation":
+    catalog_status=refs[report["effectId"]]["status"]
+    if candidate:
+        require(catalog_status=="specification-only",
+                "candidate mode requires a specification-only catalog entry")
+    elif catalog_status!="reference-implementation":
         require(report["status"]=="NOT RUN" and all(s=="NOT RUN" for s in statuses),
                 "specification-only effect cannot claim run/passed tests")
-    return {"effectId":report["effectId"],"status":computed,
+    result={"effectId":report["effectId"],"status":computed,
             "phaseChecks":len(refs[report["effectId"]]["phases"]),
             "parameterChecks":len(refs[report["effectId"]]["parameters"]),
             "checks":len(checks),"backend":env["actualBackend"]}
+    if candidate:
+        # Keep collected results separate from release certification. Even an
+        # all-PASS candidate must never produce a release PASS or promote a catalog entry.
+        result.update(status="FAIL" if computed=="FAIL" else "NOT RUN",
+                      candidateStatus=computed,validationMode="candidate",releaseEligible=False)
+    return result
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument("report",type=Path)
     ap.add_argument("--repo",type=Path,default=Path(__file__).resolve().parents[1])
     ap.add_argument("--evidence-dir",type=Path,default=None)
-    ap.add_argument("--require-pass",action="store_true",
-                    help="Release gate: exit 2 unless all required checks PASS")
+    mode=ap.add_mutually_exclusive_group()
+    mode.add_argument("--require-pass",action="store_true",
+                      help="Release gate: exit 2 unless all required checks PASS")
+    mode.add_argument("--candidate",action="store_true",
+                      help="Validate pre-promotion evidence only; always exit 2 if structurally valid")
     args=ap.parse_args()
     try:
         data=json.loads(args.report.read_text(encoding="utf-8"))
-        result=validate_report(data,args.repo,args.evidence_dir or args.report.parent)
+        result=validate_report(data,args.repo,args.evidence_dir or args.report.parent,
+                               candidate=args.candidate)
         print(json.dumps(result))
-        return 2 if args.require_pass and result["status"]!="PASS" else 0
+        return 2 if args.candidate or (args.require_pass and result["status"]!="PASS") else 0
     except (ValidationError,ValueError,OSError) as exc:
         print("FX evidence validation FAILED: "+str(exc),file=sys.stderr)
         return 1
