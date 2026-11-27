@@ -675,6 +675,26 @@
         6,
         7
       ]
+    },
+    {
+      "effectId": "fx.ice.electric-aura",
+      "category": "ice",
+      "path": "references/fx/ice/electric-aura.md",
+      "keywords": [
+        "electric aura",
+        "electricity aura",
+        "электрическая аура",
+        "електрична аура"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        10,
+        5,
+        6,
+        7
+      ]
     }
   ]
 }
