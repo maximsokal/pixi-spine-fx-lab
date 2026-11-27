@@ -591,7 +591,7 @@
       "issue": 44,
       "title": "Shockwave Ring",
       "priority": "P0",
-      "localEffectId": null,
+      "localEffectId": "fx.game.shockwave",
       "coreIssues": [
         3,
         4,
