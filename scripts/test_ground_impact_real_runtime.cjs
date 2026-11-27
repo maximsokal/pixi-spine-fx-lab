@@ -64,6 +64,21 @@ async function run(read,A,test){
   const apps=[];class GL2{}class App{constructor(){apps.push(this);}async init(o){this.renderer=o.preference==='webgpu'?{gl:new GL2()}:{gl:o.preferWebGLVersion===2?new GL2():{}};}destroy(){this.dead=true;}}
   const opts={PIXI:{Application:App},backend:'webgpu',GL2};const f=await R.initApplication(opts);A.equal(f.actual,'webgl2');A.equal(f.fallback,true);A.ok(apps[0].dead);await A.rejects(()=>R.initApplication({...opts,allowFallback:false}),/requested webgpu/);A.ok(apps.at(-1).dead);A.equal((await R.initApplication({...opts,backend:'webgl1'})).actual,'webgl1');A.equal(R.actualBackend({gpu:{device:{}}},GL2),'webgpu');
  });
+ await test('failed seek invalidates visible output and public sample; successful seek recovers',()=>{
+  const s=scene(),f=create(s);try{
+   const expected=f.seek(.2),owned=f.owned;
+   for(const t of [-1,NaN,Infinity]){A.throws(()=>f.seek(t),/numeric range/);A.equal(f.sample,null);A.deepEqual(f.missing,[]);A.ok(!owned.front.visible&&!owned.behind.visible);A.deepEqual(f.seek(.2),expected);}
+   s.host.x=1;A.throws(()=>f.seek(.3),/logical world plane/);A.equal(f.sample,null);A.ok(!owned.front.visible&&!owned.behind.visible);s.host.x=0;A.deepEqual(f.seek(.2),expected);
+   const buf=nodes(f,'ring')[0].geometry.getBuffer('aPosition'),update=buf.update;buf.update=()=>{throw Error('paint fixture');};
+   try{A.throws(()=>f.seek(.3),/paint fixture/);A.equal(f.sample,null);A.ok(!owned.front.visible&&!owned.behind.visible);}finally{buf.update=update;}A.deepEqual(f.seek(.2),expected);
+  }finally{f.destroy();s.camera.destroy({children:true});}
+ });
+ await test('failed model rollback cannot expose stale sample',()=>{
+  const s=scene(),f=create(s);try{f.seek(.2);const buf=nodes(f,'ring')[0].geometry.getBuffer('aPosition'),update=buf.update;buf.update=()=>{throw Error('paint fixture');};
+   try{A.throws(()=>f.setModel(null),/model rollback failed/);A.ok(f.broken);A.equal(f.sample,null);A.deepEqual(f.missing,[]);A.ok(!f.owned.front.visible&&!f.owned.behind.visible);A.throws(()=>f.seek(.2),/broken renderer/);}finally{buf.update=update;}
+  }finally{f.destroy();s.camera.destroy({children:true});}
+ });
+
 }
 module.exports={run};
 if(require.main===module){const fs=require('node:fs'),path=require('node:path'),root=path.resolve(__dirname,'..');const cases=[];run(p=>fs.readFileSync(path.join(root,p),'utf8'),require('node:assert/strict'),(name,fn)=>{cases.push([name,fn]);}).then(()=>{for(const [name,fn] of cases)require('node:test').test(name,fn);}).catch(e=>{console.error(e);process.exitCode=1;});}

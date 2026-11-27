@@ -88,9 +88,9 @@
    try{value=paint(staged,seconds,model);behindHost.addChild(staged.roots[0]);host.addChild(staged.roots[1]);}catch(e){dispose(staged);throw e;}
    const old=current;current=staged;last=value;dispose(old);return staged.plan.settings;
   }
-  function seek(t){live();planes();num(t,0,1e8);const s=paint(current,t,model);seconds=t;last=s;return s;}
+  function seek(t){live();try{planes();num(t,0,1e8);const s=paint(current,t,model);seconds=t;last=s;return s;}catch(e){last=null;for(const root of current.roots)root.visible=false;throw e;}}
   function setModel(next){live();planes();try{const s=paint(current,seconds,next);model=next;last=s;return s;}catch(e){
-   try{last=paint(current,seconds,model);}catch(rollback){broken=true;throw new AggregateError([e,rollback],'Ground Impact renderer: model rollback failed');}throw e;
+   try{last=paint(current,seconds,model);}catch(rollback){broken=true;last=null;throw new AggregateError([e,rollback],'Ground Impact renderer: model rollback failed');}throw e;
   }}
   function destroy(){if(dead)return;dead=true;dispose(current);current=null;last=null;model=null;}
   configure(settings);
