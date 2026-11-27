@@ -5,25 +5,33 @@
  'use strict';
  const fail=m=>{throw Error('Ground Impact loader: '+m);};
  const positive=n=>Number.isSafeInteger(n)&&n>0;
+ const MiB=1048576,SOURCE_LIMITS=Object.freeze({skeletonBytes:16*MiB,atlasBytes:4*MiB,encodedBytes:128*MiB,decodedBytes:128*MiB,maxTextures:64});
+ function inputLimits(maxDimension){if(!positive(maxDimension))fail('texture dimension limit');return Object.freeze({...SOURCE_LIMITS,maxDimension});}
  const canonical=n=>{if(typeof n!=='string'||!n.trim())fail('invalid texture name');return n.replace(/\\/g,'/');};
  const basename=n=>n.split('/').at(-1);
  const text=async b=>new TextDecoder('utf-8',{fatal:true}).decode(await b.arrayBuffer());
  function file(b,max,label){if(!(b instanceof Blob)||!positive(b.size)||b.size>max)fail('invalid or oversized '+label);}
+ function validateSource(input,cap=SOURCE_LIMITS){
+  if(!cap||!['skeletonBytes','atlasBytes','encodedBytes'].every(k=>positive(cap[k])))fail('invalid source limits');
+  if(!input||typeof input.name!=='string'||!(/\.(json|skel)$/i.test(input.name))||!(input.images instanceof Map)||!input.images.size)fail('complete skeleton, atlas and textures required');
+  if(input.images.size>SOURCE_LIMITS.maxTextures)fail('texture count exceeds '+SOURCE_LIMITS.maxTextures);
+  const source={name:input.name,atlasName:input.atlasName,skeleton:input.skeleton,atlas:input.atlas,images:new Map(input.images)};
+  file(source.skeleton,cap.skeletonBytes,'skeleton');file(source.atlas,cap.atlasBytes,'atlas');
+  let encoded=0;const entries=new Map();
+  for(const [key,b] of source.images){const name=canonical(key);if(entries.has(name))fail('duplicate texture '+name);file(b,cap.encodedBytes,'encoded texture');encoded+=b.size;if(encoded>cap.encodedBytes)fail('encoded texture budget');entries.set(name,b);}
+  return {source,entries,encodedBytes:encoded};
+ }
  function createLoader({PIXI,Spine,URL=globalThis.URL,Image=globalThis.Image,limits}){
   const keys=['skeletonBytes','atlasBytes','encodedBytes','decodedBytes','maxDimension'];
   if(!limits||!keys.every(k=>positive(limits[k])))fail('explicit positive limits required');
   const cap=Object.freeze(Object.fromEntries(keys.map(k=>[k,limits[k]])));
   async function create(input){
-   if(!input||typeof input.name!=='string'||!(/\.(json|skel)$/i.test(input.name))||!(input.images instanceof Map)||!input.images.size)fail('complete skeleton, atlas and textures required');
-   const source={name:input.name,atlasName:input.atlasName,skeleton:input.skeleton,atlas:input.atlas,images:new Map(input.images)};
-   file(source.skeleton,cap.skeletonBytes,'skeleton');file(source.atlas,cap.atlasBytes,'atlas');
-   let encoded=0;const entries=new Map();
-   for(const [key,b] of source.images){const name=canonical(key);if(entries.has(name))fail('duplicate texture '+name);file(b,cap.encodedBytes,'encoded texture');encoded+=b.size;if(encoded>cap.encodedBytes)fail('encoded texture budget');entries.set(name,b);}
+   const {source,entries}=validateSource(input,cap);
    const binary=/\.skel$/i.test(source.name),raw=binary?new Uint8Array(await source.skeleton.arrayBuffer()):JSON.parse(await text(source.skeleton));
    let version=raw?.skeleton?.spine;
    if(binary){const reader=new Spine.BinaryInput(raw);reader.readInt32();reader.readInt32();version=reader.readString();}
    if(typeof version!=='string'||!/^4\.2\.(?:0|[1-9]\d*)$/.test(version))fail('expected Spine 4.2.x; actual '+version);
-   const atlas=new Spine.TextureAtlas(await text(source.atlas));if(!atlas.pages.length)fail('missing atlas pages');
+   const atlas=new Spine.TextureAtlas(await text(source.atlas));if(!atlas.pages.length)fail('missing atlas pages');if(atlas.pages.length>SOURCE_LIMITS.maxTextures)fail('atlas texture count exceeds '+SOURCE_LIMITS.maxTextures);
    const seen=new Set(),used=new Set();
    const pages=atlas.pages.map(page=>{const name=canonical(page.name);if(seen.has(name))fail('duplicate atlas page '+name);seen.add(name);
     const matches=entries.has(name)?[name]:[...entries.keys()].filter(k=>basename(k)===basename(name));
@@ -50,5 +58,5 @@
   }
   return Object.freeze({create});
  }
- return {createLoader};
+ return {SOURCE_LIMITS,inputLimits,validateSource,createLoader};
 });

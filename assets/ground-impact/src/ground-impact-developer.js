@@ -1,5 +1,5 @@
 // EARTH-01 G04c: offline developer handoff using the same preview scene.
-(function(root,make){'use strict';const api=Object.freeze(make());if(typeof module==='object'&&module.exports)module.exports=api;else root.FxGroundImpactDeveloper=api;})(globalThis,function(){
+(function(root,make){'use strict';const api=Object.freeze(make(root.FxGroundImpactLoader||(typeof require==='function'?require('./ground-impact-loader.js'):null)));if(typeof module==='object'&&module.exports)module.exports=api;else root.FxGroundImpactDeveloper=api;})(globalThis,function(L){
  'use strict';
  const FILES=Object.freeze(['curve-core.js','spacing-core.js','path-core.js','color-core.js',...['core','anchors','runtime','authoring','pose','session','loader','editor','export','bake'].map(k=>'ground-impact-'+k+'.js'),'shield-export.js']);
  const VENDORS=Object.freeze(['pixi-8.22.0.min.js','spine-pixi-v8-4.2.120.min.js']);
@@ -14,7 +14,7 @@
    if(p.rendererPreference==='webgpu')scene=await E.nativeScene(env,'webgpu',p.settings);else{try{scene=await E.nativeScene(env,'webgl2',p.settings);}catch(e){scene=await E.nativeScene(env,'webgl1',p.settings);}}
    const s=scene.session;
    async function load(path,type){if(!/^assets\/(skeleton\.(json|skel|atlas)|page_\d{3}\.bin)$/.test(path))throw Error('Invalid asset path');const r=await env.fetch(new env.URL(path,baseURL));if(!r.ok)throw Error('Missing '+path);const b=await r.blob();return type===undefined?b:new env.Blob([b],{type});}
-   if(p.asset){const a=p.asset;if(!Array.isArray(a.images)||!a.images.length||a.images.length>64||new Set(a.images.map(i=>i.name)).size!==a.images.length)throw Error('Invalid asset pages');const skeleton=await load(a.skeleton),atlas=await load(a.atlas),images=new Map();for(const i of a.images)images.set(i.name,await load(i.path,i.type));await s.replaceSource({name:a.sourceSkeletonName,atlasName:a.sourceAtlasName,skeleton,atlas,images});s.setOptions(a.options);}
+   if(p.asset){const a=p.asset;if(!Array.isArray(a.images)||!a.images.length||a.images.length>env.FxGroundImpactLoader.SOURCE_LIMITS.maxTextures||new Set(a.images.map(i=>i.name)).size!==a.images.length)throw Error('Invalid asset pages');const skeleton=await load(a.skeleton),atlas=await load(a.atlas),images=new Map();for(const i of a.images)images.set(i.name,await load(i.path,i.type));await s.replaceSource({name:a.sourceSkeletonName,atlasName:a.sourceAtlasName,skeleton,atlas,images});s.setOptions(a.options);}
    function seek(t){if(dead)throw Error('Destroyed demo');const next=U.seek(t),sample=s.seek(next);scene.render();time=next;return sample;}
    function tick(now){if(!playing)return;try{if(last!==null){seek(U.advance(time,(now-last)/1000));if(time>=39/60){pause();return;}}last=now;raf=env.requestAnimationFrame(tick);}catch(e){pause();env.console.error(e);}}
    function play(){if(dead)throw Error('Destroyed demo');pause();if(time>=39/60)seek(0);playing=true;raf=env.requestAnimationFrame(tick);}
@@ -32,14 +32,13 @@
   for(const name of FILES){if(typeof sources?.[name]!=='string'||!sources[name].trim())fail('missing source '+name);add('public/'+name,sources[name]);}
   for(const name of VENDORS){if(typeof vendors?.[name]!=='string'||!vendors[name].trim())fail('missing vendor '+name);add('public/vendor/'+name,vendors[name]);}
   if(typeof licenses!=='string'||!licenses.trim())fail('missing notices');add('public/LICENSES.txt',licenses);
-  if(source){const {name,skeleton,atlas}=source;if(typeof name!=='string'||!/\.(json|skel)$/i.test(name)||!(source.images instanceof Map)||!source.images.size||source.images.size>64)fail('Spine source');
+  if(source){const validated=L.validateSource(source),{name,skeleton,atlas,images,atlasName}=validated.source;
    if(typeof assetInfo?.version!=='string'||!/^4\.2\.(0|[1-9]\d*)$/.test(assetInfo.version))fail('Spine version');
    if(typeof options?.animation!=='string'||typeof options.skin!=='string'||typeof options.visible!=='boolean'||!Number.isFinite(options.speed)||options.speed<0||options.speed>4)fail('Spine options');
-   const size=(b,max)=>{if(!(b instanceof Blob)||!Number.isSafeInteger(b.size)||b.size<1||b.size>max)fail('asset size');return b.size;};
-   const skSize=size(skeleton,16*MiB),atSize=size(atlas,4*MiB),pages=[],keys=new Set();let total=0;
-   for(const [key,b] of source.images){if(typeof key!=='string'||!key.trim()||keys.has(key.replace(/\\/g,'/')))fail('duplicate or invalid image key');keys.add(key.replace(/\\/g,'/'));const bytes=size(b,128*MiB);total+=bytes;pages.push({name:key,path:'assets/page_'+String(pages.length).padStart(3,'0')+'.bin',type:b.type,b,bytes});}
-   if(total>128*MiB||total+skSize+atSize+entries.reduce((n,e)=>n+e.data.length,0)>240*MiB)fail('asset budget');
-   preset.asset={sourceSkeletonName:name,sourceAtlasName:typeof source.atlasName==='string'?source.atlasName:'skeleton.atlas',version:assetInfo.version,skeleton:'assets/skeleton.'+(/\.skel$/i.test(name)?'skel':'json'),atlas:'assets/skeleton.atlas',images:pages.map(({name,path,type})=>({name,path,type})),options:{animation:options.animation,skin:options.skin,speed:options.speed,visible:options.visible}};
+   const skSize=skeleton.size,atSize=atlas.size,pages=[];
+   for(const [key,b] of images)pages.push({name:key,path:'assets/page_'+String(pages.length).padStart(3,'0')+'.bin',type:b.type,b,bytes:b.size});
+   if(validated.encodedBytes+skSize+atSize+entries.reduce((n,e)=>n+e.data.length,0)>240*MiB)fail('asset budget');
+   preset.asset={sourceSkeletonName:name,sourceAtlasName:typeof atlasName==='string'?atlasName:'skeleton.atlas',version:assetInfo.version,skeleton:'assets/skeleton.'+(/\.skel$/i.test(name)?'skel':'json'),atlas:'assets/skeleton.atlas',images:pages.map(({name,path,type})=>({name,path,type})),options:{animation:options.animation,skin:options.skin,speed:options.speed,visible:options.visible}};
    async function read(path,b,expected){check();const data=new Uint8Array(await b.arrayBuffer());check();if(data.length!==expected)fail('asset size changed');add('public/'+path,data);}
    await read(preset.asset.skeleton,skeleton,skSize);await read(preset.asset.atlas,atlas,atSize);for(const p of pages)await read(p.path,p.b,p.bytes);
   }

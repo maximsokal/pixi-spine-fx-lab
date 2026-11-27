@@ -1,6 +1,6 @@
 // EARTH-01 G04b: independent world-aligned tiled bake, no preview ownership.
 (function(root,make){'use strict';const api=Object.freeze(make());if(typeof module==='object'&&module.exports)module.exports=api;else root.FxGroundImpactBake=api;})(globalThis,function(){
- 'use strict';const TILE=512,MiB=1048576,fail=m=>{throw Error('Ground Impact bake: '+m);};
+ 'use strict';const TILE=512,fail=m=>{throw Error('Ground Impact bake: '+m);};
  function unpackGpu(raw,width,height,stride,format){
   if(!['rgba8unorm','bgra8unorm'].includes(format)||!(raw instanceof Uint8Array)||![width,height,stride].every(Number.isSafeInteger)||width<1||height<1||stride<width*4||raw.length<stride*height)fail('invalid GPU readback');
   const out=new Uint8Array(width*height*4),b=format==='bgra8unorm';for(let y=0;y<height;y++)for(let x=0;x<width;x++){const i=y*stride+x*4,j=(y*width+x)*4;out[j]=raw[i+(b?2:0)];out[j+1]=raw[i+1];out[j+2]=raw[i+(b?0:2)];out[j+3]=raw[i+3];}return out;
@@ -22,7 +22,7 @@
     const maxTextureSize=actual==='webgpu'?r.gpu.device.limits.maxTextureDimension2D:r.gl.getParameter(r.gl.MAX_TEXTURE_SIZE);
     if(!Number.isSafeInteger(maxTextureSize)||Math.max(TILE,c.width,c.height)>maxTextureSize)fail('texture limit');
     world=new PIXI.Container();const behindHost=new PIXI.Container(),models=new PIXI.Container(),host=new PIXI.Container();world.addChild(behindHost,models,host);
-    if(saved){const loader=L.createLoader({PIXI,Spine:env.spine,limits:{skeletonBytes:16*MiB,atlasBytes:4*MiB,encodedBytes:128*MiB,decodedBytes:128*MiB,maxDimension:maxTextureSize}});asset=await loader.create(saved);check();models.addChild(asset.model);}
+    if(saved){const loader=L.createLoader({PIXI,Spine:env.spine,limits:L.inputLimits(maxTextureSize)});asset=await loader.create(saved);check();models.addChild(asset.model);}
     Q.options(options,asset);Q.seekAbsolute(asset,0,options);
     fx=R.createRenderer({PIXI,world,host,behindHost,model:asset?.model??null,Spine:env.spine,settings});target=PIXI.RenderTexture.create({width:TILE,height:TILE,resolution:1,antialias:false});if(actual==='webgpu')reader=readerFor(r,target,env);
     async function readFrame(seconds){check();if(dead||reading||!Number.isFinite(seconds)||seconds<0||seconds>3599/60)fail('invalid read');reading=true;

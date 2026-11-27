@@ -1,0 +1,11 @@
+'use strict';
+const {test}=require('node:test'),A=require('node:assert/strict');
+const L=require('../assets/ground-impact/src/ground-impact-loader.js');
+const MiB=1048576,blob=s=>new Blob([s]);
+function source(count){return {name:'rig.json',atlasName:'original.atlas',skeleton:blob('{"skeleton":{"spine":"4.2.43"}}'),atlas:blob('page0.png'),images:new Map(Array.from({length:count},(_,i)=>['page'+i+'.png',blob('a')]))};}
+const limits={skeletonBytes:16*MiB,atlasBytes:4*MiB,encodedBytes:128*MiB,decodedBytes:128*MiB,maxDimension:4096};
+test('preview rejects 65 selected textures before reading skeleton or decoding images',async()=>{const s=source(65);let reads=0;s.skeleton.arrayBuffer=async()=>{reads++;throw Error('unexpected skeleton read');};const loader=L.createLoader({PIXI:{},Spine:{},limits});await A.rejects(loader.create(s),/texture count/);A.equal(reads,0);});
+test('shared immutable source policy validates exact maximum and rejects overflow',()=>{const cap=L.inputLimits(4096);A.deepEqual(cap,{...limits,maxTextures:64});A.ok(Object.isFrozen(cap));A.throws(()=>L.inputLimits(0));const p=L.validateSource(source(64),cap);A.equal(p.encodedBytes,64);A.equal(p.entries.size,64);A.throws(()=>L.validateSource(source(65),cap),/texture count/);});
+test('shared preflight rejects canonical duplicate and oversized encoded payload',()=>{const cap=L.inputLimits(4096),s=source(1);s.images=new Map([['a\\b.png',blob('a')],['a/b.png',blob('b')]]);A.throws(()=>L.validateSource(s,cap),/duplicate/);s.images=new Map([['a.png',blob('abc')],['b.png',blob('de')]]);A.throws(()=>L.validateSource(s,{...cap,encodedBytes:4}),/encoded texture budget/);});
+test('source preflight fails closed on missing or invalid byte limits',()=>{for(const cap of [null,{}, {...L.inputLimits(4096),encodedBytes:NaN},{...L.inputLimits(4096),atlasBytes:0}])A.throws(()=>L.validateSource(source(1),cap),/source limits/);});
+test('atlas with 65 pages is rejected before image decoding',async()=>{let decodes=0;const loader=L.createLoader({PIXI:{},Spine:{TextureAtlas:class{constructor(){this.pages=Array.from({length:65},(_,i)=>({name:'page'+i+'.png'}));}}},Image:class{constructor(){decodes++;}},limits});await A.rejects(loader.create(source(64)),/atlas texture count/);A.equal(decodes,0);});

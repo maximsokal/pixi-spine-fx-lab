@@ -1,7 +1,7 @@
 // EARTH-01 G03c/G04d: standalone preview, artist controls and export.
 (function(root,make){'use strict';const api=Object.freeze(make());if(typeof module==='object'&&module.exports)module.exports=api;else root.FxGroundImpactEditor=api;})(globalThis,function(){
  'use strict';
- const clone=v=>JSON.parse(JSON.stringify(v)),MiB=1024*1024;
+ const clone=v=>JSON.parse(JSON.stringify(v));
  const ranges={debrisCount:[0,160,1],impactRadius:[8,280],gravity:[0,1300],debrisSize:[2,45],dustDensity:[0,1],launchSpeed:[0,750],planeRatio:[.05,1],planeAngle:[-360,360],ringWidth:[.5,60],originGapPx:[4,60],spacingPx:[4,60],minGapPx:[.25,60],spatialJitter:[0,.45],dustRate:[0,300],dustInterval:[1/300,60],dustEndFrame:[0,38,1],minIntervalFrames:[0,38],timeJitter:[0,.45],seed:[-2147483648,2147483647,1],x:[-10000,10000],y:[-10000,10000],rotation:[-360,360],opacity:[0,1],delayFrames:[0,120,1]};
  const choices={quality:['low','balanced','high'],distribution:['even','random','stratified','clustered'],frequencySource:['rate','interval'],blend:['normal','add'],order:['behind','front']};
  async function nativeScene(env,backend,settings){
@@ -9,7 +9,7 @@
   try{const world=app.stage,behindHost=new P.Container(),models=new P.Container(),host=new P.Container();world.addChild(behindHost,models,host);
    const renderer=app.renderer,dimension=renderer.gl?renderer.gl.getParameter(renderer.gl.MAX_TEXTURE_SIZE):renderer.gpu?.device?.limits?.maxTextureDimension2D;
    if(!Number.isSafeInteger(dimension)||dimension<=0)throw Error('Texture dimension limit unavailable');
-   const loader=env.FxGroundImpactLoader.createLoader({PIXI:P,Spine:Sp,limits:{skeletonBytes:16*MiB,atlasBytes:4*MiB,encodedBytes:128*MiB,decodedBytes:128*MiB,maxDimension:dimension}});
+   const loader=env.FxGroundImpactLoader.createLoader({PIXI:P,Spine:Sp,limits:env.FxGroundImpactLoader.inputLimits(dimension)});
    session=env.FxGroundImpactSession.createSession({PIXI:P,Spine:Sp,world,host,behindHost,models,loader,runtime:R,initial:settings});
    return {actual:info.actual,fallback:info.fallback,canvas:app.canvas,world,session,render:()=>app.render(),destroy(){try{session.destroy();}finally{app.destroy(true,{children:true});}}};
   }catch(e){try{session?.destroy();}finally{app.destroy(true,{children:true});}throw e;}
