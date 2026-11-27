@@ -44,9 +44,9 @@
  }
  const hash=s=>[...s].reduce((h,c)=>Math.imul(h,31)+c.charCodeAt(0)|0,0),active=l=>l.enabled&&l.visible&&l.opacity>0;
  const life=(c,k)=>(k==='arcs'?c.arcLifeFrames:k==='branches'?c.branchLifeFrames:c.glowLifeFrames)/FPS;
- function linkPath(a,b,c,seed,ordinal){const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);if(d<EPS||d>MAX_LINK)return null;const points=[[a.x,a.y]],n=Math.min(MAX_SEGMENTS,Math.max(1,Math.ceil(d/c.arcGap)));
+ function linkPath(a,b,c,seed,ordinal,heading=0){const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);if(d<EPS||d>MAX_LINK)return null;const points=[[a.x,a.y]],n=Math.min(MAX_SEGMENTS,Math.max(1,Math.ceil(d/c.arcGap)));
   for(let i=1;i<n;i++){const u=i/n,off=(rand(seed,ordinal,i)*2-1)*c.jitter*Math.min(c.arcGap,d/n)*.45;points.push([a.x+dx*u-dy/d*off,a.y+dy*u+dx/d*off]);}points.push([b.x,b.y]);
-  const path={schemaVersion:1,closed:false,segments:points.slice(1).map((b,i)=>{const a=points[i];return {p0:a,p1:a.map((v,j)=>v+(b[j]-v)/3),p2:a.map((v,j)=>v+(b[j]-v)*2/3),p3:b};})};return P.smoothPath(path,c.smoothness);
+  const path={schemaVersion:1,closed:false,segments:points.slice(1).map((b,i)=>{const a=points[i];return {p0:a,p1:a.map((v,j)=>v+(b[j]-v)/3),p2:a.map((v,j)=>v+(b[j]-v)*2/3),p3:b};})};const angle=mod(heading,360)*RAD;if(angle!==0){const s=path.segments[0],x=s.p1[0]-s.p0[0],y=s.p1[1]-s.p0[1],co=Math.cos(angle),si=Math.sin(angle);s.p1=[s.p0[0]+x*co-y*si,s.p0[1]+x*si+y*co];}return P.smoothPath(path,c.smoothness);
  }
  const width=(c,m=1)=>({start:c.arcWidth*m,middle:c.arcWidth*m,end:c.arcWidth*m,curve:c.curves.width,minVisiblePx:0});
  function mesh(r){return {positions:Array.from(r.positions),uvs:Array.from(r.uvs),indices:Array.from(r.indices),sections:r.samples.map(s=>({x:s.x,y:s.y,distance:s.distance,width:s.width})),length:r.table.length,errorBound:r.table.errorBound};}
@@ -71,7 +71,7 @@
    if(seconds<0||seconds>=end)return out;const fade=clamp((end-seconds)*FPS/c.fadeFrames,0,1);
    for(let i=0;i<c.targets.length;i++){const t=c.targets[i],plan=plans[i],a=i?resolved[i-1]:source,b=resolved[i];if(!b)continue;const cache=new Map();
     function geometry(ev){if(cache.has(ev.id))return cache.get(ev.id);let result=null;
-     if(a){const dist=Math.hypot(b.x-a.x,b.y-a.y);if(dist>MAX_LINK){if(!out.capacityExceeded.includes(plan.edge))out.capacityExceeded.push(plan.edge);}else if(dist>EPS){const path=linkPath(a,b,c,t.seed^hash(plan.edge)^t.layers.arcs.seed,ev.id),table=S.buildArcTable(path,{tolerancePx:.0625});if(table.length<=MAX_LINK)result={path,table};else if(!out.capacityExceeded.includes(plan.edge))out.capacityExceeded.push(plan.edge);}}
+     if(a){const dist=Math.hypot(b.x-a.x,b.y-a.y);if(dist>MAX_LINK){if(!out.capacityExceeded.includes(plan.edge))out.capacityExceeded.push(plan.edge);}else if(dist>EPS){const path=linkPath(a,b,c,t.seed^hash(plan.edge)^t.layers.arcs.seed,ev.id,i===0?a.rotation:0),table=S.buildArcTable(path,{tolerancePx:.0625});if(table.length<=MAX_LINK)result={path,table};else if(!out.capacityExceeded.includes(plan.edge))out.capacityExceeded.push(plan.edge);}}
      cache.set(ev.id,result);return result;
     }
     for(const k of LAYERS){const l=t.layers[k],p=plan.layers[k],origin=offset(b,l);if(!origin)continue;const dx=origin.x-b.x,dy=origin.y-b.y,seed=l.seed^t.seed^hash(plan.edge);
@@ -79,7 +79,7 @@
       const id=plan.edge+':'+ev.id,common={emitterId:t.id,blend:l.blend,order:l.order,rgba};
       const ribbon=(r,key)=>{const m=mesh(r);if(!m.positions.length)return;vertices+=m.positions.length/2;const sections=m.sections.map(q=>({...q,x:q.x+dx,y:q.y+dy}));out[k].push({...common,kind:'ribbon',id:id+':'+key,...m,sections,positions:m.positions.map((v,j)=>v+(j%2?dy:dx))});};
       const disc=(q,key,radius)=>{vertices+=4;out[k].push({...common,kind:'disc',id:id+':'+key,x:q.x,y:q.y,radius});};
-      if(k==='glow'){disc(origin,'glow',c.glowRadius*b.scale*(1+.25*f));continue;}
+      if(k==='glow'){const variation=l.seed===t.seed+2?1:1-.1*rand(seed,ev.id,300);disc(origin,'glow',c.glowRadius*b.scale*(1+.25*f)*variation);continue;}
       const g=geometry(ev);
       if(k==='arcs'){if(g)ribbon(P.buildRibbon({path:g.path,width:width(c),quality:'high',sampleSpacingPx:c.arcGap,tolerancePx:.0625}),'main');continue;}
       if(g&&c.branchCount){const placement=S.createSpatialPlacement({path:g.path,baseSpacingPx:c.arcGap,minSpacing:c.minGap,maxSpacing:c.maxGap,spacingCurve:c.spacingCurveEnabled?c.curves.spacing:null,mode:'even',jitter:c.spatialJitter,seed,maxPoints:4096,tolerancePx:.0625});const candidates=placement.points.filter(q=>q.distance>EPS&&q.distance<g.table.length-EPS).slice(-c.branchCount);

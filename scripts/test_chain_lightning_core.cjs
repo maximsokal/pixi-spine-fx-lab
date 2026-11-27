@@ -34,6 +34,25 @@ function suite(H,C,S,P,A,test){
   pose['target-2'].x=3000;const far=q.sample(3/60,pose);A.deepEqual(far.capacityExceeded,['target-1>target-2','target-2>target-3']);A.ok(far.glow.some(r=>r.emitterId==='target-2'));
   const r=H.defaults();r.jumpDelay=0;r.targets.reverse();const rev=H.compile(r);A.deepEqual(rev.meta.plans.map(t=>t.edge),['source>target-4','target-4>target-3','target-3>target-2','target-2>target-1']);A.deepEqual(at(rev,4),at(H.compile(clone(r)),4));
  });
+ test('source heading rotates first departure tangent without moving endpoints or later links',()=>{
+  const c=H.defaults();c.jumpDelay=0;c.jitter=0;c.smoothness=0;c.arcGap=90;
+  const p=H.compile(c),s=at(p,3),d=clone(c);d.source.rotation=35;const q=H.compile(d),v=at(q,3);
+  A.deepEqual(q.meta,p.meta);A.notDeepEqual(v.arcs[0].positions,s.arcs[0].positions);A.deepEqual(v.arcs.slice(1),s.arcs.slice(1));A.deepEqual(v.glow,s.glow);
+  A.deepEqual(v.branches.filter(x=>x.emitterId!=='target-1'),s.branches.filter(x=>x.emitterId!=='target-1'));
+  for(const r of [s.arcs[0],v.arcs[0]]){near(r.sections[0].x,64);near(r.sections[0].y,256);near(r.sections.at(-1).x,144);near(r.sections.at(-1).y,192);}
+  d.source.rotation=360;A.deepEqual(at(H.compile(d),3).arcs,s.arcs);
+  d.source={...c.source,type:'bone',space:'local',name:'weapon',x:0,y:0};const b=H.compile(d),poses={source:{x:64,y:256,scale:1,rotation:35}};A.deepEqual(b.sample(3/60,poses).arcs,v.arcs);
+  d.source=clone(c.source);d.source.rotation=-180;d.targets[0].anchor.x=66;d.targets[0].anchor.y=256;const short=at(H.compile(d),3);A.ok(short.arcs[0].positions.every(Number.isFinite));near(short.arcs[0].sections.at(-1).x,66);
+ });
+ test('glow seed changes only local radius, deterministic across seeks and keeps timing/alpha',()=>{
+  const c=H.defaults();c.jumpDelay=0;c.restrikes=true;c.timeJitter=0;const p=H.compile(c),base=at(p,8);
+  for(const seed of [1234,-2147483648,2147483647]){const d=clone(c);d.targets[0].layers.glow.seed=seed;const q=H.compile(d),next=at(q,8);
+   A.deepEqual(q.meta,p.meta);A.deepEqual(next.arcs,base.arcs);A.deepEqual(next.branches,base.branches);A.deepEqual(next.glow.filter(x=>x.emitterId!=='target-1'),base.glow.filter(x=>x.emitterId!=='target-1'));
+   const a=base.glow.filter(x=>x.emitterId==='target-1'),b=next.glow.filter(x=>x.emitterId==='target-1');A.equal(a.length,b.length);A.ok(a.length>0);A.notDeepEqual(a.map(x=>x.radius),b.map(x=>x.radius));
+   for(let i=0;i<a.length;i++){A.deepEqual({...a[i],radius:0},{...b[i],radius:0});A.ok(b[i].radius>=a[i].radius*.9&&b[i].radius<=a[i].radius);}
+   at(q,30);at(q,2);A.deepEqual(at(q,8),next);
+  }
+ });
  test('seek order, finite geometry and whole-effect capacity over varied presets',()=>{
   for(let i=0;i<16;i++){const c=H.defaults();c.jumpDelay=i%6;c.jitter=(i%5)/4;c.smoothness=(i%4)/3;c.arcGap=6+i;c.branchCount=i%5;c.sparkGap=15+i*3;c.targets[0].seed=i-8;c.targets[0].anchor.x+=i*4;c.targets[3].anchor.y-=i*4;const p=H.compile(c),first=at(p,13);at(p,32);at(p,2);A.deepEqual(at(p,13),first);for(let f=0;f<40;f++){const s=at(p,f);A.ok(all(s).length<=p.meta.primitiveBound);A.ok(verts(s)<=p.meta.vertexBound);for(const r of all(s)){A.ok(r.rgba.every(Number.isFinite));if(r.kind==='ribbon'){A.ok(r.positions.every(Number.isFinite));A.ok(r.indices.every(x=>Number.isInteger(x)&&x>=0&&x<r.positions.length/2));A.ok(r.errorBound<=.25);}else A.ok([r.x,r.y,r.radius].every(Number.isFinite));}}}
  });
