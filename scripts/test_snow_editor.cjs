@@ -33,14 +33,14 @@ test('one shot stops and scenic playback wraps at authored duration not export c
  s.reverse();s.play();s.tick(1);assert.equal(s.time,0);assert.equal(s.playing,false);
 });
 test('package pins actual modules and copies settings, assets and unique safe paths',()=>{
- const config=Snow.defaults(),src=id=>'// '+id,asset={skeletonName:'body.json',skeleton:'{}',atlasName:'body.atlas',atlas:'atlas',images:new Map([['page.png','bytes']]),skin:'default',animation:'idle'};
+ const config=Snow.defaults(),src=id=>'// '+id,asset={skeletonName:'body.json',skeleton:'{}',atlasName:'body.atlas',atlas:'atlas',images:new Map([['page.png','bytes']]),pageBindings:[{name:'page.png',key:'page.png'}],skin:'default',animation:'idle'};
  const pack=Ex().packageEntries({settings:config,asset,source:src,target:'webgpu'});
  const map=new Map(pack.entries.map(e=>[e.name,e.data]));assert.equal(map.size,pack.entries.length);
  assert.equal(JSON.parse(map.get('package.json')).dependencies['pixi.js'],'8.22.0');
  assert.ok(map.get('Snow.mjs').includes('FxSnowRuntime.createSnow'));assert.ok(map.get('FxSnow.mjs').includes('fxSnowCore'));
  assert.ok(map.get('example.js').includes('createSnow'));assert.ok(map.has('public/assets/page.png'));
  assert.deepEqual(JSON.parse(map.get('preset.json')).settings,Snow.normalize(config));
- assert.throws(()=>Ex().packageEntries({settings:config,asset:{...asset,images:new Map([['../page.png','bytes']])},source:src,target:'webgl'}),/Unsafe/);
+ assert.throws(()=>Ex().packageEntries({settings:config,asset:{...asset,images:new Map([['../page.png','bytes']]),pageBindings:[{name:'../page.png',key:'../page.png'}]},source:src,target:'webgl'}),/Unsafe/);
 });
 test('frame contract is half-open, bounded and intentionally crops the snow field',()=>{
  const c=Snow.defaults(),m=Ex().manifest(c,{actual:'webgl2'},60);

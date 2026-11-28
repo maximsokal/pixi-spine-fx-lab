@@ -59,6 +59,19 @@
   const x=(d*dx-b*dy)/det,y=(a*dy-c*dx)/det;
   return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:null;
  }
+ function pageBindings(pages,images){
+  if(!Array.isArray(pages)||!pages.length||!(images instanceof Map))throw Error('Empty Snowfall atlas or invalid textures');
+  const canonical=name=>{if(typeof name!=='string')throw Error('Invalid image name');const n=name.replaceAll('\\','/');if(!n||n.startsWith('/')||/^[A-Za-z]:/.test(n)||/[\x00-\x1f\x7f]/.test(n)||n.split('/').some(x=>!x||x==='.'||x==='..'))throw Error('Unsafe image path '+name);return n;};
+  const inputs=new Map(),used=new Set(),seen=new Set();
+  for(const [key,blob] of images){const n=canonical(key);if(inputs.has(n)||!blob)throw Error('Ambiguous Snowfall texture '+key);inputs.set(n,key);}
+  return pages.map(page=>{
+   const name=page.name,n=canonical(name);if(seen.has(n))throw Error('Duplicate atlas page '+name);seen.add(n);
+   let key=inputs.get(n);
+   if(key===undefined){const matches=[...inputs].filter(([p])=>p.split('/').at(-1)===n.split('/').at(-1));if(matches.length!==1)throw Error('Missing or ambiguous atlas page '+name);key=matches[0][1];}
+   if(used.has(key))throw Error('Reused atlas texture '+key);used.add(key);
+   return {name,key};
+  });
+ }
  function mount(){
   const {PIXI,spine,FxSnowRuntime,FxSnowPose,FxCurveEditor,FxColorUi}=root,$=id=>document.getElementById(id);
   let scene=null,asset=null,busy=false,editors=[],lockedControls=[];
@@ -168,9 +181,8 @@
    if(!version?.startsWith('4.2.'))throw Error('Snowfall requires Spine 4.2; received '+version);
    const atlas=new spine.TextureAtlas(await source.atlas.text());let model=null;
    try{
-    for(const page of atlas.pages){const name=page.name.replaceAll('\\','/');let blob=source.images.get(name);
-     if(!blob){const matches=[...source.images].filter(([k])=>k.split('/').at(-1)===name.split('/').at(-1));if(matches.length===1)blob=matches[0][1];}
-     if(!blob)throw Error('Missing atlas page '+name);
+    const bindings=pageBindings(atlas.pages,source.images);
+    for(const [i,page] of atlas.pages.entries()){const blob=source.images.get(bindings[i].key);
      const url=URL.createObjectURL(blob);let image;
      try{image=new Image();image.src=url;await image.decode();}finally{URL.revokeObjectURL(url);}
      page.setTexture(spine.SpineTexture.from(new PIXI.ImageSource({resource:image,alphaMode:page.pma?'premultiplied-alpha':'premultiply-alpha-on-upload',autoGenerateMipmaps:false})));
@@ -179,7 +191,7 @@
     const data=parser.readSkeletonData(raw);model=new spine.Spine({skeletonData:data,autoUpdate:false});model.update(0);
     const b=model.getLocalBounds();if(!(b.width>0&&b.height>0))throw Error('Empty Spine skeleton');
     const scale=Math.min(260/b.width,330/b.height,2);model.scale.set(scale);model.position.set(256-(b.x+b.width/2)*scale,260-(b.y+b.height/2)*scale);
-    return {model,atlas,data,version};
+    return {model,atlas,data,version,pageBindings:bindings};
    }catch(e){model?.destroy();atlas.dispose();throw e;}
   }
   async function makeScene(which,source,settings,skin='',animation=''){
@@ -191,7 +203,7 @@
     if(source){sp=await readSpine(source);host.addChild(sp.model);
      FxSnowPose.seek(sp.model,settings,0,{skin:sp.data.skins.some(s=>s.name===skin)?skin:'',animation:sp.data.animations.some(a=>a.name===animation)?animation:''});}
     fx=FxSnowRuntime.createSnow({PIXI,app,host,model:sp?.model??null,settings});
-    return {app,host,fx,model:sp?.model??null,data:sp?.data,actual:backend(app,which),
+    return {app,host,fx,model:sp?.model??null,data:sp?.data,pageBindings:sp?.pageBindings??[],actual:backend(app,which),
      dispose(){fx.destroy();if(sp){sp.model.destroy();sp.atlas.dispose();}app.destroy(true);}};
    }catch(e){fx?.destroy();if(sp){sp.model.destroy();sp.atlas.dispose();}if(initialized)app.destroy(true);throw e;}
   }
@@ -261,10 +273,10 @@
   }
   refresh();switchScene(null);
   return Object.freeze({session,makeScene,status,setBusy,get busy(){return busy},get scene(){return scene},
-   get asset(){return asset?{...asset,skin:$('skin').value,animation:$('animation').value}:null},
+   get asset(){return asset?{...asset,pageBindings:scene.pageBindings.map(p=>({...p})),skin:$('skin').value,animation:$('animation').value}:null},
    getSettings:()=>session.settings,getActualBackend:()=>scene?.actual??{actual:'unavailable',requested:$('backend').value},
    setSettings:c=>attempt(()=>session.replace(c),true),seek:t=>attempt(()=>session.seek(t)),
    stop:()=>session.pause(),refreshTime});
  }
- return {createSession,mount};
+ return {createSession,pageBindings,mount};
 });

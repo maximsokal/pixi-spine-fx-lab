@@ -11,6 +11,22 @@
   if(!n||n.startsWith('/')||/^[A-Za-z]:/.test(n)||n.split('/').some(x=>!x||x==='.'||x==='..')||/[\x00-\x1f]/.test(n))throw Error('Unsafe asset path '+name);
   return n;
  }
+ function assetArchive(asset){
+  const portable=n=>/^[A-Za-z0-9._/-]+$/.test(n)&&n.split('/').every(p=>!p.endsWith('.')&&!/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(p));
+  const used=new Set(),conflict=n=>{const x=n.toLowerCase();return [...used].some(k=>k===x||k.startsWith(x+'/')||x.startsWith(k+'/'));};
+  function reserve(name,fallback,ext){const n=safe(name);let path=n,i=0;if(!portable(n)||conflict(n)){path=fallback+'.'+ext;while(conflict(path))path=fallback+'_'+String(++i).padStart(3,'0')+'.'+ext;}used.add(path.toLowerCase());return 'assets/'+path;}
+  const sk=safe(asset.skeletonName),at=safe(asset.atlasName);
+  const ext=/\.(json|skel)$/i.exec(sk);if(!ext||! /\.atlas$/i.test(at))throw Error('Invalid skeleton or atlas extension');
+  const skeleton=reserve(sk,'skeleton',ext[1].toLowerCase()),atlas=reserve(at,'skeleton','atlas');
+  if(!Array.isArray(asset.pageBindings)||!asset.pageBindings.length||!(asset.images instanceof Map))throw Error('Missing accepted atlas page bindings');
+  const seen=new Set(),keys=new Set(),pages=[];
+  for(const {name,key} of asset.pageBindings){
+   const n=safe(name),type=/\.(png|webp|jpe?g)$/i.exec(n);
+   if(!type||seen.has(n)||keys.has(key)||!asset.images.get(key))throw Error('Invalid accepted atlas page binding '+name);
+   seen.add(n);keys.add(key);pages.push({name,path:reserve(n,'page_'+String(pages.length).padStart(3,'0'),type[1].toLowerCase()),data:asset.images.get(key)});
+  }
+  return {skeleton,atlas,pages};
+ }
  function manifest(settings,backend,frames){
   const c=Core.createPlan(settings).settings;
   if(!Number.isInteger(frames)||frames<1||frames>c.exportFrames)throw RangeError('AIR-02 invalid frame count');
@@ -22,9 +38,10 @@
  function packageEntries({settings,asset=null,source,target}){
   if(!['webgl','webgpu'].includes(target))throw TypeError('AIR-02 invalid target');
   const c=Core.createPlan(settings).settings;
+  const paths=asset?assetArchive(asset):null;
   const preset={schemaVersion:1,effectId:ID,settings:c,rendererPreference:target,
    compatibility:{pixi:'8.22.0',spine:'4.2.120',vite:'7.1.12'},
-   asset:asset?{skeleton:'assets/'+safe(asset.skeletonName),atlas:'assets/'+safe(asset.atlasName),skin:asset.skin||'',animation:asset.animation||''}:null};
+   asset:asset?{skeleton:paths.skeleton,atlas:paths.atlas,sourceSkeletonName:asset.skeletonName,sourceAtlasName:asset.atlasName,pages:paths.pages.map(({name,path})=>({name,path})),skin:asset.skin||'',animation:asset.animation||''}:null};
   const json=JSON.stringify(preset,null,2);
   const demo=[
    "import * as PIXI from 'pixi.js';",
@@ -37,7 +54,7 @@
    " const actual=app.renderer.gl?'webgl':app.renderer.type===PIXI.RendererType.WEBGPU?'webgpu':'unknown';",
    " if(actual!==p.rendererPreference)throw Error('Renderer mismatch: '+actual);",
    " document.body.append(app.canvas);const host=new PIXI.Container();app.stage.addChild(host);let model=null;",
-   " if(p.asset){PIXI.Assets.add({alias:'snow-skel',src:p.asset.skeleton});PIXI.Assets.add({alias:'snow-atlas',src:p.asset.atlas});await PIXI.Assets.load(['snow-skel','snow-atlas']);",
+   " if(p.asset){PIXI.Assets.add({alias:'snow-skel',src:p.asset.skeleton});PIXI.Assets.add({alias:'snow-atlas',src:p.asset.atlas,data:{images:Object.fromEntries(p.asset.pages.map(({name,path})=>[name,path]))}});await PIXI.Assets.load(['snow-skel','snow-atlas']);",
    " model=SpineRuntime.Spine.from({skeleton:'snow-skel',atlas:'snow-atlas',autoUpdate:false});host.addChild(model);model.update(0);",
    " const b=model.getLocalBounds(),scale=Math.min(260/b.width,330/b.height,2);model.scale.set(scale);model.position.set(256-(b.x+b.width/2)*scale,260-(b.y+b.height/2)*scale);",
    " }",
@@ -62,8 +79,8 @@
    {name:'package.json',data:JSON.stringify({name:'pixi-spine-snow-'+target,private:true,type:'module',scripts:{dev:'vite --host 0.0.0.0',build:'vite build'},dependencies:{'pixi.js':'8.22.0','@esotericsoftware/spine-pixi-v8':'4.2.120'},devDependencies:{vite:'7.1.12'}},null,2)},
    {name:'index.html',data:'<!doctype html><html lang="en"><meta charset="utf-8"><title>Snowfall</title><script type="module" src="/example.js"></script></html>'}
   ];
-  if(asset){entries.push({name:'public/assets/'+safe(asset.skeletonName),data:asset.skeleton},{name:'public/assets/'+safe(asset.atlasName),data:asset.atlas});
-   for(const [name,blob] of asset.images)entries.push({name:'public/assets/'+safe(name),data:blob});}
+  if(asset){entries.push({name:'public/'+paths.skeleton,data:asset.skeleton},{name:'public/'+paths.atlas,data:asset.atlas});
+   for(const p of paths.pages)entries.push({name:'public/'+p.path,data:p.data});}
   if(new Set(entries.map(e=>e.name)).size!==entries.length)throw Error('Duplicate package path');
   return {preset,entries};
  }
