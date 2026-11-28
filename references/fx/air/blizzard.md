@@ -1,18 +1,18 @@
 # AIR-03 — Blizzard
 
-**Status:** specification-only. [Issue #25](https://github.com/maximsokal/pixi-spine-fx-lab/issues/25); [reviewed B01–B06 plan](https://github.com/maximsokal/pixi-spine-fx-lab/issues/25#issuecomment-7240625604). No working editor or exports claimed.
+**Status:** specification-only. [Issue #25](https://github.com/maximsokal/pixi-spine-fx-lab/issues/25); [reviewed B01–B06 plan](https://github.com/maximsokal/pixi-spine-fx-lab/issues/25#issuecomment-7240625604). B02 pure numerical kernel is implemented; no working editor or exports claimed. Run `node --test scripts/test_blizzard_core.cjs` from a full checkout.
 
 ## Numerical and visual contract
 
-512×512 logical px; authored 60 FPS. Default 60-frame pre-rolled loop, optional scenic 600–960-frame loops, causal 40-frame one-shot (no pre-roll), final ten frames fade to a transparent last authored frame. PNG samples are half-open, i/60. Loop seam is checked separately at N/60.
+512×512 logical px; authored 60 FPS. Default 60-frame pre-rolled loop, optional scenic 600–960-frame loops, causal 40-frame one-shot (no pre-roll), final ten frames fade to a transparent last authored frame; layer time offsets additionally respect their local terminal fade. PNG samples are half-open, i/60. Loop seam is checked separately at N/60.
 
 75 births/s total per emitter at density .75, effective rate particleRate*density/.75, further modulated by emissionRateCurve. Deterministic 80/20 streak/foreground allocation by event index; toggles never redistribute events. Storm intensity modulates opacity independently. Whiteout is disabled by default and does not affect particle motion. Zero rate or density means no particle births, but explicitly enabled whiteout can remain visible.
 
 Angle is clockwise in screen space from +X. Zero wind stops advection; bounded lifetimes 3s streak / 1.2s foreground do not divide by speed. Drift-speed curve changes integrated displacement. Seeded bounded turbulence, independent layer seeds, and local support edge fade/clipping precede emitter transforms. Wrap only outside visible local support, with 864px padded wind-space field. Use physical arc-length launch sites on a perpendicular line. Spatial jitter is 0–.65 of the nearest half-gap, not ±65% of the raw gap or a change to FxSpacing's shared cap. Preserve site order. Rate edits change timestamps, spacing edits change positions.
 
-Maximum four emitters, stable IDs, independent layer enable/visibility, XY/rotation, time offset, seed, alpha/blend, world/local or Spine bone/slot/attachment anchors and inheritance. Missing anchor hides only the affected layer. Natural, stylized and magical palettes use editable RGBA stops. Curves preserve v1 handles and domains. Live budget across all emitters includes whiteout quads; 512/2048/4096. Reject over-budget or invalid configurations before preview replacement. 4096 events per emitter; no silent truncation. Actual simultaneous live counts matter, not total events over a scenic period.
+Maximum four emitters, stable IDs, independent layer enable/visibility, XY/rotation, time offset, seed, alpha/blend, world/local or Spine bone/slot/attachment anchors and inheritance. Missing anchor hides only the affected layer. Natural, stylized and magical palettes use editable RGBA stops. Curves preserve v1 handles and domains. Live budget across all emitters includes whiteout quads; 512/2048/4096. Reject over-budget or invalid configurations before preview replacement. 4096 events per emitter; no silent truncation. Actual simultaneous live counts matter, not total events over a scenic period. The CPU guard sums conservative per-layer maxima from complete periods plus circular birth-window counts, including closed-window floating-point slack; it may refuse configurations whose layer peaks never coincide. The budget includes alpha-zero live particles. Drift displacement uses a bounded midpoint integral table split at authored curve keys; not exact analytical integration for arbitrary Bezier curves. Artist-edited mismatched loop endpoints or stepped curves can introduce intentional discontinuities. Bounds are authored local/offset bounds; Spine anchor resolution is a B03 renderer concern.
 
-Proposed native pooled particle batches and independent whiteout quad; same source for preview, PNG and both developer ZIPs, unchanged pinned vendors. No GPU verification, runnable implementation or release status yet.
+Proposed native pooled particle batches and independent whiteout quad; same source for preview, PNG and both developer ZIPs, unchanged pinned vendors. No GPU verification, runnable editor or release status yet.
 
 ## Machine-checkable Blueprint
 
@@ -526,7 +526,7 @@ Proposed native pooled particle batches and independent whiteout quad; same sour
   "implementation": {
     "status": "specification-only",
     "sourceFiles": [],
-    "notes": "B01 blueprint/routing only. B02–B06 pending."
+    "notes": "B01 blueprint and B02 CPU kernel present; B03–B06 pending. No reference implementation or export certification."
   }
 }
 ```
