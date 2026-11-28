@@ -276,7 +276,7 @@
       "issue": 25,
       "title": "Blizzard",
       "priority": "P1",
-      "localEffectId": null,
+      "localEffectId": "fx.air.blizzard",
       "coreIssues": [
         3,
         4,

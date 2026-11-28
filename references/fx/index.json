@@ -412,6 +412,30 @@
       ]
     },
     {
+      "effectId": "fx.air.blizzard",
+      "category": "air",
+      "path": "references/fx/air/blizzard.md",
+      "keywords": [
+        "blizzard",
+        "snowstorm",
+        "snow storm",
+        "снежная буря",
+        "метель",
+        "снігова буря",
+        "хуртовина",
+        "Schneesturm",
+        "tempête de neige"
+      ],
+      "status": "specification-only",
+      "dependsOnCoreIssues": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
       "effectId": "fx.game.loot-sparkle",
       "category": "game",
       "path": "references/fx/game/loot-sparkle.md",
