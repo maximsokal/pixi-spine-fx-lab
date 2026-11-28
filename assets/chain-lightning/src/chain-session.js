@@ -8,7 +8,7 @@
  function options(v,a){if(!v||typeof v.animation!=='string'||typeof v.skin!=='string'||!finite(v.speed)||v.speed<0||v.speed>4||typeof v.visible!=='boolean')fail('pose options');if(v.animation&&!a?.animations.includes(v.animation)||v.skin&&!a?.skins.includes(v.skin))fail('unknown animation or skin');return Object.freeze({animation:v.animation,skin:v.skin,speed:v.speed,visible:v.visible});}
  function pose(asset,t,input){
   if(!finite(t)||t<0||t>60)fail('pose time');const o=options(input,asset);if(!asset)return;
-  const m=asset.model,s=m.skeleton,physics=s.physicsConstraints?.length>0,p=cache.get(m),frame=physics&&o.animation&&o.speed>0?Math.floor(t*FPS+1e-8):0;
+  const m=asset.model,s=m.skeleton,physics=s.physicsConstraints?.length>0,p=cache.get(m),frame=physics&&o.speed>0?Math.floor(t*FPS+1e-8):0;
   let at=p?.frame??0;
   try{
    if(!p||p.animation!==o.animation||p.skin!==o.skin||(physics&&(p.speed!==o.speed||frame<at))){

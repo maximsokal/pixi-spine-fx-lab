@@ -20,8 +20,8 @@
    cache.set(model,{animation,skin,speed,frame:0});return loader.anchorPoses(model);
   }
   // Physics advances on authored frames, never on browser RAF deltas or tile count.
-  // Zero speed freezes at the initial animation pose; subdivide faster playback.
-  const frame=animation&&speed>0?Math.min(MAX_FRAMES,Math.floor(seconds*FPS+1e-8)):0;
+  // Zero speed freezes the initial pose; subdivide faster playback.
+  const frame=speed>0?Math.min(MAX_FRAMES,Math.floor(seconds*FPS+1e-8)):0;
   const steps=Math.max(1,Math.ceil(speed)),dt=speed/(FPS*steps),previous=cache.get(model);
   let at=previous?.frame??0;
   try{
