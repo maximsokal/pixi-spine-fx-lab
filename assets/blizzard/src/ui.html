@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Blizzard FX Lab</title>
+<style>
+:root{font:14px/1.48 system-ui,-apple-system,Segoe UI,sans-serif;color:#eceff7;background:#111520}
+*{box-sizing:border-box}body{margin:0}button,select,input,textarea{font:inherit}
+button,select,input[type=number],textarea{border:1px solid #3b465c;background:#20293a;color:#eef2fc;border-radius:7px;padding:7px}
+button{cursor:pointer}button:hover{background:#33425a}button:disabled{opacity:.45;cursor:default}
+button.primary{background:#097dba;color:white;border-color:#52c6f2}
+header{height:58px;display:flex;gap:14px;align-items:center;justify-content:space-between;padding:8px 18px;background:#171d29;border-bottom:1px solid #313b50}
+h1{font-size:18px;letter-spacing:.2px;margin:0}header span{font-size:12px;color:#95a3bf}
+main{display:grid;grid-template-columns:minmax(370px,1fr) 365px;height:calc(100dvh - 58px);min-height:510px}
+.viewport-panel{min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:radial-gradient(ellipse at 50% 35%,#28304a,#10151f 70%);padding:14px}
+#preview{position:relative;width:512px;height:512px;flex:none;transform-origin:center;box-shadow:0 14px 65px #0008;border:1px solid #64718c55}
+#preview.checker{background-color:#eef2f5;background-image:linear-gradient(45deg,#bcc6d1 25%,transparent 25%),linear-gradient(-45deg,#bcc6d1 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#bcc6d1 75%),linear-gradient(-45deg,transparent 75%,#bcc6d1 75%);background-size:26px 26px;background-position:0 0,0 13px,13px -13px,-13px 0}
+#preview.dark{background:#0e1019}#preview.light{background:#faf8f3}
+#preview canvas{display:block}
+#originHandle,#dustHandle{position:absolute;width:18px;height:18px;border-radius:100%;border:2px solid #76e8ff;background:#10152088;left:0;top:0;transform:translate(-50%,-50%);cursor:move;z-index:2;box-shadow:0 0 0 2px #111a}
+#dustHandle{background:#a8ced7;border-color:#45697b;z-index:4}
+#originHandle[hidden],#dustHandle[hidden]{display:none}
+#trajectoryHandles{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:visible}
+#trajectoryHandles[hidden]{display:none}
+#trajectoryHandles circle{pointer-events:all;cursor:move;stroke:#182030;stroke-width:1.5px}
+#trajectoryHandles circle:hover{stroke:white;stroke-width:2.5px}
+
+.preview-tools{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:100%}
+.preview-tools label{display:flex;gap:6px;align-items:center}.preview-tools select{max-width:110px}
+aside{background:#1b2331;overflow-y:auto;min-height:0;border-left:1px solid #384457;padding:12px 15px 35px;scrollbar-color:#65718c transparent}
+details{border:1px solid #39445a;border-radius:9px;margin:9px 0;background:#1e2939}
+summary{cursor:pointer;font-weight:650;padding:11px 12px;user-select:none}details>.inside{padding:0 12px 12px}
+label.control{display:grid;grid-template-columns:minmax(0,1fr) minmax(85px,130px);gap:6px;align-items:center;margin:9px 0;font-size:13px}
+label.control output{font-variant-numeric:tabular-nums;color:#a7e8ff}
+label.control input[type=range]{grid-column:1/-1;width:100%;accent-color:#2eb9ee}
+label.control input[type=color]{width:85px;height:34px;padding:2px}
+label.control input, label.control select{min-width:0;max-width:100%}label.control input[type=checkbox]{justify-self:end}
+.layer-row{border-top:1px solid #3b4656;padding:9px 0}.layer-row .row{display:flex;justify-content:space-between;align-items:center;gap:7px}
+.layer-coord{display:flex;gap:8px}.layer-coord label{display:flex;align-items:center;gap:4px;font-size:12px}.layer-coord input{width:72px}
+textarea{width:100%;min-height:95px;resize:vertical;font-family:ui-monospace,Consolas,monospace;font-size:11px}
+.small{font-size:12px;color:#abb8d0}.stack{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+#status{padding:9px 11px;color:#b7c8e5;border:1px solid #36445c;border-radius:6px;min-height:38px;max-width:100%}
+#status.error{color:#ffb5b3;border-color:#a34d55}
+#curveMounts details{background:#202c3f}
+@media(max-width:850px){main{height:auto;display:flex;flex-direction:column}.viewport-panel{min-height:640px}aside{border-left:0;overflow:visible}.preview-tools{padding-bottom:12px}}
+.blizzard-handle{position:absolute;z-index:3;width:18px;height:18px;border-radius:50%;padding:0;transform:translate(-50%,-50%);border:2px solid #93eaff;background:#243650cc;cursor:move;touch-action:none}
+.blizzard-handle[hidden]{display:none}#handle-streaks{border-color:#aabfff;z-index:2}#handle-foreground{border-color:#e2ffff;z-index:4}#handle-whiteout{border-color:#c7aaff;z-index:5}#handle-origin{width:24px;height:24px;border-color:#f6c97c;z-index:6}
+</style>
+</head><body><header><div><h1>Blizzard FX Lab</h1><span>AIR-03 • offline • Spine 4.2 / Pixi 8</span></div><span id="backendActual">Initializing…</span></header>
+<main><section class="viewport-panel" aria-label="Effect preview">
+<div class="preview-tools"><button id="play">Play</button><button id="reverse">Reverse</button><button id="reset">Reset</button><label>Frame <input type="range" id="frame" min="0" max="59" step="1" value="0"></label><output id="frameLabel">0 / 59</output></div>
+<div id="preview" class="dark"><button id="handle-origin" class="blizzard-handle" aria-label="Drag emitter origin" hidden></button><button id="handle-foreground" class="blizzard-handle" aria-label="Drag foreground layer" hidden></button><button id="handle-streaks" class="blizzard-handle" aria-label="Drag streak layer" hidden></button><button id="handle-whiteout" class="blizzard-handle" aria-label="Drag whiteout layer" hidden></button></div><div class="preview-tools">
+<label>Background <select id="background"><option value="dark">Dark</option><option value="checker">Checkerboard</option><option value="light">Light</option></select></label>
+<label>Zoom <select id="zoom"><option value=".5">50%</option><option value="1" selected>100%</option><option value="2">200%</option></select></label>
+<label>Backend <select id="backend"><option value="webgl2">WebGL 2</option><option value="webgl1">WebGL 1</option><option value="webgpu">WebGPU</option></select></label></div>
+<div id="metrics"></div><div id="status" role="status" aria-live="polite">Starting…</div></section>
+<aside aria-label="Blizzard settings">
+<details open><summary>Spine assets</summary><div class="inside"><div class="stack"><button id="sample">Load Doctor head sample</button><button id="chooseFiles">Load Spine export…</button><input id="files" type="file" accept=".json,.skel,.atlas,.png,.webp,.jpg,.jpeg" multiple hidden></div>
+<p id="assetLabel">No Spine model</p><label class="control">Animation <select id="animation"></select></label><label class="control">Skin <select id="skin"></select></label><label class="control">Show Spine <input id="showSpine" type="checkbox" checked></label></div></details>
+<details open><summary>Storm, spacing, timing and quality</summary><div class="inside" id="controls"></div></details>
+<details open><summary>Independent emitters and layers</summary><div class="inside" id="emitterControls"></div></details>
+<details><summary>RGBA gradient</summary><div class="inside" id="gradient"></div></details>
+<details><summary>Six editable curves</summary><div class="inside" id="curves"></div></details>
+<details open><summary>Preset</summary><div class="inside"><div class="stack"><button id="savePreset">Save preset JSON</button><button id="loadPreset">Import preset</button><input id="presetFile" type="file" accept=".json,application/json" hidden><button id="defaults">Reset settings</button></div><p class="small">Fixed 512 × 512 field. Background and zoom are preview-only. PNG and developer ZIP export are not available until B05. Actual GPU support is reported, not assumed.</p></div></details>
+</aside></main>
+<!-- VENDOR -->
+<!-- CORES -->
+<script id="sampleData" type="application/json">__SAMPLE_DATA__</script>
+<!-- APP -->
+<!-- B05 export integration pending -->
+</body></html>
