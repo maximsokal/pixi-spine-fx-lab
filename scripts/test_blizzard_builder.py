@@ -21,7 +21,7 @@ class BlizzardBuilderTests(unittest.TestCase):
         self.write(self.template / 'sample/p.png', 'fake bytes')
         for name in [*VENDORS, *(name for name, _ in CORES), 'licenses/spine.txt', 'licenses/pixi.txt']:
             self.write(self.template / name, '// ' + name)
-        for name in [*(name for name, _ in EFFECT), 'blizzard-editor.js']:
+        for name in [*(name for name, _ in EFFECT), 'blizzard-editor.js', 'blizzard-export.js']:
             self.write(self.effect / name, '// ' + name + '\nconst example = "</script>";')
         self.write(self.effect / 'ui.html', '\n'.join(MARKERS))
 
@@ -32,7 +32,7 @@ class BlizzardBuilderTests(unittest.TestCase):
 
     def test_assembly_order_escape_and_sample(self):
         html = build(self.root)
-        order = [*VENDORS, *(identifier for _, identifier in CORES), *(identifier for _, identifier in EFFECT), 'runtimeLicenses', 'fxBlizzardEditor']
+        order = [*VENDORS, *(identifier for _, identifier in CORES), *(identifier for _, identifier in EFFECT), 'runtimeLicenses', 'fxBlizzardEditor', 'fxBlizzardExport']
         offsets = [html.index(v) for v in order]
         self.assertEqual(offsets, sorted(offsets))
         for marker in MARKERS:

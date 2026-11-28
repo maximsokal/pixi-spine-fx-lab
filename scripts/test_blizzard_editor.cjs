@@ -56,11 +56,11 @@ function run(read,A,T){
    A.equal(Pose.time({...settings,mode:'oneShot',durationFrames:40},10),39/60);A.throws(()=>Pose.time(settings,NaN));
   }finally{model.destroy();}
  });
- T('UI source contains all blueprint parameters and independent handles, no premature export',()=>{
+ T('UI source contains all blueprint parameters and independent handles, export controls',()=>{
   const doc=JSON.parse(read('references/fx/air/blizzard.md').match(/\x60\x60\x60json\s*\n([\s\S]*?)\n\x60\x60\x60/)[1]),ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
   A.equal(new Set(ids).size,ids.length);for(const m of src.matchAll(/\$\('([^']+)'\)/g))A.ok(ids.includes(m[1]),m[1]);
   for(const p of doc.parameters)A.ok(src.includes(p.key),p.key);for(const c of doc.curves)A.ok(src.includes("'"+c.key+"'"),c.key);
-  for(const l of doc.layers)A.ok(ids.includes('handle-'+l.id));for(const id of ['bake','webglZip','webgpuZip'])A.ok(!ids.includes(id));
+  for(const l of doc.layers)A.ok(ids.includes('handle-'+l.id));for(const id of ['bake','webglZip','webgpuZip'])A.ok(ids.includes(id));
  });
  T('editor mount wires authoring controls to real CPU particle runtime using a DOM/app fixture',async()=>{
   const elements=new Map(),all=[],canvas=()=>({width:0,height:0,tagName:'canvas',getContext:()=>({createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){}}),remove(){},getBoundingClientRect:()=>({width:512,height:512})});

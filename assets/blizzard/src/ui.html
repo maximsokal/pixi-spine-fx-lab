@@ -58,11 +58,11 @@ textarea{width:100%;min-height:95px;resize:vertical;font-family:ui-monospace,Con
 <details open><summary>Independent emitters and layers</summary><div class="inside" id="emitterControls"></div></details>
 <details><summary>RGBA gradient</summary><div class="inside" id="gradient"></div></details>
 <details><summary>Six editable curves</summary><div class="inside" id="curves"></div></details>
-<details open><summary>Preset</summary><div class="inside"><div class="stack"><button id="savePreset">Save preset JSON</button><button id="loadPreset">Import preset</button><input id="presetFile" type="file" accept=".json,application/json" hidden><button id="defaults">Reset settings</button></div><p class="small">Fixed 512 × 512 field. Background and zoom are preview-only. PNG and developer ZIP export are not available until B05. Actual GPU support is reported, not assumed.</p></div></details>
+<details open><summary>Preset</summary><div class="inside"><div class="stack"><button id="savePreset">Save preset JSON</button><button id="loadPreset">Import preset</button><input id="presetFile" type="file" accept=".json,application/json" hidden><button id="defaults">Reset settings</button></div><div class="stack"><button class="primary" id="bake">Bake PNG ZIP</button><button id="cancel" disabled>Cancel</button><button id="webglZip">WebGL dev ZIP</button><button id="webgpuZip">WebGPU dev ZIP</button></div><p class="small">Fixed 512 × 512 field. Background and zoom are preview-only. PNG export excludes Spine pixels, guides and preview background. Actual GPU support is reported, not assumed.</p></div></details>
 </aside></main>
 <!-- VENDOR -->
 <!-- CORES -->
 <script id="sampleData" type="application/json">__SAMPLE_DATA__</script>
 <!-- APP -->
-<!-- B05 export integration pending -->
+<!-- EXPORT -->
 </body></html>

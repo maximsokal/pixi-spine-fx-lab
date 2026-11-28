@@ -15,8 +15,10 @@ CORES = (("src/curve-core.js", "fxCurveCore"),
          ("src/color-ui.js", "fxColorUi"))
 EFFECT = (("blizzard-core.js", "fxBlizzardCore"),
           ("blizzard-runtime.js", "fxBlizzardRuntime"),
-          ("blizzard-pose.js", "fxBlizzardPose"))
-MARKERS = ("<!-- VENDOR -->", "<!-- CORES -->", "<!-- APP -->", "__SAMPLE_DATA__")
+          ("blizzard-pose.js", "fxBlizzardPose"),
+          ("blizzard-png.js", "fxBlizzardPng"),
+          ("zip-core.js", "fxBlizzardZip"))
+MARKERS = ("<!-- VENDOR -->", "<!-- CORES -->", "<!-- APP -->", "<!-- EXPORT -->", "__SAMPLE_DATA__")
 
 
 def escape_script(source):
@@ -43,8 +45,8 @@ def build(root):
     notices = text(local(template, 'licenses/spine.txt')) + '\n' + text(local(template, 'licenses/pixi.txt'))
     core.append(script(notices, 'runtimeLicenses', 'text/plain'))
     sample = json.dumps(sample_data(template, manifest), separators=(',', ':'), ensure_ascii=False).replace('</', '<\\/')
-    replacements = dict(zip(MARKERS, ('\n'.join(script(text(local(template, name))) for name in VENDORS),
-                                      '\n'.join(core), script(text(local(effect, 'blizzard-editor.js')), 'fxBlizzardEditor'), sample)))
+    replacements = dict(zip(MARKERS, ('\n'.join(script(text(local(template, name)), identifier) for name, identifier in zip(VENDORS, ('blizzardPixiVendor', 'blizzardSpineVendor'))),
+                                      '\n'.join(core), script(text(local(effect, 'blizzard-editor.js')), 'fxBlizzardEditor'), script(text(local(effect, 'blizzard-export.js')), 'fxBlizzardExport'), sample)))
     return re.sub('|'.join(map(re.escape, MARKERS)), lambda match: replacements[match.group()], html)
 
 
