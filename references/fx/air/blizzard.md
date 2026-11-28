@@ -1,6 +1,6 @@
 # AIR-03 — Blizzard
 
-**Status:** specification-only. [Issue #25](https://github.com/maximsokal/pixi-spine-fx-lab/issues/25); [reviewed B01–B06 plan](https://github.com/maximsokal/pixi-spine-fx-lab/issues/25#issuecomment-7240625604). B02 pure numerical kernel is implemented; no working editor or exports claimed. Run `node --test scripts/test_blizzard_core.cjs` from a full checkout.
+**Status:** specification-only. [Issue #25](https://github.com/maximsokal/pixi-spine-fx-lab/issues/25); [reviewed B01–B06 plan](https://github.com/maximsokal/pixi-spine-fx-lab/issues/25#issuecomment-7240625604). B02 pure numerical kernel and B03 native particle runtime are implemented; no working editor or exports claimed. Run `node --test scripts/test_blizzard_core.cjs` from a full checkout.
 
 ## Numerical and visual contract
 
@@ -12,7 +12,7 @@ Angle is clockwise in screen space from +X. Zero wind stops advection; bounded l
 
 Maximum four emitters, stable IDs, independent layer enable/visibility, XY/rotation, time offset, seed, alpha/blend, world/local or Spine bone/slot/attachment anchors and inheritance. Missing anchor hides only the affected layer. Natural, stylized and magical palettes use editable RGBA stops. Curves preserve v1 handles and domains. Live budget across all emitters includes whiteout quads; 512/2048/4096. Reject over-budget or invalid configurations before preview replacement. 4096 events per emitter; no silent truncation. Actual simultaneous live counts matter, not total events over a scenic period. The CPU guard sums conservative per-layer maxima from complete periods plus circular birth-window counts, including closed-window floating-point slack; it may refuse configurations whose layer peaks never coincide. The budget includes alpha-zero live particles. Drift displacement uses a bounded midpoint integral table split at authored curve keys; not exact analytical integration for arbitrary Bezier curves. Artist-edited mismatched loop endpoints or stepped curves can introduce intentional discontinuities. Bounds are authored local/offset bounds; Spine anchor resolution is a B03 renderer concern.
 
-Proposed native pooled particle batches and independent whiteout quad; same source for preview, PNG and both developer ZIPs, unchanged pinned vendors. No GPU verification, runnable editor or release status yet.
+B03 `assets/blizzard/src/blizzard-runtime.js` exposes `FxBlizzardRuntime.createBlizzard` and `maskRGBA`. Owns two stage sibling groups flanking the identity Spine host, three layer-specific ParticleContainers per emitter (whiteout is a single textured quad), straight white-RGB supersampled masks, shared particle pool, bounds and stable missing-anchor diagnostics. The model must already be placed in crop-stage coordinates: world anchors receive `worldOffset` once; Spine anchors use model-to-stage transforms. Inherited anchor x/y follow their own local/world space through the base anchor; ordinary emitter/layer transform offsets are rotated by authored base rotation. Bounds enclose visible textured quads, not exact nonzero pixels. Configure stages new owners and particle allocations before replacing the accepted configuration; it does not guarantee rollback of arbitrary renderer/GPU failures after commit. Run `node --test scripts/test_blizzard_runtime.cjs` with the pinned vendors. B04–B05 must integrate this same module into preview, PNG and both developer ZIPs, unchanged pinned vendors. No GPU verification, runnable editor or release status yet.
 
 ## Machine-checkable Blueprint
 
@@ -526,7 +526,7 @@ Proposed native pooled particle batches and independent whiteout quad; same sour
   "implementation": {
     "status": "specification-only",
     "sourceFiles": [],
-    "notes": "B01 blueprint and B02 CPU kernel present; B03–B06 pending. No reference implementation or export certification."
+    "notes": "B01 blueprint, B02 CPU kernel and B03 native particle runtime present; B04–B06 pending. No reference implementation or export certification."
   }
 }
 ```
