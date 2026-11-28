@@ -29,7 +29,7 @@ class AuraBuilderTests(unittest.TestCase):
         self.template = self.root / 'assets/template'
         self.source = self.root / 'assets/electric-aura/src'
         self.vendors = ['vendor/pixi-8.22.0.min.js', 'vendor/spine-pixi-v8-4.2.120.min.js']
-        self.shared = ['curve-core.js', 'spacing-core.js', 'path-core.js', 'color-core.js', 'curve-editor.js', 'color-ui.js']
+        self.shared = ['curve-core.js', 'spacing-core.js', 'path-core.js', 'color-core.js', 'curve-editor.js', 'color-ui.js', 'motion-core.js', 'motion-curve.js']
         self.fx = ['aura-' + n + '.js' for n in ('core', 'anchors', 'runtime', 'pose', 'authoring', 'export', 'bake', 'developer', 'editor')]
         self.manifest = {'runtime': {'pixi': '8.22.0', 'spinePixiV8': '4.2.120', 'spineExport': '4.2.x'}, 'browserScripts': self.vendors,
                          'sample': {'label': 'Synthetic', 'skeleton': 'sample/test.json', 'atlas': 'sample/test.atlas', 'images': ['sample/page.png']}}
@@ -39,6 +39,7 @@ class AuraBuilderTests(unittest.TestCase):
         self.write(self.root / 'assets/shockwave/src/shockwave-spine.js', '/* Spine loader */')
         for name in ('shield-export.js', 'shield-export-ui.js'):
             self.write(self.root / 'assets/magic-shield/src' / name, '/* ' + name + ' */')
+        self.write(self.source / 'aura-motion.js', '/* aura-motion.js */')
         for name in self.fx:
             self.write(self.source / name, '/* ' + name + ' */')
         self.shell = '<!-- VENDOR --><!-- CORES --><script id="sampleData" type="application/json">__SAMPLE_DATA__</script><!-- APP -->'
@@ -56,7 +57,7 @@ class AuraBuilderTests(unittest.TestCase):
         result = build(self.root)
         parser = Scripts()
         parser.feed(result)
-        self.assertEqual(parser.ids, ['runtimeLicenses', *[Path(v).name for v in self.vendors], *self.shared, 'shockwave-spine.js', *self.fx[:-4], 'shield-export.js', 'shield-export-ui.js', *self.fx[-4:-1], 'sampleData', self.fx[-1]])
+        self.assertEqual(parser.ids, ['runtimeLicenses', *[Path(v).name for v in self.vendors], *self.shared, 'aura-motion.js', 'shockwave-spine.js', *self.fx[:-4], 'shield-export.js', 'shield-export-ui.js', *self.fx[-4:-1], 'sampleData', self.fx[-1]])
         self.assertEqual(parser.external, [])
         self.assertIn('Zml4dHVyZQ==', result)
         self.assertNotIn('__SAMPLE_DATA__', result)

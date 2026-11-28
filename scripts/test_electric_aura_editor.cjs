@@ -5,7 +5,7 @@ async function run(read,A){
  const doc={createElement:()=>({style:{},getContext:()=>null}),createElementNS:()=>({style:{}})};
  const P=new Function('navigator','document','window','self',read(vendor+'pixi-8.22.0.min.js')+'\nreturn PIXI;')({userAgent:'Chromium',platform:'Linux'},doc,win,win);win.PIXI=P;
  const Sp=new Function('PIXI','window','self','require',read(vendor+'spine-pixi-v8-4.2.120.min.js')+'\nreturn spine;')(P,win,win,n=>{if(n==='pixi.js')return P;throw Error(n);});
- const G={};for(const path of [...['curve','spacing','path','color'].map(n=>shared+n+'-core.js'),...['core','anchors','runtime','pose','authoring'].map(n=>base+'aura-'+n+'.js'),'assets/magic-shield/src/shield-export-ui.js','assets/magic-shield/src/shield-export.js'])new Function('globalThis','module','require',read(path))(G,undefined,undefined);
+ const G={};for(const path of [...['curve','spacing','path','color','motion'].map(n=>shared+n+'-core.js'),shared+'motion-curve.js',base+'aura-motion.js',...['core','anchors','runtime','pose','authoring'].map(n=>base+'aura-'+n+'.js'),'assets/magic-shield/src/shield-export-ui.js','assets/magic-shield/src/shield-export.js'])new Function('globalThis','module','require',read(path))(G,undefined,undefined);
  const H=G.FxElectricAura,U=G.FxAuraAuthoring;
  class Element{constructor(){this.children=[];this.style={};this.dataset={};this.validity={valid:true};this._value='';this.checked=false;this.hidden=false;this.disabled=false;this.textContent='';}
   set value(v){this._value=String(v);}get value(){return this._value;}append(...v){this.children.push(...v);}prepend(...v){this.children.unshift(...v);}replaceChildren(...v){this.children=v;}setAttribute(){}setPointerCapture(){}click(){downloads++;}remove(){}getBoundingClientRect(){return {left:10,top:20,width:256,height:256};}}
@@ -42,10 +42,18 @@ async function run(read,A){
  await nodes.remove.onclick();A.equal(editor.session.asset,null);A.ok(editor.session.missing.includes('emitter-1:arcs'));A.equal(nodes.handle.hidden,true);
  const w=U.pointer(138,148,{left:10,top:20,width:256,height:256});A.deepEqual(w,{x:256,y:256});const basis={x:10,y:20,rotation:45,scale:2},v=U.transform(basis,3,7),inv=U.inverse(basis,v.x,v.y);near(inv.x,3);near(inv.y,7);
  nodes.defaults.onclick();nodes.frame.value=58;nodes.frame.oninput();nodes.play.onclick();raf(1000);raf(1100);near(editor.session.seconds,4/60);nodes.reverse.checked=true;raf(1200);near(editor.session.seconds,58/60);nodes.play.onclick();
+ const baseline=cfg(),oldSample=editor.session.seek(.25);
+ A.equal(typeof nodes.generatePulse?.onclick,'function');
+ for(const [key,value] of Object.entries({pulseCenter:1,pulseAmplitude:.25,pulseCycles:2,pulsePhase:0,pulseTolerance:.003}))nodes[key].value=value;
+ nodes.generatePulse.onclick();A.equal(nodes.status.dataset.error,'false');A.equal(nodes.curveKey.value,'glow');A.ok(nodes.pulseResult.textContent.includes('keys'));
+ const generated=cfg();A.notDeepEqual(generated.curves.glow,baseline.curves.glow);A.deepEqual({...generated,curves:{...generated.curves,glow:baseline.curves.glow}},baseline);A.deepEqual(curve.curve,generated.curves.glow);
+ const changed=editor.session.seek(.25);A.notDeepEqual(changed.halo,oldSample.halo);A.deepEqual(changed.arcs,oldSample.arcs);A.deepEqual(changed.sparks,oldSample.sparks);
+ nodes.pulseCenter.value=0;nodes.generatePulse.onclick();A.equal(nodes.status.dataset.error,'true');A.deepEqual(cfg(),generated);
+ nodes.pulseCenter.value=1;nodes.preset.value=JSON.stringify(generated);nodes.apply.onclick();A.deepEqual(cfg(),generated);
  const snap=editor.session.settings,time=editor.session.seconds,sourceBefore=editor.session.source;
- const job=nodes.exportPng.onclick();A.equal(nodes.controls.disabled,true);A.equal(nodes.exportFields.disabled,true);A.equal(request.frameCount,60);A.equal(request.backend,'webgl2');A.equal(request.crop.x,-4);A.equal(await nodes.exportWebgl.onclick(),false);nodes.cancelExport.onclick();pendingExport();A.equal(await job,false);A.equal(downloads,0);A.equal(nodes.controls.disabled,false);A.equal(editor.session.settings,snap);
+ const job=nodes.exportPng.onclick();A.equal(nodes.controls.disabled,true);A.equal(nodes.exportFields.disabled,true);A.equal(request.frameCount,60);A.equal(request.backend,'webgl2');A.deepEqual(request.settings.curves.glow,generated.curves.glow);A.equal(request.crop.x,-4);A.equal(await nodes.exportWebgl.onclick(),false);nodes.cancelExport.onclick();pendingExport();A.equal(await job,false);A.equal(downloads,0);A.equal(nodes.controls.disabled,false);A.equal(editor.session.settings,snap);
  const second=nodes.exportPng.onclick();pendingExport();A.equal(await second,true);A.equal(downloads,1);A.equal(editor.session.settings,snap);near(editor.session.seconds,time);A.equal(editor.session.source,sourceBefore);
- for(const [button,target] of [['exportWebgl','webgl'],['exportWebgpu','webgpu']]){const dev=nodes[button].onclick();A.equal(request.target,target);A.equal(request.previewSeconds,time);A.equal(request.licenses,'fixture notices');pendingExport();A.equal(await dev,true);A.equal(editor.session.settings,snap);}A.equal(downloads,3);
+ for(const [button,target] of [['exportWebgl','webgl'],['exportWebgpu','webgpu']]){const dev=nodes[button].onclick();A.equal(request.target,target);A.deepEqual(request.settings.curves.glow,generated.curves.glow);A.equal(request.previewSeconds,time);A.equal(request.licenses,'fixture notices');pendingExport();A.equal(await dev,true);A.equal(editor.session.settings,snap);}A.equal(downloads,3);
  const waiting=editor.session.replaceSource({name:'pending'});close();pending();await A.rejects(()=>waiting,/destroyed/);A.ok(assets.every(a=>a.dead));A.ok(apps.filter(a=>a.renderer).every(a=>a.dead));A.equal(editor.session,null);
 }
 module.exports={run};

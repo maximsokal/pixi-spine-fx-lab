@@ -23,7 +23,8 @@ def build(root):
         return '<script id="' + Path(name).name + '">' + safe(text(local(base, name))) + '</script>'
     notices = '\n'.join(text(local(template, 'licenses/' + name)) for name in ('pixi.txt', 'spine.txt'))
     vendor = '<script type="text/plain" id="runtimeLicenses">' + safe(notices) + '</script>\n' + '\n'.join(tag(template, name) for name in vendors)
-    cores = [tag(template, 'src/' + name) for name in ('curve-core.js', 'spacing-core.js', 'path-core.js', 'color-core.js', 'curve-editor.js', 'color-ui.js')]
+    cores = [tag(template, 'src/' + name) for name in ('curve-core.js', 'spacing-core.js', 'path-core.js', 'color-core.js', 'curve-editor.js', 'color-ui.js', 'motion-core.js', 'motion-curve.js')]
+    cores.append(tag(source, 'aura-motion.js'))
     cores.append(tag(root / 'assets/shockwave/src', 'shockwave-spine.js'))
     cores.extend(tag(source, name) for name in ('aura-core.js', 'aura-anchors.js', 'aura-runtime.js', 'aura-pose.js', 'aura-authoring.js'))
     cores.extend(tag(root / 'assets/magic-shield/src', name) for name in ('shield-export.js', 'shield-export-ui.js'))

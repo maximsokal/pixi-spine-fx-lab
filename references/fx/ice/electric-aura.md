@@ -10,6 +10,10 @@ Run the separate scalar-parameter audit with `node scripts/audit_electric_aura_p
 
 Halo seed: the shipped seed 4109 retains the original intensity exactly. Other int32 seeds apply a deterministic smooth one-cycle intensity attenuation (0–20% maximum reduction) on top of the authored glow curve and alpha. No effect on geometry, arc/spark RNG, timing, or the one-shot fade envelope. Zero glow/opacity remains invisible. The seed does not add a second clock.
 
+### Optional analytical halo pulse (MOTION-M04)
+
+In Curve editor → Generate halo pulse, choose the center multiplier, amplitude, number of cycles per authored duration, phase in cycles and approximation tolerance. Explicitly press Replace glow curve to replace only the shared `curves.glow` with editable v1 Bezier keys. Center ± amplitude must fit 0–2. The converter rejects invalid inputs and tolerance requests that cannot fit 64 keys. The reported measured error and estimated bound describe the last generated curve, not subsequent manual key edits. This is a normalized-time authoring operation; changing duration stretches the saved keys. It never changes the independent arc emission pulse rate, arc/spark schedules, defaults or other curves. The editor embeds the original motion and conversion modules offline; PNG and both Developer ZIPs consume only the existing serialized glow curve through the same compiler, so no extra runtime files are needed for replay. No new preset schema or runtime pin. Numerical, fixture-editor and archive acceptance do not constitute actual GPU certification. See #91.
+
 ## Machine-checkable Blueprint
 
 ```json
