@@ -39,7 +39,7 @@ def archive(data):
         raise
 
 
-def sequence(data, backend, settings, crop, count):
+def sequence(data, backend, settings, crop, count, *, require_motion=False):
     with archive(data) as z:
         names = [f'frames/frame_{i:05}.png' for i in range(count)]
         check(set(z.namelist())==set(names+['sequence.json','README.txt']), 'sequence entries')
@@ -48,13 +48,19 @@ def sequence(data, backend, settings, crop, count):
         check((m['width'],m['height'],m['authoredFrames'],m['durationSeconds'],m['terminalSeconds'],m['mode'],m['layerIds'],m['frameFormula'])==(crop['width'],crop['height'],40,count/60,39/60,'oneShot',list(LAYERS),'frameIndex/60'), 'sequence timing/dimensions')
         check(m['frames']==[{'file':n,'frame':i,'timeSeconds':i/60} for i,n in enumerate(names)], 'frame times')
         frames=[]
-        for n in names:
+        visible_pixel_hashes=set()
+        for i,n in enumerate(names):
             raw=z.read(n)
             with Image.open(io.BytesIO(raw)) as im:
                 check(im.format=='PNG' and im.mode=='RGBA' and im.size==(crop['width'],crop['height']), 'PNG format/dimensions')
                 pixels=im.tobytes()
                 check(all(pixels[i+3] or pixels[i:i+3]==b'\0\0\0' for i in range(0,len(pixels),4)), 'RGB at zero alpha')
-                frames.append((hashlib.sha256(raw).hexdigest(),im.getchannel('A').getbbox() is not None))
+                visible=im.getchannel('A').getbbox() is not None
+                frames.append((hashlib.sha256(raw).hexdigest(),visible))
+                if require_motion and i<39 and visible:
+                    visible_pixel_hashes.add(hashlib.sha256(pixels).digest())
+        if require_motion:
+            check(len(visible_pixel_hashes)>=2, 'expected at least two distinct visible decoded frames before terminal')
         return m,frames
 
 
@@ -163,18 +169,20 @@ def run(html, backend, output):
                     return (output/name).read_bytes()
                 base=read()
                 for k,v in [('exportWidth',256),('exportHeight',256),('exportX',0),('exportY',64),('exportFrames',42)]:page.locator('#'+k).fill(str(v))
-                m,frames=sequence(download('exportPng','default.zip'),backend,base,CROP,42)
+                m,frames=sequence(download('exportPng','default.zip'),backend,base,CROP,42,require_motion=True)
                 check(m['asset'] is None and frames[12][1] and not any(v for _,v in frames[39:]),'impact peak/terminal')
                 page.locator('#zoomIn').click();page.locator('#zoomIn').click();page.locator('#exportGuide').uncheck()
-                _,again=sequence(download('exportPng','zoomed.zip'),backend,base,CROP,42)
-                check(frames==again,'camera/guide changed PNG bytes')
+                page.locator('#frame').evaluate("e=>{e.value=20;e.dispatchEvent(new Event('input',{bubbles:true}));}")
+                check(page.locator('#frame').input_value()=='20','preview seek failed')
+                _,again=sequence(download('exportPng','zoomed.zip'),backend,base,CROP,42,require_motion=True)
+                check(frames==again,'camera/guide/preview time changed PNG bytes')
                 for kind in (*LAYERS,'none'):
                     cfg=json.loads(json.dumps(base))
                     for k in LAYERS:cfg['layers'][k]['enabled']=k==kind
                     apply(cfg)
                     _,layer=sequence(download('exportPng','only-'+kind+'.zip'),backend,cfg,CROP,42)
                     check(any(v for _,v in layer[:39])==(kind!='none') and not any(v for _,v in layer[39:]),'independent layer: '+kind)
-                apply(base);report['checks'].append('actual backend, 42 frames, peak/terminal, independent layers, camera and guide byte parity')
+                apply(base);report['checks'].append('actual backend, 42 frames, distinct visible decoded frames, peak/terminal, independent layers, camera/guide/preview time byte parity')
                 page.get_by_role('button',name='Load sample',exact=True).click()
                 page.wait_for_function("!document.getElementById('backend').disabled")
                 check(page.locator('#status').inner_text()=='Source accepted','sample load failed')
