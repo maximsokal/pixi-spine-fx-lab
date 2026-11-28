@@ -75,6 +75,25 @@ function run(read,A,T,env){
    A.equal(disposed,1);
   }
  });
+ T('developer readiness waits for actual asset load and first frame; failed startup disposes resources',async()=>{
+  const asset={skeletonName:'x.json',atlasName:'x.atlas',skeleton:'{}',atlas:'a',images:new Map([['x.png','data']]),pageBindings:[{name:'x.png',key:'x.png'}],animation:'idle'};
+  for(const target of ['webgl','webgpu'])for(const kind of ['ok','load','anchor']){
+   const pack=E.packageEntries({settings:B.defaults(),asset,source,target}),demo=pack.entries.find(e=>e.name==='public/offline/demo.js').data;
+   let resolve,reject,hide;const wait=new Promise((a,b)=>{resolve=a;reject=b;}),status={dataset:{state:'loading'},textContent:'Starting'},calls=[];
+   class App{constructor(){this.renderer=target==='webgl'?{gl:{}}:{type:9};this.canvas={};this.stage={addChild(){}};this.ticker={add(){calls.push('ticker');}};}async init(){}render(){calls.push('render');}start(){calls.push('start');}destroy(){calls.push('destroy');}}
+   const model={update(){},getLocalBounds(){return {x:0,y:0,width:100,height:100};},scale:{set(){}},position:{set(){}}};
+   const root={PIXI:{Application:App,RendererType:{WEBGPU:9},Container:class{addChild(){}},Assets:{add(){},load(){calls.push('load');return wait;}}},spine:{Spine:{from(){calls.push('model');return model;}}},FxBlizzard:B,FxBlizzardRuntime:{createBlizzard(){return {seek(){calls.push('seek');},diagnostics:kind==='anchor'?[{code:'missing-anchor'}]:[],destroy(){calls.push('fxdestroy');}};}},FxBlizzardPose:{seek(){calls.push('pose');}}};
+   const doc={getElementById:()=>status,body:{append(){calls.push('canvas');},textContent:''}};
+   new Function('globalThis','document','fetch','window','console',demo)(root,doc,async()=>({ok:true,json:async()=>pack.preset}),{addEventListener(_,fn){hide=fn;}},{error(){calls.push('error');}});
+   for(let i=0;i<12;i++)await Promise.resolve();
+   A.equal(status.dataset.state,'loading');A.ok(calls.includes('load'));A.ok(!calls.includes('render'));
+   if(kind==='load')reject(Error('atlas failed'));else resolve();
+   for(let i=0;i<12;i++)await Promise.resolve();
+   A.equal(status.dataset.state,kind==='ok'?'ready':'error');
+   if(kind==='ok'){A.ok(calls.indexOf('render')>calls.indexOf('seek'));A.ok(calls.indexOf('start')>calls.indexOf('render'));hide();hide();A.equal(calls.filter(c=>c==='destroy').length,1);A.equal(calls.filter(c=>c==='fxdestroy').length,1);}
+   else{A.ok(calls.includes('destroy'));A.ok(!calls.includes('start'));A.ok(calls.includes('error'));if(kind==='anchor')A.ok(calls.includes('fxdestroy'));}
+  }
+ });
  T('readFrame uses exact logical crop and disposes generated texture even when readback fails',async()=>{
   let destroyed=0,opts,fail=false;g.PIXI={Rectangle:class{constructor(x,y,width,height){Object.assign(this,{x,y,width,height});}}};
   const stage={},texture={destroy(v){A.equal(v,true);destroyed++;}},scene={app:{stage,renderer:{extract:{texture(o){opts=o;return texture;},pixels(t){A.equal(t,texture);if(fail)throw Error('readback fault');return {width:512,height:512,pixels:new Uint8Array(512*512*4)};}}}}};

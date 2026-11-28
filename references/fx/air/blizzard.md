@@ -34,6 +34,23 @@ Both developer ZIPs include settings, asset/skin/animation mapping, unchanged em
 
 Tests: node --test scripts/test_blizzard_export.cjs. CPU codec/ZIP, independent CRC and decoded byte fixtures, settings/module archive parity, readback crop contract and cancellation after cleanup. No browser/GPU pixels claimed.
 
+## B06 candidate acceptance and startup correction
+
+Developer examples now distinguish loading / ready / error. The ready marker is set only after accepted assets, resolved initial anchors, first render and ticker start; failed startup destroys owned effect/application resources, with idempotent cleanup. A delayed-load / rejected-load / missing-anchor fixture for both targets reproduces the former premature backend-label readiness and checks success/failure ordering.
+
+The permanent CPU sample test parses the actual protected Doctor_head JSON and both atlas pages using pinned Pixi 8.22.0 / Spine 4.2.120, with dimension-only image sources and a canvas mask fixture, not decoded GPU textures. All 9 animations and setup pose: 120 forward/backward/seam samples with bone and slot anchors, independent whiteout, finite bounds and bounded primitive counts. All numerical/runtime/editor/export/sample JS suites passed in an isolated JS harness (32 groups, 200151 assertions, DOM/Blob/deflate fixtures where required). This does not certify real browser output.
+
+Run from a complete checkout:
+
+- python scripts/build_blizzard_editor.py --output Blizzard_Lab.html
+- python scripts/test_blizzard_browser_oracles.py
+- python scripts/test_blizzard_browser.py --html Blizzard_Lab.html --backend webgl2 --output evidence/blizzard-webgl2
+- Repeat with webgl1 and webgpu and separate empty output directories.
+
+The browser runner validates 60-frame loop and 40-frame burst archives, non-identical visible decoded pixels, isolated layers, empty terminal frames, same-backend PNG byte identity at 50/100/200% zoom and across backgrounds, no sample Spine pixel leakage for world anchors, exact package modules/asset bytes and developer startup with locally served ZIP entries. It records PASS/FAIL/NOT RUN per requested backend and never substitutes fallback for requested backend. The independent Python oracle suite (3 tests normal and -O) rejects identical visible frames, nontransparent terminal, RGB at alpha zero, unsafe/conflicting paths and tampered developer sources.
+
+Acceptance remains blocked in the chat VM: native git DNS failure, public archive unavailable through retrieval, and Chromium local-file navigation denied by administrator even for a minimal local probe. No real editor/PNG/GPU/demo run, Vite build, full architecture check or verify_project claimed. Visual review, individual parameter/curve witnesses and real GPU alpha/fringe checks still required; do not promote the registry or close #25 on CPU results alone.
+
 ## Machine-checkable Blueprint
 
 ```json

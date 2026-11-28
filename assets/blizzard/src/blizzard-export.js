@@ -49,9 +49,10 @@
    "import * as SpineRuntime from '@esotericsoftware/spine-pixi-v8';",
    "import { FxBlizzard, createBlizzard } from './Blizzard.mjs';",
    "import { FxBlizzardPose } from './FxBlizzardPose.mjs';",
+   "let app=null,fx=null;function cleanup(){const effect=fx,application=app;fx=null;app=null;try{effect?.destroy();}finally{if(application?.renderer)application.destroy(true,{children:true});}}",
    "async function main(){",
    " const response=await fetch('./preset.json');if(!response.ok)throw Error('Preset load failed');const p=await response.json();if(p.schemaVersion!==1||p.effectId!=='fx.air.blizzard')throw Error('Invalid Blizzard preset');",
-   " const app=new PIXI.Application();await app.init({width:512,height:512,resolution:1,backgroundAlpha:0,preference:'"+target+"',preferWebGLVersion:2});",
+   " app=new PIXI.Application();await app.init({width:512,height:512,resolution:1,backgroundAlpha:0,preference:'"+target+"',preferWebGLVersion:2,autoStart:false,sharedTicker:false});",
    " const actual=app.renderer.gl?'webgl':app.renderer.type===PIXI.RendererType.WEBGPU?'webgpu':'unknown';",
    " if(actual!==p.rendererPreference)throw Error('Renderer mismatch: '+actual);document.getElementById('backend').textContent=app.renderer.gl?(typeof WebGL2RenderingContext!=='undefined'&&app.renderer.gl instanceof WebGL2RenderingContext?'webgl2':'webgl1'):actual;",
    " document.body.append(app.canvas);const host=new PIXI.Container();app.stage.addChild(host);let model=null;",
@@ -59,11 +60,11 @@
    " model=SpineRuntime.Spine.from({skeleton:'blizzard-skel',atlas:'blizzard-atlas',autoUpdate:false});host.addChild(model);model.update(0);",
    " const b=model.getLocalBounds();if(![b.x,b.y,b.width,b.height].every(Number.isFinite)||b.width<=0||b.height<=0)throw Error('Empty Spine skeleton');const scale=Math.min(260/b.width,330/b.height,2);model.scale.set(scale);model.position.set(256-(b.x+b.width/2)*scale,260-(b.y+b.height/2)*scale);",
    " }",
-   " const settings=FxBlizzard.normalize(p.settings),fx=createBlizzard({PIXI,app,host,model,settings});let t=0;",
-   " if(model)FxBlizzardPose.seek(model,settings,0,p.asset);fx.seek(0);",
+   " const settings=FxBlizzard.normalize(p.settings);fx=createBlizzard({PIXI,app,host,model,settings});let t=0;",
+   " if(model)FxBlizzardPose.seek(model,settings,0,p.asset);fx.seek(0);if(fx.diagnostics.length)throw Error('Unresolved Blizzard anchor');app.render();",
    " app.ticker.add(ticker=>{t+=ticker.elapsedMS/1000;t=settings.mode==='loop'?t%(settings.durationFrames/60):Math.min((settings.durationFrames-1)/60,t);if(model)FxBlizzardPose.seek(model,settings,t,p.asset);fx.seek(t);});",
-   " window.addEventListener('pagehide',()=>{fx.destroy();app.destroy(true);},{once:true});",
-   "}main().catch(e=>{console.error(e);document.body.textContent=e.message;});"
+   " window.addEventListener('pagehide',cleanup,{once:true});app.start();document.getElementById('backend').dataset.state='ready';",
+   "}main().catch(e=>{try{cleanup();}finally{const status=document.getElementById('backend');status.dataset.state='error';status.textContent=e.message;console.error(e);}});"
   ].join('\n');
   const entries=[
    {name:'preset.json',data:json},{name:'public/preset.json',data:json},
@@ -77,10 +78,10 @@
    {name:'LICENSES.txt',data:source('runtimeLicenses')},
    {name:'README.md',data:'# AIR-03 Blizzard\nExact shared numerical core and native particle runtime. For a network-independent demo run python -m http.server 8000 --directory public and open http://localhost:8000/offline.html. For development install pinned dependencies (npm install --offline if cached), npm run dev, npm run build. Backend mismatch is an error. Actual GPU and Vite builds require verification.\n'},
    {name:'package.json',data:JSON.stringify({name:'pixi-spine-blizzard-'+target,private:true,type:'module',scripts:{dev:'vite --host 0.0.0.0',build:'vite build'},dependencies:{'pixi.js':'8.22.0','@esotericsoftware/spine-pixi-v8':'4.2.120'},devDependencies:{vite:'7.1.12'}},null,2)},
-   {name:'index.html',data:'<!doctype html><html lang="en"><meta charset="utf-8"><title>Blizzard</title><output id="backend">Starting</output><script type="module" src="/example.js"></script></html>'}
+   {name:'index.html',data:'<!doctype html><html lang="en"><meta charset="utf-8"><title>Blizzard</title><output id="backend" data-state="loading">Starting</output><script type="module" src="/example.js"></script></html>'}
   ];
   const offlineDemo=demo.split('\n').filter(line=>!line.startsWith('import ')).join('\n').replace('async function main(){','const PIXI=globalThis.PIXI,SpineRuntime=globalThis.spine,FxBlizzard=globalThis.FxBlizzard,createBlizzard=globalThis.FxBlizzardRuntime.createBlizzard,FxBlizzardPose=globalThis.FxBlizzardPose;\nasync function main(){');
-  entries.push({name:'public/offline.html',data:'<!doctype html><html lang="en"><meta charset="utf-8"><title>Blizzard offline demo</title><output id="backend">Starting</output>'+['pixi','spine','curves','spacing','colors','core','runtime','pose','demo'].map(n=>'<script src="./offline/'+n+'.js"></script>').join('')+'</html>'});
+  entries.push({name:'public/offline.html',data:'<!doctype html><html lang="en"><meta charset="utf-8"><title>Blizzard offline demo</title><output id="backend" data-state="loading">Starting</output>'+['pixi','spine','curves','spacing','colors','core','runtime','pose','demo'].map(n=>'<script src="./offline/'+n+'.js"></script>').join('')+'</html>'});
   for(const [name,id] of [['pixi','blizzardPixiVendor'],['spine','blizzardSpineVendor'],['curves','fxCurveCore'],['spacing','fxSpacingCore'],['colors','fxColorCore'],['core','fxBlizzardCore'],['runtime','fxBlizzardRuntime'],['pose','fxBlizzardPose']])entries.push({name:'public/offline/'+name+'.js',data:source(id)});
   entries.push({name:'public/offline/demo.js',data:'(function(){\n'+offlineDemo+'\n})();'});
   if(asset){entries.push({name:'public/'+paths.skeleton,data:asset.skeleton},{name:'public/'+paths.atlas,data:asset.atlas});
